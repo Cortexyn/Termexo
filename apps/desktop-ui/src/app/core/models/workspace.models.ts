@@ -1,4 +1,4 @@
-export type AgentType = 'claude' | 'codex' | 'opencode' | 'grok' | 'antigravity' | 'shell';
+export type AgentType = 'claude' | 'codex' | 'opencode' | 'pi' | 'grok' | 'antigravity' | 'shell';
 
 /**
  * Model label for an OpenCode terminal that named no model.
@@ -156,6 +156,7 @@ export const AGENT_ICONS: Record<AgentType, string> = {
   codex: 'brand-codex',
   opencode: 'brand-opencode',
   grok: 'brand-grok',
+  pi: 'brand-pi',
   antigravity: 'brand-antigravity',
   /** A plain shell is not a product and has no mark of its own. */
   shell: 'terminal',
@@ -166,6 +167,7 @@ export const AGENT_LABELS: Record<AgentType, string> = {
   codex: 'Codex CLI',
   opencode: 'OpenCode',
   grok: 'Grok Build',
+  pi: 'Pi Agent',
   antigravity: 'Antigravity',
   shell: 'Shell',
 };

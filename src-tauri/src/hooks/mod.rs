@@ -338,6 +338,28 @@ impl HookEventStore {
         ])
     }
 
+    pub fn prepare_pi_runtime(&self, terminal_id: &str) -> Result<String, HookError> {
+        // Terminal IDs become filenames. Reject separators rather than escaping out of runtime.
+        if terminal_id.is_empty()
+            || !terminal_id
+                .chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || ch == '-')
+        {
+            return Err(HookError::InvalidArguments);
+        }
+        let extension_path = self
+            .runtime_directory
+            .join(format!("pi-{terminal_id}.extension.mjs"));
+        let extension = include_str!("pi-extension.mjs")
+            .replace(
+                "__EVENT_FILE__",
+                &serde_json::to_string(&self.event_file.to_string_lossy())?,
+            )
+            .replace("__TERMINAL_ID__", &serde_json::to_string(terminal_id)?);
+        fs::write(&extension_path, extension)?;
+        Ok(extension_path.to_string_lossy().into_owned())
+    }
+
     pub fn prepare_opencode_runtime(
         &self,
         terminal_id: &str,
@@ -938,8 +960,8 @@ fn map_hook_event(stored: StoredHookEvent) -> AgentEvent {
     if stored.agent_type.as_deref() == Some("antigravity") {
         return map_antigravity_event(stored);
     }
-    if stored.agent_type.as_deref() == Some("opencode") {
-        return map_opencode_event(stored);
+    if matches!(stored.agent_type.as_deref(), Some("opencode" | "pi")) {
+        return map_normalized_event(stored);
     }
     if stored.agent_type.as_deref() == Some("grok") {
         return map_grok_event(stored);
@@ -1011,10 +1033,10 @@ fn truncate_detail_value(value: &Value) -> Value {
     Value::String(format!("{}…", &text[..end]))
 }
 
-fn map_opencode_event(stored: StoredHookEvent) -> AgentEvent {
+fn map_normalized_event(stored: StoredHookEvent) -> AgentEvent {
     AgentEvent {
         event_key: stored.event_key,
-        agent_type: "opencode".into(),
+        agent_type: stored.agent_type.unwrap_or_else(|| "opencode".into()),
         native_session_id: stored
             .payload
             .get("native_session_id")
@@ -1503,6 +1525,31 @@ mod tests {
             .unwrap()
             .as_nanos();
         std::env::temp_dir().join(format!("termexo-{name}-{unique}"))
+    }
+
+    #[test]
+    fn pi_runtime_is_private_and_routes_normalized_events_without_payloads() {
+        let directory = test_directory("pi-runtime");
+        let store = HookEventStore::new(&directory).unwrap();
+        let extension = store.prepare_pi_runtime("terminal-1").unwrap();
+        let source = fs::read_to_string(&extension).unwrap();
+        assert!(Path::new(&extension).starts_with(directory.join("runtime")));
+        assert!(source.contains("\"terminal-1\""));
+        assert!(!source.contains("__EVENT_FILE__"));
+        assert!(store.prepare_pi_runtime("../outside").is_err());
+        let event = map_hook_event(stored_event(
+            Some("pi"),
+            json!({
+                "native_session_id": "pi-session", "event_type": "agent.interrupted",
+                "detail": {"tool_name": "read", "apiKey": "private-key"}
+            }),
+        ));
+        assert_eq!(event.agent_type, "pi");
+        assert_eq!(event.native_session_id.as_deref(), Some("pi-session"));
+        assert_eq!(event.event_type, "agent.interrupted");
+        assert_eq!(event.detail["tool_name"], "read");
+        assert!(event.detail.get("apiKey").is_none());
+        fs::remove_dir_all(directory).unwrap();
     }
 
     /// A spooled event the way the hook CLIs write one, for tests that only care about the payload.

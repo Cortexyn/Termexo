@@ -543,6 +543,7 @@
               [modelProfiles]="agents.modelProfiles()"
               [openCodeAvailable]="agents.openCodeInstallation()?.healthy ?? false"
               [grokAvailable]="agents.grokInstallation()?.healthy ?? false"
+              [piAvailable]="agents.piInstallation()?.healthy ?? false"
               [busyTaskId]="busyTodoTaskId()"
               [awaitingTerminalIds]="agentStartup.awaitingTerminalIds()"
               (executionRequested)="executeTodoTask($event)"
@@ -830,19 +831,36 @@
     [codexInstallation]="agents.codexInstallation()"
     [openCodeInstallation]="agents.openCodeInstallation()"
     [grokInstallation]="agents.grokInstallation()"
+    [piInstallation]="agents.piInstallation()"
     [antigravityInstallation]="agents.antigravityInstallation()"
     [sessions]="agents.sessions()"
     [profiles]="agents.modelProfiles()"
     [mcpProfiles]="agents.mcpProfiles()"
     [accountProfiles]="agents.accountProfiles()"
     [projectPath]="state.activeWorkspace()?.projectPath ?? ''"
-    [busy]="agents.busy() || launchingClaude() || launchingCodex() || launchingOpenCode()"
+    [busy]="
+      agents.busy() || launchingClaude() || launchingCodex() || launchingOpenCode() || launchingPi()
+    "
     [error]="agents.error()"
     [sessionLaunchProfiles]="sessionLaunchProfiles"
     (refreshed)="refreshSessions($event)"
     (resumed)="resumeAgent($event)"
     (cancelled)="sessionCenterOpen.set(false)"
   />
+}
+
+@defer (when piLaunchOpen()) {
+  @if (piLaunchOpen()) {
+    <app-pi-launch-dialog
+      [installation]="agents.piInstallation()"
+      [workingDirectory]="selectedTerminalDirectory() ?? ''"
+      [launching]="launchingPi()"
+      (launched)="launchPi($event)"
+      (cancelled)="closePiLaunch()"
+      (installRequested)="installAgent('pi')"
+      (directoryChangeRequested)="changeLaunchDirectory()"
+    />
+  }
 }
 
 @defer (when promptLibraryOpen()) {
@@ -888,6 +906,7 @@
       [codexInstallation]="agents.codexInstallation()"
       [openCodeInstallation]="agents.openCodeInstallation()"
       [grokInstallation]="agents.grokInstallation()"
+      [piInstallation]="agents.piInstallation()"
       [antigravityInstallation]="agents.antigravityInstallation()"
       [modelProfiles]="agents.modelProfiles()"
       [mcpProfiles]="agents.mcpProfiles()"

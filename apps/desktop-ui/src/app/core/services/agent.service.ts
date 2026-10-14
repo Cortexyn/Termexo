@@ -20,6 +20,7 @@ import {
   CliOperationResult,
   CodexLaunchRequest,
   GrokLaunchRequest,
+  PiLaunchRequest,
   ImportSummary,
   ManagedAgentType,
   McpProfile,
@@ -59,6 +60,7 @@ const CLI_PREVIEWS: Record<
   },
   opencode: { displayName: 'OpenCode', package: '@opencode/cli' },
   grok: { displayName: 'Grok Build', package: '@xai-official/grok' },
+  pi: { displayName: 'Pi Agent', package: '@earendil-works/pi-coding-agent' },
   antigravity: {
     displayName: 'Antigravity',
     script: 'https://antigravity.google/cli/install.ps1',
@@ -76,6 +78,7 @@ const DETECTION_COMMANDS: Record<ManagedAgentType, string> = {
   codex: 'detect_codex',
   opencode: 'detect_opencode',
   grok: 'detect_grok',
+  pi: 'detect_pi',
   antigravity: 'detect_antigravity',
 };
 
@@ -86,6 +89,7 @@ export class AgentService {
   private readonly codexInstallationState = signal<AgentInstallation | null>(null);
   private readonly openCodeInstallationState = signal<AgentInstallation | null>(null);
   private readonly grokInstallationState = signal<AgentInstallation | null>(null);
+  private readonly piInstallationState = signal<AgentInstallation | null>(null);
   private readonly antigravityInstallationState = signal<AgentInstallation | null>(null);
   private readonly sessionItems = signal<AgentSession[]>([]);
   private readonly eventItems = signal<AgentEvent[]>([]);
@@ -109,6 +113,7 @@ export class AgentService {
   readonly codexInstallation = this.codexInstallationState.asReadonly();
   readonly openCodeInstallation = this.openCodeInstallationState.asReadonly();
   readonly grokInstallation = this.grokInstallationState.asReadonly();
+  readonly piInstallation = this.piInstallationState.asReadonly();
   readonly antigravityInstallation = this.antigravityInstallationState.asReadonly();
   readonly sessions = this.sessionItems.asReadonly();
   readonly events = this.eventItems.asReadonly();
@@ -147,6 +152,7 @@ export class AgentService {
       this.detectCodex(),
       this.detectOpenCode(),
       this.detectGrok(),
+      this.detectPi(),
       this.detectAntigravity(),
       this.loadProfiles(),
       this.loadSessions(),
@@ -170,6 +176,10 @@ export class AgentService {
 
   detectOpenCode(): Promise<void> {
     return this.detectAgent('opencode');
+  }
+
+  detectPi(): Promise<void> {
+    return this.detectAgent('pi');
   }
 
   detectGrok(): Promise<void> {
@@ -261,6 +271,7 @@ export class AgentService {
         invoke<AgentSession[]>('scan_opencode_sessions', {
           projectPath: projectPath || null,
         }),
+        invoke<AgentSession[]>('scan_pi_sessions', { projectPath: projectPath || null }),
         invoke<AgentSession[]>('scan_grok_sessions', {
           projectPath: projectPath || null,
         }),
@@ -367,6 +378,17 @@ export class AgentService {
       };
     }
     return invoke<AgentLaunchSpec>('prepare_opencode_launch', { request });
+  }
+
+  async preparePiLaunch(request: PiLaunchRequest): Promise<AgentLaunchSpec> {
+    if (!hasBackend()) {
+      const quote = (value: string) => `'${value.replaceAll("'", "''")}'`;
+      return {
+        command: `pi${request.sessionId ? ` --session ${quote(request.sessionId)}` : request.continueLast ? ' --continue' : ''}${request.model ? ` --model ${quote(request.model)}` : ''}`,
+        executablePath: 'pi',
+      };
+    }
+    return invoke<AgentLaunchSpec>('prepare_pi_launch', { request });
   }
 
   async prepareGrokLaunch(request: GrokLaunchRequest): Promise<AgentLaunchSpec> {
@@ -676,12 +698,13 @@ export class AgentService {
       codex: this.codexInstallationState,
       opencode: this.openCodeInstallationState,
       grok: this.grokInstallationState,
+      pi: this.piInstallationState,
       antigravity: this.antigravityInstallationState,
     };
   }
 
   private browserInstallation(
-    agentType: 'claude' | 'codex' | 'opencode' | 'grok' | 'antigravity',
+    agentType: 'claude' | 'codex' | 'opencode' | 'pi' | 'grok' | 'antigravity',
   ): AgentInstallation {
     const name = AGENT_LABELS[agentType];
     return {

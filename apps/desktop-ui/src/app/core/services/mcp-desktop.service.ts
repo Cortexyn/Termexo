@@ -374,7 +374,7 @@ export class McpDesktopService {
     const agentType = (args['agentType'] ??
       existing?.agentType ??
       'claude') as TodoTaskDraft['agentType'];
-    const ownsModel = agentType === 'opencode' || agentType === 'grok';
+    const ownsModel = agentType === 'opencode' || agentType === 'grok' || agentType === 'pi';
     const retainedProfile = existing?.agentType === agentType ? existing.profileId : undefined;
     const profiles = ownsModel
       ? []

@@ -18,6 +18,7 @@ const CODEX_INSTALLATION: AgentInstallation = {
 
 /** Only the installations the list reads; the real service reaches for the backend. */
 class AgentServiceStub {
+  readonly piInstallation = signal<AgentInstallation | null>(null);
   readonly detectionStates = signal({});
   readonly installation = signal<AgentInstallation | null>(null);
   readonly codexInstallation = signal<AgentInstallation | null>(CODEX_INSTALLATION);
@@ -47,7 +48,15 @@ describe('AgentLaunchOptionsComponent', () => {
   }
 
   it('offers every Agent alongside a plain shell', () => {
-    expect(optionTypes()).toEqual(['claude', 'codex', 'opencode', 'grok', 'antigravity', 'shell']);
+    expect(optionTypes()).toEqual([
+      'claude',
+      'codex',
+      'opencode',
+      'pi',
+      'grok',
+      'antigravity',
+      'shell',
+    ]);
   });
 
   it('shows each Agent version, and why an Agent is unavailable', () => {

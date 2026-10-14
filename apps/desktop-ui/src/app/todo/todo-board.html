@@ -701,32 +701,40 @@
                   }}</small>
                 }
               </label>
-              @if (selectedTaskAgentType() === 'opencode' || selectedTaskAgentType() === 'grok') {
+              @if (
+                selectedTaskAgentType() === 'opencode' ||
+                selectedTaskAgentType() === 'grok' ||
+                selectedTaskAgentType() === 'pi'
+              ) {
                 <label>
                   <span>{{
-                    (selectedTaskAgentType() === 'grok'
-                      ? 'taskBoard.taskDialog.grokModelLabel'
-                      : 'taskBoard.taskDialog.openCodeModelLabel'
+                    (selectedTaskAgentType() === 'pi'
+                      ? 'taskBoard.taskDialog.piModelLabel'
+                      : selectedTaskAgentType() === 'grok'
+                        ? 'taskBoard.taskDialog.grokModelLabel'
+                        : 'taskBoard.taskDialog.openCodeModelLabel'
                     ) | t
                   }}</span>
                   <input
                     type="text"
-                    [attr.data-testid]="
-                      selectedTaskAgentType() === 'grok' ? 'task-grok-model' : 'task-opencode-model'
-                    "
+                    [attr.data-testid]="'task-' + selectedTaskAgentType() + '-model'"
                     [placeholder]="
-                      (selectedTaskAgentType() === 'grok'
-                        ? 'taskBoard.taskDialog.grokModelPlaceholder'
-                        : 'taskBoard.taskDialog.openCodeModelPlaceholder'
+                      (selectedTaskAgentType() === 'pi'
+                        ? 'taskBoard.taskDialog.piModelPlaceholder'
+                        : selectedTaskAgentType() === 'grok'
+                          ? 'taskBoard.taskDialog.grokModelPlaceholder'
+                          : 'taskBoard.taskDialog.openCodeModelPlaceholder'
                       ) | t
                     "
                     [ngModel]="taskCliModel()"
                     (ngModelChange)="taskCliModel.set($event)"
                   />
                   <small>{{
-                    (selectedTaskAgentType() === 'grok'
-                      ? 'taskBoard.taskDialog.grokModelHint'
-                      : 'taskBoard.taskDialog.openCodeModelHint'
+                    (selectedTaskAgentType() === 'pi'
+                      ? 'taskBoard.taskDialog.piModelHint'
+                      : selectedTaskAgentType() === 'grok'
+                        ? 'taskBoard.taskDialog.grokModelHint'
+                        : 'taskBoard.taskDialog.openCodeModelHint'
                     ) | t
                   }}</small>
                 </label>

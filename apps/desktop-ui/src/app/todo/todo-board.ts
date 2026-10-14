@@ -61,6 +61,7 @@ type AgentTerminal = TerminalSession & { agentType: TodoTask['agentType'] };
  */
 const OPENCODE_OPTION_KEY = 'opencode|';
 const GROK_OPTION_KEY = 'grok|';
+const PI_OPTION_KEY = 'pi|';
 
 /** The terminal dropdown value that stands for "create one when the task starts". */
 const NEW_TERMINAL_OPTION = 'new';
@@ -180,6 +181,7 @@ export class TodoBoardComponent {
   /** CLIs with their own model configuration need no Termexo model profile. */
   readonly openCodeAvailable = input(false);
   readonly grokAvailable = input(false);
+  readonly piAvailable = input(false);
   readonly busyTaskId = input<string | null>(null);
   /** Terminals whose startup dialogs are still being answered before the prompt is sent. */
   readonly awaitingTerminalIds = input<readonly string[]>([]);
@@ -482,6 +484,15 @@ export class TodoBoardComponent {
         label: this.i18n.t('taskBoard.taskDialog.openCodeModelOption'),
       });
     }
+    if (this.piAvailable()) {
+      profileOptions.push({
+        key: PI_OPTION_KEY,
+        agentType: 'pi',
+        profileId: '',
+        modelName: '',
+        label: this.i18n.t('taskBoard.taskDialog.piModelOption'),
+      });
+    }
     if (this.grokAvailable()) {
       profileOptions.push({
         key: GROK_OPTION_KEY,
@@ -660,7 +671,9 @@ export class TodoBoardComponent {
     this.taskWorkingDirectory.set(task.workingDirectory ?? this.projectDirectory(task.projectId));
     this.taskModelKey.set(`${task.agentType}|${task.profileId}`);
     this.taskCliModel.set(
-      task.agentType === 'opencode' || task.agentType === 'grok' ? task.modelName : '',
+      task.agentType === 'opencode' || task.agentType === 'grok' || task.agentType === 'pi'
+        ? task.modelName
+        : '',
     );
     this.taskTerminalId.set(task.preferredTerminalId ?? task.terminalId ?? NEW_TERMINAL_OPTION);
     this.taskRecurring.set(task.recurring);
@@ -839,7 +852,9 @@ export class TodoBoardComponent {
         profileId: terminal?.profileId ?? option?.profileId ?? '',
         modelName:
           terminal?.model ??
-          (option?.agentType === 'opencode' || option?.agentType === 'grok'
+          (option?.agentType === 'opencode' ||
+          option?.agentType === 'grok' ||
+          option?.agentType === 'pi'
             ? this.taskCliModel().trim()
             : option?.modelName) ??
           '',

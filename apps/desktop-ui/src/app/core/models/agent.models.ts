@@ -1,6 +1,6 @@
 import { AgentType, TerminalStatus } from './workspace.models';
 
-export type NativeAgentType = 'claude' | 'codex' | 'opencode' | 'grok' | 'antigravity';
+export type NativeAgentType = 'claude' | 'codex' | 'opencode' | 'pi' | 'grok' | 'antigravity';
 
 /**
  * The agents Termexo can install and upgrade itself.
@@ -8,7 +8,7 @@ export type NativeAgentType = 'claude' | 'codex' | 'opencode' | 'grok' | 'antigr
  * These arrive as npm packages. Antigravity does not — it ships its own installer, puts its
  * binary outside PATH and updates itself — so it is driven but never managed.
  */
-export type ManagedAgentType = 'claude' | 'codex' | 'opencode' | 'grok' | 'antigravity';
+export type ManagedAgentType = 'claude' | 'codex' | 'opencode' | 'pi' | 'grok' | 'antigravity';
 
 export type CliInstaller = 'npm' | 'script';
 
@@ -27,6 +27,7 @@ export const MANAGED_AGENT_INSTALLERS: Record<ManagedAgentType, readonly CliInst
   codex: ['npm', 'script'],
   opencode: ['npm'],
   grok: ['npm'],
+  pi: ['npm'],
   antigravity: ['script'],
 };
 export type AccountAgentType = 'claude' | 'codex';
@@ -268,6 +269,14 @@ export interface OpenCodeLaunchRequest {
   model?: string;
   continueLast?: boolean;
   autoConfirm?: boolean;
+}
+
+export interface PiLaunchRequest {
+  terminalId: string;
+  workspaceId?: string;
+  sessionId?: string;
+  model?: string;
+  continueLast?: boolean;
 }
 
 export interface GrokLaunchRequest {

@@ -129,6 +129,14 @@ pub(super) fn inject(
                 serde_json::to_string(config).map_err(|e| e.to_string())?,
             );
         }
+        Some("pi") => {
+            // Pi's per-terminal extension registers the server without changing user mcp.json.
+            environment.insert(
+                "TERMEXO_PI_MCP_CONFIG".into(),
+                serde_json::to_string(&stdio_entry(executable, database))
+                    .map_err(|e| e.to_string())?,
+            );
+        }
         Some(agent @ ("grok" | "antigravity")) => {
             let home = || {
                 environment
@@ -450,7 +458,8 @@ mod tests {
 
     #[test]
     fn antigravity_bom_config_preserves_other_servers_and_settings() {
-        let original = json!({"otherSetting": true, "mcpServers": {"other": {"command": "other.exe"}}});
+        let original =
+            json!({"otherSetting": true, "mcpServers": {"other": {"command": "other.exe"}}});
         let text = format!("\u{feff}{original}");
         let installed = merge_antigravity(&text, &database(), Some(&executable())).unwrap();
         let removed = merge_antigravity(&installed, &database(), None).unwrap();
@@ -473,7 +482,9 @@ mod tests {
         let truncated = "{\"mcpServers\":";
         fs::write(&path, truncated).unwrap();
         for executable in [Some(executable()), None] {
-            assert!(update_global("antigravity", &path, &database(), executable.as_deref()).is_err());
+            assert!(
+                update_global("antigravity", &path, &database(), executable.as_deref()).is_err()
+            );
             assert_eq!(fs::read_to_string(&path).unwrap(), truncated);
         }
         fs::remove_file(path).unwrap();
@@ -502,6 +513,22 @@ mod tests {
         assert!(merged.contains(
             "--mcp-config 'C:/my ''MCP'' config.json' 'C:/Termexo/runtime/self.json' --resume"
         ));
+    }
+
+    #[test]
+    fn pi_uses_a_per_terminal_mcp_registration_without_editing_agent_config() {
+        let mut request: TerminalStartRequest = serde_json::from_value(json!({
+            "terminalId":"test", "shell":"powershell", "workingDirectory":"C:/",
+            "command":"& 'pi.cmd' --extension 'runtime/pi-test.extension.mjs'",
+            "cols":120, "rows":40, "agentType":"pi"
+        }))
+        .unwrap();
+        let original = request.command.clone();
+        let mut environment = HashMap::new();
+        inject(&mut request, &mut environment, &executable(), &database()).unwrap();
+        let config: Value = serde_json::from_str(&environment["TERMEXO_PI_MCP_CONFIG"]).unwrap();
+        assert_eq!(config, stdio_entry(&executable(), &database()));
+        assert_eq!(request.command, original);
     }
 
     #[test]

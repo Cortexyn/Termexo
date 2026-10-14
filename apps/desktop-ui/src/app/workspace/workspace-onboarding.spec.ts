@@ -17,6 +17,7 @@ const installation = (agentType: ManagedAgentType, healthy: boolean): AgentInsta
 });
 
 class AgentServiceStub {
+  readonly piInstallation = signal<AgentInstallation | null>(null);
   readonly installation = signal<AgentInstallation | null>(null);
   readonly codexInstallation = signal<AgentInstallation | null>(installation('codex', true));
   readonly openCodeInstallation = signal<AgentInstallation | null>(installation('opencode', false));

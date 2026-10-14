@@ -39,6 +39,7 @@ export class WorkspaceOnboardingComponent {
       codex: this.agents.codexInstallation(),
       opencode: this.agents.openCodeInstallation(),
       grok: this.agents.grokInstallation(),
+      pi: this.agents.piInstallation(),
       antigravity: this.agents.antigravityInstallation(),
     };
     return (Object.keys(installations) as ManagedAgentType[])

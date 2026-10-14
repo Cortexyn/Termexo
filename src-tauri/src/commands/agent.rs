@@ -11,7 +11,7 @@ use crate::agent::{
     AntigravityAdapter, AntigravityLaunchOptions, AntigravityModel, AntigravityStatusFeed,
     ClaudeBackgroundSession, ClaudeCodeAdapter, ClaudeLaunchOptions, CodexCliAdapter,
     CodexLaunchOptions, GrokBuildAdapter, GrokLaunchOptions, OpenCodeAdapter,
-    OpenCodeLaunchOptions,
+    OpenCodeLaunchOptions, PiAdapter, PiLaunchOptions,
 };
 use crate::config::{
     claude_launch_model, normalized_effort, AgentProtocol, CredentialStore, LaunchEnvironmentStore,
@@ -52,6 +52,33 @@ pub async fn detect_opencode() -> Result<AgentInstallation, String> {
     })
     .await
     .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+pub async fn detect_pi() -> Result<AgentInstallation, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        PiAdapter::new().detect().map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+pub async fn scan_pi_sessions(
+    project_path: Option<String>,
+    database: State<'_, WorkspaceDatabase>,
+) -> Result<Vec<AgentSession>, String> {
+    let sessions = tauri::async_runtime::spawn_blocking(move || {
+        PiAdapter::new()
+            .list_sessions(project_path.as_deref())
+            .map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| error.to_string())??;
+    database
+        .save_agent_sessions(&sessions)
+        .map_err(|error| error.to_string())?;
+    Ok(sessions)
 }
 
 #[tauri::command]
@@ -272,6 +299,17 @@ pub struct PrepareOpenCodeLaunchRequest {
     pub continue_last: bool,
     #[serde(default)]
     pub auto_confirm: bool,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PreparePiLaunchRequest {
+    pub terminal_id: String,
+    pub workspace_id: Option<String>,
+    pub session_id: Option<String>,
+    pub model: Option<String>,
+    #[serde(default)]
+    pub continue_last: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -588,6 +626,33 @@ pub fn prepare_opencode_launch(
             auto_confirm: request.auto_confirm,
         })
         .map_err(|error| error.to_string())
+}
+
+#[tauri::command(async)]
+pub fn prepare_pi_launch(
+    request: PreparePiLaunchRequest,
+    database: State<'_, WorkspaceDatabase>,
+    credentials: State<'_, CredentialStore>,
+    launch_environment: State<'_, LaunchEnvironmentStore>,
+    hooks: State<'_, HookEventStore>,
+) -> Result<AgentLaunchSpec, String> {
+    let extension_path = hooks
+        .prepare_pi_runtime(&request.terminal_id)
+        .map_err(|error| error.to_string())?;
+    let launch = PiAdapter::new()
+        .build_launch_command(&PiLaunchOptions {
+            session_id: request.session_id,
+            model: request.model,
+            continue_last: request.continue_last,
+            extension_path: Some(extension_path),
+        })
+        .map_err(|error| error.to_string())?;
+    let environment =
+        network_environment(&database, &credentials, request.workspace_id.as_deref())?;
+    launch_environment
+        .put(request.terminal_id, environment)
+        .map_err(|error| error.to_string())?;
+    Ok(launch)
 }
 
 #[tauri::command(async)]
@@ -1003,6 +1068,12 @@ pub(crate) fn relaunch_environment(
             request.workspace_id,
             request.native_session_id,
         ),
+        "pi" => {
+            hooks
+                .prepare_pi_runtime(request.terminal_id)
+                .map_err(|error| error.to_string())?;
+            network_environment(database, credentials, request.workspace_id)
+        }
         "grok" => {
             let mut environment = network_environment(database, credentials, request.workspace_id)?;
             environment.extend(
