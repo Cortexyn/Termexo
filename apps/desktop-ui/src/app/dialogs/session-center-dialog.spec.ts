@@ -130,6 +130,7 @@ describe('SessionCenterDialogComponent', () => {
     fixture.componentRef.setInput('codexInstallation', CODEX_INSTALLATION);
     fixture.componentRef.setInput('openCodeInstallation', OPENCODE_INSTALLATION);
     fixture.componentRef.setInput('grokInstallation', GROK_INSTALLATION);
+    fixture.componentRef.setInput('piInstallation', { ...GROK_INSTALLATION, agentType: 'pi' });
     fixture.componentRef.setInput('sessions', SESSIONS);
     fixture.componentRef.setInput('profiles', [DEFAULT_PROFILE]);
     fixture.componentRef.setInput('projectPath', 'D:\\devlop\\Termexo');
@@ -138,7 +139,7 @@ describe('SessionCenterDialogComponent', () => {
   });
 
   it('shows Agent health, counts, and filters the session list by Agent', () => {
-    expect(root.querySelectorAll('.agent-health')).toHaveLength(5);
+    expect(root.querySelectorAll('.agent-health')).toHaveLength(6);
     expect(root.querySelectorAll('.session-row')).toHaveLength(3);
 
     clickButton('Codex');
@@ -180,6 +181,32 @@ describe('SessionCenterDialogComponent', () => {
     component.resumed.subscribe((value) => resumed.push(value));
     clickResumeFor('Grok review');
     expect(resumed).toEqual([{ session: grokSession, model: undefined, autoConfirm: undefined }]);
+  });
+
+  it('filters and resumes Pi sessions without a Termexo model profile', () => {
+    const piSession: AgentSession = {
+      id: 'pi:pi-native-session',
+      agentType: 'pi',
+      nativeSessionId: 'pi-native-session',
+      projectPath: 'D:\\devlop\\Termexo',
+      modelName: 'anthropic/sonnet',
+      title: 'Pi review',
+      status: 'HISTORICAL',
+      messageCount: 4,
+      transcriptPath: 'updates.jsonl',
+      createdAt: 1_700_000_600_000,
+      lastUsedAt: 1_700_000_700_000,
+    };
+    fixture.componentRef.setInput('sessions', [...SESSIONS, piSession]);
+    fixture.detectChanges();
+    clickButton('Pi');
+    expect(root.querySelectorAll('.session-row')).toHaveLength(1);
+    const resumed: ResumeSessionValue[] = [];
+    component.resumed.subscribe((value) => resumed.push(value));
+    clickResumeFor('Pi review');
+    expect(resumed).toEqual([
+      { session: piSession, model: 'anthropic/sonnet', autoConfirm: undefined },
+    ]);
   });
 
   it('searches native session ids and emits the selected scan scope', async () => {

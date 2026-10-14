@@ -74,6 +74,7 @@ const AGENT_PRESENTATIONS: readonly AgentPresentation[] = [
     shortName: 'OpenCode',
     icon: AGENT_ICONS.opencode,
   },
+  { agentType: 'pi', name: 'Pi Agent', shortName: 'Pi', icon: AGENT_ICONS.pi },
   {
     agentType: 'grok',
     name: 'Grok Build',
@@ -505,6 +506,7 @@ export class SessionCenterDialogComponent {
   readonly codexInstallation = input<AgentInstallation | null>(null);
   readonly openCodeInstallation = input<AgentInstallation | null>(null);
   readonly grokInstallation = input<AgentInstallation | null>(null);
+  readonly piInstallation = input<AgentInstallation | null>(null);
   readonly antigravityInstallation = input<AgentInstallation | null>(null);
   readonly sessions = input<AgentSession[]>([]);
   readonly profiles = input<ModelProfile[]>([]);
@@ -781,7 +783,11 @@ export class SessionCenterDialogComponent {
    * survives a restart. An explicit pick in the settings panel overrides them.
    */
   protected resume(session: AgentSession): void {
-    if (session.agentType === 'opencode' || session.agentType === 'grok') {
+    if (
+      session.agentType === 'opencode' ||
+      session.agentType === 'grok' ||
+      session.agentType === 'pi'
+    ) {
       // These CLIs manage their own credentials. Termexo only passes an optional model for
       // OpenCode and the confirmation mode selected here.
       this.resumed.emit({
@@ -789,7 +795,9 @@ export class SessionCenterDialogComponent {
         model:
           session.agentType === 'opencode'
             ? this.openCodeModel().trim() || session.modelName || undefined
-            : undefined,
+            : session.agentType === 'pi'
+              ? session.modelName || undefined
+              : undefined,
         autoConfirm: this.autoConfirm() || undefined,
       });
       return;
@@ -841,6 +849,8 @@ export class SessionCenterDialogComponent {
         return this.codexInstallation();
       case 'opencode':
         return this.openCodeInstallation();
+      case 'pi':
+        return this.piInstallation();
       case 'grok':
         return this.grokInstallation();
       case 'antigravity':

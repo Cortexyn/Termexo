@@ -42,6 +42,14 @@ export const AGENT_QUICK_KEY_LAYOUTS: Readonly<Record<AgentType, readonly QuickK
     key('tab', 'Tab', 'tab'),
     cancel,
   ],
+  pi: [
+    mode,
+    key('ctrlL', 'Ctrl+L', 'model'),
+    key('ctrlO', 'Ctrl+O', 'transcript'),
+    complete,
+    newline,
+    cancel,
+  ],
   grok: [
     mode,
     palette,

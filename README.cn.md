@@ -238,6 +238,21 @@ AI 编程工具通常以独立终端或独立会话运行。项目一多，开�
 Termexo 以 **Workspace** 为组织单位，把这些信息集中到一个可观察、可恢复、
 可扩展的本地控制面中。
 
+## Pi Agent
+
+Termexo 可检测、安装及启动 [Pi Coding Agent](https://github.com/earendil-works/pi)，并支持状态追踪、历史会话恢复、任务看板与远程终端操作。
+
+```powershell
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+pi
+```
+
+先在 Pi 中运行 `/login` 配置供应商，然后在 Termexo 的新建终端菜单中选择 **Pi Agent**。模型留空时使用 Pi 自身配置；也可填写 `provider/model`。勾选“继续该目录最近的会话”使用 `--continue`，会话中心则通过原生会话文件恢复指定会话。
+
+Termexo 将扩展写入自己的运行时目录，以 `--extension` 注入每个 Pi 终端。会话文件及 Pi 的登录、模型、扩展配置保持只读。当前 Pi 支持通过扩展自动注册 Termexo MCP；较旧、没有 `registerMcpServer` 的 Pi 仍可使用启动、会话和状态功能。Pi 没有工具调用确认开关，启动对话框不提供此选项。
+
+可用 `TERMEXO_PI_PATH` 指定可执行文件。会话发现遵循 `PI_CODING_AGENT_DIR`（默认 `~/.pi/agent`）以及 `PI_CODING_AGENT_SESSION_DIR`。
+
 ## 已实现功能
 
 | 能力               | 当前实现                                                                          |

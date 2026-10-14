@@ -193,6 +193,13 @@ export class AgentLaunchOptionsComponent {
           tone: 'amber',
         },
         {
+          type: 'pi',
+          title: 'Pi Agent',
+          hint: this.installationLabel('pi', this.agents.piInstallation()),
+          icon: AGENT_ICONS.pi,
+          tone: 'purple',
+        },
+        {
           type: 'grok',
           title: 'Grok Build',
           hint: this.installationLabel('grok', this.agents.grokInstallation()),

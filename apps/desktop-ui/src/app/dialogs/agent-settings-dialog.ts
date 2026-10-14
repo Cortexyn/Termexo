@@ -241,6 +241,23 @@ const DEFAULT_ALERT_THRESHOLD = 80;
                 </div>
                 <div
                   class="diagnostic-status alert"
+                  [class.unavailable]="!piInstallation()?.healthy"
+                >
+                  <span><app-icon [name]="agentIcons.pi" [size]="18" /></span>
+                  <div>
+                    <strong>{{
+                      piInstallation()?.healthy
+                        ? ('settings.available' | t: { name: 'Pi Agent' })
+                        : ('settings.unavailable' | t: { name: 'Pi Agent' })
+                    }}</strong>
+                    <small>{{
+                      piInstallation()?.diagnostic ?? ('settings.awaitingDetection' | t)
+                    }}</small>
+                  </div>
+                  <code>{{ piInstallation()?.version ?? ('common.notDetected' | t) }}</code>
+                </div>
+                <div
+                  class="diagnostic-status alert"
                   [class.unavailable]="!grokInstallation()?.healthy"
                 >
                   <span><app-icon [name]="agentIcons.grok" [size]="18" /></span>
@@ -275,6 +292,10 @@ const DEFAULT_ALERT_THRESHOLD = 80;
                       <dd>
                         {{ openCodeInstallation()?.executablePath ?? ('settings.notFound' | t) }}
                       </dd>
+                    </div>
+                    <div>
+                      <dt>Pi Agent</dt>
+                      <dd>{{ piInstallation()?.executablePath ?? ('settings.notFound' | t) }}</dd>
                     </div>
                     <div>
                       <dt>Grok Build</dt>
@@ -407,6 +428,19 @@ const DEFAULT_ALERT_THRESHOLD = 80;
                     <small>{{
                       openCodeInstallation()?.healthy
                         ? (openCodeInstallation()?.version ?? ('settings.installed' | t))
+                        : ('common.notDetected' | t)
+                    }}</small>
+                  </button>
+                  <button
+                    type="button"
+                    [class.active]="cliAgentType === 'pi'"
+                    (click)="selectCliAgent('pi')"
+                  >
+                    <span><app-icon [name]="agentIcons.pi" [size]="16" /></span>
+                    <strong>Pi Agent</strong>
+                    <small>{{
+                      piInstallation()?.healthy
+                        ? (piInstallation()?.version ?? ('settings.installed' | t))
                         : ('common.notDetected' | t)
                     }}</small>
                   </button>
@@ -1436,6 +1470,7 @@ export class AgentSettingsDialogComponent {
   readonly codexInstallation = input<AgentInstallation | null>(null);
   readonly openCodeInstallation = input<AgentInstallation | null>(null);
   readonly grokInstallation = input<AgentInstallation | null>(null);
+  readonly piInstallation = input<AgentInstallation | null>(null);
   readonly antigravityInstallation = input<AgentInstallation | null>(null);
   /** The agents' own marks, for the template. */
   protected readonly agentIcons = AGENT_ICONS;

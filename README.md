@@ -249,6 +249,21 @@ grows, developers have to remember:
 Termexo uses the **Workspace** as its organizing unit and turns this scattered state into
 a local control plane that is observable, recoverable, and extensible.
 
+## Pi Agent
+
+Termexo supports detecting, installing and launching [Pi Coding Agent](https://github.com/earendil-works/pi), status tracking, native session resume, task-board execution and remote terminal operation.
+
+```powershell
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+pi
+```
+
+Run `/login` in Pi to configure a provider, then select **Pi Agent** from Termexo's new-terminal menu. Leave the model blank to use Pi's configuration, or enter `provider/model`. The continue option uses `--continue`; Session Center resolves a native session ID to its transcript file before launching `--session`.
+
+Termexo stores its extension in its own runtime directory and injects it with `--extension`. Pi transcripts, credentials, model settings and extension configuration remain read-only. Current Pi releases can register Termexo MCP through the extension; older releases without `registerMcpServer` retain launch, session and status support. Pi has no per-tool confirmation CLI flag, so its launch dialog does not offer one.
+
+Set `TERMEXO_PI_PATH` to override the executable. Session discovery respects `PI_CODING_AGENT_DIR` (default `~/.pi/agent`) and `PI_CODING_AGENT_SESSION_DIR`.
+
 ## Implemented Features
 
 | Capability               | Current implementation                                                                                             |

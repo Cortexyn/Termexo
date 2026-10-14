@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::agent::{
     AgentAdapter, AgentInstallation, AntigravityAdapter, ClaudeCodeAdapter, CodexCliAdapter,
-    GrokBuildAdapter, OpenCodeAdapter,
+    GrokBuildAdapter, OpenCodeAdapter, PiAdapter,
 };
 use crate::config::NetworkProfile;
 use crate::process::{hide_window, terminate_process_tree};
@@ -643,6 +643,7 @@ fn detect_agent(agent_type: &str) -> Result<AgentInstallation, String> {
         "opencode" => OpenCodeAdapter::new()
             .detect()
             .map_err(|error| error.to_string()),
+        "pi" => PiAdapter::new().detect().map_err(|error| error.to_string()),
         "grok" => GrokBuildAdapter::new()
             .detect()
             .map_err(|error| error.to_string()),
@@ -948,6 +949,12 @@ fn definition(agent_type: &str) -> Result<CliDefinition, String> {
             agent_type: "opencode",
             display_name: "OpenCode",
             package_name: Some("@opencode/cli"),
+            script: None,
+        }),
+        "pi" => Ok(CliDefinition {
+            agent_type: "pi",
+            display_name: "Pi Agent",
+            package_name: Some("@earendil-works/pi-coding-agent"),
             script: None,
         }),
         "grok" => Ok(CliDefinition {

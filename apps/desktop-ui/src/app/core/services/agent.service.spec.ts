@@ -42,6 +42,7 @@ describe('AgentService CLI detection', () => {
     expect(service.installation()?.healthy).toBe(true);
     expect(service.openCodeInstallation()?.healthy).toBe(true);
     expect(service.grokInstallation()?.healthy).toBe(true);
+    expect(service.piInstallation()?.healthy).toBe(true);
     expect(service.antigravityInstallation()?.healthy).toBe(true);
     expect(service.busy()).toBe(false);
 

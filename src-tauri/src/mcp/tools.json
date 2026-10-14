@@ -215,7 +215,7 @@
         },
         "agentType": {
           "type": "string",
-          "enum": ["claude", "codex", "opencode", "grok"]
+          "enum": ["claude", "codex", "opencode", "pi", "grok"]
         },
         "profileId": {
           "type": "string"
@@ -279,7 +279,7 @@
         },
         "agentType": {
           "type": "string",
-          "enum": ["claude", "codex", "opencode", "grok"]
+          "enum": ["claude", "codex", "opencode", "pi", "grok"]
         },
         "profileId": {
           "type": "string"

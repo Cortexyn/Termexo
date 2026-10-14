@@ -5,7 +5,7 @@ const FORMAT = 'termexo-tasks';
 const MAX_IMPORT_BYTES = 16 * 1024 * 1024;
 const STAGES = new Set(['todo', 'executing', 'completed', 'verified']);
 const PRIORITIES = new Set(['low', 'medium', 'high']);
-const AGENTS = new Set(['claude', 'codex', 'opencode', 'grok', 'antigravity']);
+const AGENTS = new Set(['claude', 'codex', 'opencode', 'pi', 'grok', 'antigravity']);
 const EXECUTION_STATES = new Set([
   'idle',
   'starting',

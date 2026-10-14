@@ -161,7 +161,7 @@ impl McpManager {
         }
         if !matches!(
             request.agent_type.as_deref(),
-            Some("claude" | "codex" | "opencode" | "grok" | "antigravity")
+            Some("claude" | "codex" | "opencode" | "pi" | "grok" | "antigravity")
         ) || request.command.is_none()
         {
             return Ok(());

@@ -1,9 +1,11 @@
 mod antigravity;
 pub mod antigravity_settings;
 mod claude;
+mod cli;
 mod codex;
 mod grok;
 mod opencode;
+mod pi;
 
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +16,7 @@ pub use claude::{ClaudeBackgroundSession, ClaudeCodeAdapter};
 pub use codex::CodexCliAdapter;
 pub use grok::GrokBuildAdapter;
 pub use opencode::OpenCodeAdapter;
+pub use pi::PiAdapter;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -101,6 +104,16 @@ pub struct OpenCodeLaunchOptions {
     pub continue_last: bool,
     #[serde(default)]
     pub auto_confirm: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PiLaunchOptions {
+    pub session_id: Option<String>,
+    pub model: Option<String>,
+    #[serde(default)]
+    pub continue_last: bool,
+    pub extension_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

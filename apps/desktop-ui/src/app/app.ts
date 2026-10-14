@@ -46,6 +46,7 @@ import {
   TerminalSession,
   Workspace,
   AGENT_ICONS,
+  AGENT_LABELS,
   TERMINAL_STATUS_META,
 } from './core/models/workspace.models';
 import type { HandoffPackage, HandoffRecord } from './core/models/handoff';
@@ -114,6 +115,7 @@ import {
   OpenCodeLaunchDialogComponent,
   type OpenCodeLaunchDialogValue,
 } from './dialogs/opencode-launch-dialog';
+import { PiLaunchDialogComponent, type PiLaunchDialogValue } from './dialogs/pi-launch-dialog';
 import {
   GrokLaunchDialogComponent,
   type GrokLaunchDialogValue,
@@ -262,6 +264,7 @@ function readStoredString(key: string, fallback: string): string {
     AntigravityLaunchDialogComponent,
     OpenCodeLaunchDialogComponent,
     GrokLaunchDialogComponent,
+    PiLaunchDialogComponent,
     CreateWorkspaceDialogComponent,
     DirectoryPromptDialogComponent,
     BackgroundSessionDialogComponent,
@@ -364,6 +367,8 @@ export class App {
   protected readonly codexLaunchOpen = signal(false);
   protected readonly openCodeLaunchOpen = signal(false);
   protected readonly grokLaunchOpen = signal(false);
+  protected readonly piLaunchOpen = signal(false);
+  protected readonly launchingPi = signal(false);
   protected readonly antigravityLaunchOpen = signal(false);
   protected readonly launchingAntigravity = signal(false);
   protected readonly sessionCenterOpen = signal(false);
@@ -847,6 +852,9 @@ export class App {
       case 'opencode':
         await this.openOpenCodeLaunch();
         break;
+      case 'pi':
+        this.openPiLaunch();
+        break;
       case 'grok':
         await this.openGrokLaunch();
         break;
@@ -1106,6 +1114,60 @@ export class App {
     this.selectedTerminalDirectory.set(null);
   }
 
+  protected openPiLaunch(): void {
+    this.agentMenuOpen.set(false);
+    const workingDirectory = this.state.activeWorkspace()?.projectPath;
+    if (!workingDirectory) return;
+    this.selectedTerminalDirectory.set(workingDirectory);
+    this.piLaunchOpen.set(true);
+  }
+
+  protected async launchPi(value: PiLaunchDialogValue): Promise<void> {
+    const workspace = this.state.activeWorkspace();
+    const workingDirectory = this.selectedTerminalDirectory();
+    if (!workspace || !workingDirectory || this.launchingPi()) return;
+    if (!this.agents.piInstallation()) await this.agents.detectPi();
+    const installation = this.agents.piInstallation();
+    if (!installation?.healthy) {
+      this.showToast(installation?.diagnostic ?? this.i18n.t('common.piNotDetected'), 'attention');
+      return;
+    }
+
+    const terminalId = createId();
+    this.launchingPi.set(true);
+    try {
+      const launch = await this.agents.preparePiLaunch({
+        terminalId,
+        workspaceId: workspace.id,
+        model: value.model,
+        continueLast: value.continueLast,
+      });
+      const terminal = this.state.createTerminal({
+        id: terminalId,
+        agentType: 'pi',
+        name: value.name || undefined,
+        command: launch.command,
+        model: value.model || 'Pi Agent',
+        workingDirectory,
+      });
+      this.piLaunchOpen.set(false);
+      this.selectedTerminalDirectory.set(null);
+      if (terminal) {
+        this.revealCreatedTerminal(terminal.id);
+        this.showToast(this.i18n.t('terminal.started', { name: terminal.name }));
+      }
+    } catch (error) {
+      this.showToast(this.errorMessage(error), 'attention');
+    } finally {
+      this.launchingPi.set(false);
+    }
+  }
+
+  protected closePiLaunch(): void {
+    this.piLaunchOpen.set(false);
+    this.selectedTerminalDirectory.set(null);
+  }
+
   protected async launchCodex(value: CodexLaunchDialogValue): Promise<void> {
     const workspace = this.state.activeWorkspace();
     const workingDirectory = this.selectedTerminalDirectory();
@@ -1245,15 +1307,17 @@ export class App {
         ? this.launchingClaude
         : agentType === 'codex'
           ? this.launchingCodex
-          : agentType === 'grok'
-            ? this.launchingGrok
-            : this.launchingOpenCode;
+          : agentType === 'pi'
+            ? this.launchingPi
+            : agentType === 'grok'
+              ? this.launchingGrok
+              : this.launchingOpenCode;
     if (!workspace || launching()) {
       return;
     }
 
     const profile =
-      agentType === 'opencode' || agentType === 'grok'
+      agentType === 'opencode' || agentType === 'grok' || agentType === 'pi'
         ? undefined
         : this.agents.modelProfiles().find((item) => item.id === value.profileId);
     if (profile && needsCredential(profile, agentType === 'claude' ? 'claude' : 'codex')) {
@@ -1294,21 +1358,28 @@ export class App {
                 accountProfileId: value.accountProfileId,
                 autoConfirm: value.autoConfirm,
               })
-            : agentType === 'grok'
-              ? await this.agents.prepareGrokLaunch({
+            : agentType === 'pi'
+              ? await this.agents.preparePiLaunch({
                   terminalId,
                   workspaceId: workspace.id,
                   sessionId: value.session.nativeSessionId,
                   model: value.model,
-                  autoConfirm: value.autoConfirm,
                 })
-              : await this.agents.prepareOpenCodeLaunch({
-                  terminalId,
-                  workspaceId: workspace.id,
-                  sessionId: value.session.nativeSessionId,
-                  model: value.model,
-                  autoConfirm: value.autoConfirm,
-                });
+              : agentType === 'grok'
+                ? await this.agents.prepareGrokLaunch({
+                    terminalId,
+                    workspaceId: workspace.id,
+                    sessionId: value.session.nativeSessionId,
+                    model: value.model,
+                    autoConfirm: value.autoConfirm,
+                  })
+                : await this.agents.prepareOpenCodeLaunch({
+                    terminalId,
+                    workspaceId: workspace.id,
+                    sessionId: value.session.nativeSessionId,
+                    model: value.model,
+                    autoConfirm: value.autoConfirm,
+                  });
       const terminal = this.state.createTerminal({
         id: terminalId,
         agentType: value.session.agentType,
@@ -1324,20 +1395,24 @@ export class App {
             ? 'Claude Sonnet'
             : agentType === 'codex'
               ? this.i18n.t('terminal.defaultCodexModel')
-              : agentType === 'grok'
-                ? 'Grok Build'
-                : OPENCODE_DEFAULT_MODEL),
+              : agentType === 'pi'
+                ? 'Pi Agent'
+                : agentType === 'grok'
+                  ? 'Grok Build'
+                  : OPENCODE_DEFAULT_MODEL),
         nativeSessionId: value.session.nativeSessionId,
         workingDirectory: value.session.projectPath ?? workspace.projectPath,
         profileId: value.profileId,
         mcpProfileId: agentType === 'claude' ? value.mcpProfileId : undefined,
         accountProfileId:
-          agentType === 'opencode' || agentType === 'grok' ? undefined : value.accountProfileId,
+          agentType === 'opencode' || agentType === 'grok' || agentType === 'pi'
+            ? undefined
+            : value.accountProfileId,
         autoConfirm: value.autoConfirm,
       });
       this.sessionCenterOpen.set(false);
       if (terminal) {
-        if (agentType !== 'grok') this.armStartupDialogs(terminal.id);
+        if (agentType !== 'grok' && agentType !== 'pi') this.armStartupDialogs(terminal.id);
         this.revealCreatedTerminal(terminal.id);
         this.showToast(this.i18n.t('terminal.resuming', { name: value.session.title }));
       }
@@ -2544,6 +2619,7 @@ export class App {
       terminal.agentType === 'shell' ||
       terminal.agentType === 'opencode' ||
       terminal.agentType === 'grok' ||
+      terminal.agentType === 'pi' ||
       terminal.agentType === 'antigravity'
     ) {
       return;
@@ -2830,6 +2906,7 @@ export class App {
     this.closeCodexLaunch();
     this.closeOpenCodeLaunch();
     this.closeGrokLaunch();
+    this.closePiLaunch();
     this.closeAntigravityLaunch();
     this.settingsInitialCliAgent.set(agentType);
     this.openSettings('cli');
@@ -3161,6 +3238,7 @@ export class App {
       this.agents.detectCodex(),
       this.agents.detectOpenCode(),
       this.agents.detectGrok(),
+      this.agents.detectPi(),
       this.agents.detectAntigravity(),
     ]);
     this.showToast(this.i18n.t('agent.detectionComplete'));
@@ -3246,10 +3324,11 @@ export class App {
     const workspace = this.state.activeWorkspace();
     const project = this.todos.project(task.projectId);
     const workingDirectory = todoWorkingDirectory(task, project);
-    // OpenCode and Grok Build resolve their own models and credentials.
+    // OpenCode, Grok Build and Pi resolve their own models and credentials.
     const isOpenCode = task.agentType === 'opencode';
     const isGrok = task.agentType === 'grok';
-    const usesOwnModel = isOpenCode || isGrok;
+    const isPi = task.agentType === 'pi';
+    const usesOwnModel = isOpenCode || isGrok || isPi;
     const profile = this.agents.modelProfiles().find((item) => item.id === task.profileId);
     if (!workspace || workspace.id !== task.workspaceId || !workingDirectory) {
       const message = this.i18n.t('taskFlow.error.workingDirectoryMissing');
@@ -3303,32 +3382,39 @@ export class App {
             sessionId,
             model: task.modelName || undefined,
           })
-        : isGrok
-          ? await this.agents.prepareGrokLaunch({
+        : isPi
+          ? await this.agents.preparePiLaunch({
               terminalId,
               workspaceId: workspace.id,
               sessionId,
-              newSessionId: sessionId ? undefined : nativeSessionId,
               model: task.modelName || undefined,
             })
-          : task.agentType === 'codex'
-            ? await this.agents.prepareCodexLaunch({
+          : isGrok
+            ? await this.agents.prepareGrokLaunch({
                 terminalId,
                 workspaceId: workspace.id,
                 sessionId,
-                model: profileModel(profile!, 'codex'),
-                profileId: profile!.id,
-                accountProfileId,
+                newSessionId: sessionId ? undefined : nativeSessionId,
+                model: task.modelName || undefined,
               })
-            : await this.agents.prepareLaunch({
-                terminalId,
-                workspaceId: workspace.id,
-                sessionId,
-                profileId: profile!.id,
-                accountProfileId,
-                forkSession: reclaim.forkSession,
-                attachShortId: reclaim.attachShortId,
-              });
+            : task.agentType === 'codex'
+              ? await this.agents.prepareCodexLaunch({
+                  terminalId,
+                  workspaceId: workspace.id,
+                  sessionId,
+                  model: profileModel(profile!, 'codex'),
+                  profileId: profile!.id,
+                  accountProfileId,
+                })
+              : await this.agents.prepareLaunch({
+                  terminalId,
+                  workspaceId: workspace.id,
+                  sessionId,
+                  profileId: profile!.id,
+                  accountProfileId,
+                  forkSession: reclaim.forkSession,
+                  attachShortId: reclaim.attachShortId,
+                });
       const terminal = this.state.createTerminal(
         {
           id: terminalId,
@@ -3336,7 +3422,7 @@ export class App {
           name: this.i18n.t('taskFlow.terminalName', { title: task.title }),
           command: launch.command,
           model: usesOwnModel
-            ? task.modelName || (isGrok ? 'Grok Build' : OPENCODE_DEFAULT_MODEL)
+            ? task.modelName || (isPi ? 'Pi Agent' : isGrok ? 'Grok Build' : OPENCODE_DEFAULT_MODEL)
             : profileModel(profile!, task.agentType as AgentProtocol),
           nativeSessionId,
           workingDirectory,
@@ -3447,6 +3533,13 @@ export class App {
       if (!installation?.healthy) {
         throw new Error(installation?.diagnostic ?? this.i18n.t('common.openCodeNotDetected'));
       }
+      return;
+    }
+    if (agentType === 'pi') {
+      if (!this.agents.piInstallation()) await this.agents.detectPi();
+      const installation = this.agents.piInstallation();
+      if (!installation?.healthy)
+        throw new Error(installation?.diagnostic ?? this.i18n.t('common.piNotDetected'));
       return;
     }
     if (agentType === 'grok') {
@@ -3749,7 +3842,8 @@ export class App {
     await this.refreshRestoredClaudeLaunches();
     await this.refreshRestoredCodexLaunches();
     await this.refreshRestoredOpenCodeLaunches();
-    await this.refreshRestoredGrokLaunches();
+    await this.refreshRestoredNativeModelLaunches('grok');
+    await this.refreshRestoredNativeModelLaunches('pi');
     this.mountWorkspace(this.state.activeWorkspace()?.id);
     const recoveredDraft = this.state.activeTerminal()
       ? this.promptAssets.draftForTerminal(this.state.activeTerminal()!.id)
@@ -4122,10 +4216,11 @@ export class App {
     }
   }
 
-  private async refreshRestoredGrokLaunches(): Promise<void> {
+  private async refreshRestoredNativeModelLaunches(agentType: 'grok' | 'pi'): Promise<void> {
+    const agentName = AGENT_LABELS[agentType];
     const restored = this.state.workspaces().flatMap((workspace) =>
       workspace.terminals
-        .filter((terminal) => terminal.agentType === 'grok')
+        .filter((terminal) => terminal.agentType === agentType)
         .filter((terminal) => !this.state.isAdoptedTerminal(terminal.id))
         .map((terminal) => ({ workspaceId: workspace.id, terminal })),
     );
@@ -4137,20 +4232,26 @@ export class App {
         const sessionId = task
           ? compatibleTodoSessionId(task, this.agents.sessions(), this.agents.events())
           : compatibleNativeSessionId(
-              'grok',
+              agentType,
               terminal.nativeSessionId,
               undefined,
               this.agents.sessions(),
               this.agents.events(),
             );
-        const launch = await this.agents.prepareGrokLaunch({
+        const request = {
           terminalId: terminal.id,
           workspaceId,
           sessionId,
           continueLast: !sessionId,
-          model: terminal.model === 'Grok Build' ? undefined : terminal.model,
-          autoConfirm: terminal.autoConfirm,
-        });
+          model: terminal.model === agentName ? undefined : terminal.model,
+        };
+        const launch =
+          agentType === 'pi'
+            ? await this.agents.preparePiLaunch(request)
+            : await this.agents.prepareGrokLaunch({
+                ...request,
+                autoConfirm: terminal.autoConfirm,
+              });
         if (
           !this.state.updateRestoredTerminalLaunch(terminal.id, launch.command, {
             model: terminal.model,
@@ -4158,14 +4259,17 @@ export class App {
           })
         ) {
           throw new Error(
-            this.i18n.t('restore.terminalMissing', { agent: 'Grok Build', name: terminal.name }),
+            this.i18n.t('restore.terminalMissing', { agent: agentName, name: terminal.name }),
           );
         }
       }),
     );
     const failed = results.filter((result) => result.status === 'rejected').length;
     if (failed > 0) {
-      this.showToast(`Grok Build: ${failed} terminal(s) could not be restored.`, 'attention');
+      this.showToast(
+        this.i18n.t('restore.agentFailed', { agent: agentName, count: failed }),
+        'attention',
+      );
     }
   }
 
