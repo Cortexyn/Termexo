@@ -18,9 +18,6 @@ import {
   BackgroundSessionResolution,
   chronologicalAgentEvents,
   ClaudeBackgroundSession,
-  CliOperationPlan,
-  CliOperationRequest,
-  CliOperationResult,
   compatibleNativeSessionId,
   type ManagedAgentType,
   McpProfileInput,
@@ -514,8 +511,6 @@ export class App {
   protected readonly workspacePendingMerge = signal<Workspace | null>(null);
   protected readonly mergingWorkspace = signal(false);
   protected readonly networkTestResult = signal<NetworkTestResult | null>(null);
-  protected readonly cliOperationPlan = signal<CliOperationPlan | null>(null);
-  protected readonly cliOperationResult = signal<CliOperationResult | null>(null);
   /** The agents' own marks, for the tab strip. */
   protected readonly agentIcons = AGENT_ICONS;
 
@@ -667,6 +662,12 @@ export class App {
       if (this.workspaceView() === 'git' && this.git.overview()?.available === false) {
         this.workspaceView.set('terminal');
       }
+    });
+    effect(() => {
+      if (!this.workspacesLoaded()) return;
+      // The full list owns taskbar attention: opening the window or dismissing a banner does not
+      // confirm a completion or answer an approval. Status changes and explicit clearing do.
+      this.desktopNotifications.syncTaskbarAttention(this.globalTerminalNotices());
     });
     effect(() => {
       if (!this.workspacesLoaded()) {
@@ -3220,18 +3221,6 @@ export class App {
     }
   }
 
-  protected async previewCliOperation(request: CliOperationRequest): Promise<void> {
-    this.cliOperationPlan.set(null);
-    this.cliOperationResult.set(null);
-    try {
-      const plan = await this.agents.previewCliOperation(request);
-      this.cliOperationPlan.set(plan);
-      this.showToast(plan.diagnostic);
-    } catch (error) {
-      this.showToast(this.errorMessage(error), 'error');
-    }
-  }
-
   protected async detectAgentInstallations(): Promise<void> {
     await Promise.all([
       this.agents.detectClaude(),
@@ -3242,18 +3231,6 @@ export class App {
       this.agents.detectAntigravity(),
     ]);
     this.showToast(this.i18n.t('agent.detectionComplete'));
-  }
-
-  protected async executeCliOperation(request: CliOperationRequest): Promise<void> {
-    this.cliOperationResult.set(null);
-    try {
-      const result = await this.agents.executeCliOperation(request);
-      this.cliOperationPlan.set(result.plan);
-      this.cliOperationResult.set(result);
-      this.showToast(result.diagnostic);
-    } catch (error) {
-      this.showToast(this.errorMessage(error), 'error');
-    }
   }
 
   /**

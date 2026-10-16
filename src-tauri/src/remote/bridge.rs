@@ -160,6 +160,7 @@ pub const REMOTE_DENIED: &[&str] = &[
     "import_network_profiles",
     // Native shell side effects that would land on the desktop, not on the remote device.
     "show_desktop_notification",
+    "set_taskbar_attention",
     "open_release_page",
     "open_webview_download",
     "open_terminal_url",

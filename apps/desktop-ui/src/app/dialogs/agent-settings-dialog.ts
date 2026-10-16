@@ -18,9 +18,6 @@ import {
   AccountProfile,
   AccountProfileInput,
   AgentInstallation,
-  CliOperationPlan,
-  CliOperationRequest,
-  CliOperationResult,
   CLAUDE_EFFORT_LEVELS,
   CODEX_REASONING_EFFORT_LEVELS,
   CUSTOM_PROVIDER,
@@ -34,8 +31,6 @@ import {
   NetworkProfileInput,
   NetworkProfileScope,
   NetworkTestResult,
-  type CliInstaller,
-  MANAGED_AGENT_INSTALLERS,
   ManagedAgentType,
   PROVIDER_PRESETS,
 } from '../core/models/agent.models';
@@ -50,6 +45,7 @@ import { McpServerPanelComponent } from './mcp-server-panel';
 import { registerMcpServerTranslations } from '../core/i18n/mcp-server.i18n';
 import { AGENT_ICONS } from '../core/models/workspace.models';
 import { ProjectLinksComponent } from './project-links';
+import { AgentInstallPanelComponent } from './agent-install-panel';
 
 export type SettingsTab =
   | 'diagnostics'
@@ -96,6 +92,7 @@ const DEFAULT_ALERT_THRESHOLD = 80;
     StoragePanelComponent,
     McpServerPanelComponent,
     ProjectLinksComponent,
+    AgentInstallPanelComponent,
     TranslatePipe,
   ],
   template: `
@@ -391,282 +388,11 @@ const DEFAULT_ALERT_THRESHOLD = 80;
               </section>
             }
             @case ('cli') {
-              <section class="cli-manager">
-                <div class="cli-manager-intro">
-                  <div>
-                    <strong>{{ 'settings.managedCli' | t }}</strong>
-                    <span>{{ 'settings.managedCliHelp' | t }}</span>
-                  </div>
-                  <span class="scope-chip">WORKSPACE</span>
-                </div>
-
-                <div
-                  class="cli-agent-selector"
-                  role="group"
-                  [attr.aria-label]="'settings.selectAgentCli' | t"
-                >
-                  <button
-                    type="button"
-                    [class.active]="cliAgentType === 'claude'"
-                    (click)="selectCliAgent('claude')"
-                  >
-                    <span><app-icon [name]="agentIcons.claude" [size]="16" /></span>
-                    <strong>Claude Code</strong>
-                    <small>{{
-                      installation()?.healthy
-                        ? (installation()?.version ?? ('settings.installed' | t))
-                        : ('common.notDetected' | t)
-                    }}</small>
-                  </button>
-                  <button
-                    type="button"
-                    [class.active]="cliAgentType === 'opencode'"
-                    (click)="selectCliAgent('opencode')"
-                  >
-                    <span><app-icon [name]="agentIcons.opencode" [size]="16" /></span>
-                    <strong>OpenCode</strong>
-                    <small>{{
-                      openCodeInstallation()?.healthy
-                        ? (openCodeInstallation()?.version ?? ('settings.installed' | t))
-                        : ('common.notDetected' | t)
-                    }}</small>
-                  </button>
-                  <button
-                    type="button"
-                    [class.active]="cliAgentType === 'pi'"
-                    (click)="selectCliAgent('pi')"
-                  >
-                    <span><app-icon [name]="agentIcons.pi" [size]="16" /></span>
-                    <strong>Pi Agent</strong>
-                    <small>{{
-                      piInstallation()?.healthy
-                        ? (piInstallation()?.version ?? ('settings.installed' | t))
-                        : ('common.notDetected' | t)
-                    }}</small>
-                  </button>
-                  <button
-                    type="button"
-                    [class.active]="cliAgentType === 'grok'"
-                    (click)="selectCliAgent('grok')"
-                  >
-                    <span><app-icon [name]="agentIcons.grok" [size]="16" /></span>
-                    <strong>Grok Build</strong>
-                    <small>{{
-                      grokInstallation()?.healthy
-                        ? (grokInstallation()?.version ?? ('settings.installed' | t))
-                        : ('common.notDetected' | t)
-                    }}</small>
-                  </button>
-                  <button
-                    type="button"
-                    [class.active]="cliAgentType === 'codex'"
-                    (click)="selectCliAgent('codex')"
-                  >
-                    <span><app-icon [name]="agentIcons.codex" [size]="16" /></span>
-                    <strong>Codex CLI</strong>
-                    <small>{{
-                      codexInstallation()?.healthy
-                        ? (codexInstallation()?.version ?? ('settings.installed' | t))
-                        : ('common.notDetected' | t)
-                    }}</small>
-                  </button>
-                  <button
-                    type="button"
-                    [class.active]="cliAgentType === 'antigravity'"
-                    (click)="selectCliAgent('antigravity')"
-                  >
-                    <span><app-icon [name]="agentIcons.antigravity" [size]="16" /></span>
-                    <strong>Antigravity</strong>
-                    <small>{{
-                      antigravityInstallation()?.healthy
-                        ? (antigravityInstallation()?.version ?? ('settings.installed' | t))
-                        : ('common.notDetected' | t)
-                    }}</small>
-                  </button>
-                </div>
-
-                <div class="cli-version-row">
-                  @if (cliInstallers().length > 1) {
-                    <div
-                      class="cli-installer"
-                      role="tablist"
-                      [attr.aria-label]="'settings.installVia' | t"
-                    >
-                      @for (installer of cliInstallers(); track installer) {
-                        <button
-                          type="button"
-                          role="tab"
-                          [class.active]="cliInstaller === installer"
-                          [attr.aria-selected]="cliInstaller === installer"
-                          (click)="selectCliInstaller(installer)"
-                        >
-                          {{
-                            (installer === 'script'
-                              ? 'settings.installerScript'
-                              : 'settings.installerNpm'
-                            ) | t
-                          }}
-                        </button>
-                      }
-                    </div>
-                  }
-                  @if (cliTakesVersion()) {
-                    <label>
-                      <span>{{ 'settings.targetVersion' | t }}</span>
-                      <input
-                        [attr.aria-label]="'settings.targetVersionAria' | t"
-                        [placeholder]="'settings.targetVersionPlaceholder' | t"
-                        [(ngModel)]="cliTargetVersion"
-                        (ngModelChange)="cliConfirmed = false"
-                      />
-                    </label>
-                  } @else {
-                    <small class="cli-installer-note">{{
-                      'settings.scriptInstallerHelp' | t
-                    }}</small>
-                  }
-                  <button
-                    type="button"
-                    class="secondary"
-                    [disabled]="busy() || (cliTakesVersion() && !cliTargetVersion.trim())"
-                    (click)="previewCli()"
-                  >
-                    <app-icon name="refresh" [size]="13" />{{ 'settings.generatePlan' | t }}
-                  </button>
-                </div>
-
-                @if (cliPlanMatches()) {
-                  <div
-                    class="cli-plan"
-                    [class.unavailable]="!cliPlan()?.ready"
-                    [class.up-to-date]="cliPlan()?.upToDate"
-                  >
-                    <div class="cli-plan-heading">
-                      <span>
-                        <app-icon [name]="cliPlan()?.upToDate ? 'check' : 'shield'" [size]="17" />
-                      </span>
-                      <div>
-                        <strong>
-                          {{ planHeadline() }}
-                          {{ cliPlan()?.displayName }}
-                        </strong>
-                        <small>{{ cliPlan()?.diagnostic }}</small>
-                      </div>
-                      @if (cliPlan()?.installer !== 'script') {
-                        <code>{{ cliPlan()?.resolvedVersion ?? cliPlan()?.targetVersion }}</code>
-                      }
-                    </div>
-                    <dl>
-                      <div>
-                        <dt>
-                          {{
-                            (cliPlan()?.installer === 'script'
-                              ? 'settings.officialInstaller'
-                              : 'settings.officialPackage'
-                            ) | t
-                          }}
-                        </dt>
-                        <dd>{{ cliPlan()?.packageSpec }}</dd>
-                      </div>
-                      <div>
-                        <dt>{{ 'settings.currentVersion' | t }}</dt>
-                        <dd>{{ cliPlan()?.currentVersion ?? ('settings.notInstalled' | t) }}</dd>
-                      </div>
-                      @if (cliPlan()?.resolvedVersion) {
-                        <div>
-                          <dt>{{ 'settings.latestVersion' | t }}</dt>
-                          <dd>{{ cliPlan()?.resolvedVersion }}</dd>
-                        </div>
-                      }
-                      @if (cliPlan()?.installer !== 'script') {
-                        <div>
-                          <dt>npm</dt>
-                          <dd>
-                            {{ cliPlan()?.npmVersion ?? ('common.unavailable' | t) }} ·
-                            {{ cliPlan()?.npmPath ?? ('settings.notFound' | t) }}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>{{ 'settings.activeProxy' | t }}</dt>
-                          <dd>
-                            {{ cliPlan()?.networkProfileName ?? ('settings.directConnection' | t) }}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>registry</dt>
-                          <dd>{{ cliPlan()?.npmRegistry ?? ('settings.defaultRegistry' | t) }}</dd>
-                        </div>
-                      }
-                    </dl>
-                    <code class="cli-command-preview">{{ cliPlan()?.commandPreview }}</code>
-
-                    <label class="checkbox-control cli-confirmation">
-                      <input
-                        type="checkbox"
-                        [(ngModel)]="cliConfirmed"
-                        [disabled]="busy() || !cliPlan()?.ready"
-                      />
-                      <span>{{
-                        (cliPlan()?.installer === 'script'
-                          ? 'settings.confirmScriptSource'
-                          : 'settings.confirmCliSource'
-                        ) | t
-                      }}</span>
-                    </label>
-                    <div class="cli-actions">
-                      <span>{{
-                        (cliPlan()?.installer === 'script'
-                          ? 'settings.scriptFailureHelp'
-                          : 'settings.cliFailureHelp'
-                        ) | t
-                      }}</span>
-                      <button
-                        type="button"
-                        class="primary"
-                        [disabled]="busy() || !cliConfirmed || !cliPlan()?.ready"
-                        (click)="executeCli()"
-                      >
-                        @if (busy()) {
-                          <span class="cli-spinner" aria-hidden="true"></span>
-                        }
-                        {{ confirmLabel() }}
-                      </button>
-                    </div>
-
-                    @if (busy()) {
-                      <!-- npm reports no percentage, so the bar animates rather than fills. -->
-                      <div
-                        class="cli-progress"
-                        role="progressbar"
-                        [attr.aria-label]="'settings.cliRunning' | t"
-                      >
-                        <i></i>
-                      </div>
-                      <small class="cli-progress-note">{{ 'settings.cliRunningHelp' | t }}</small>
-                    }
-                  </div>
-                } @else {
-                  <div class="cli-empty-state">
-                    <app-icon name="terminal" [size]="18" />
-                    <span>{{ 'settings.cliEmpty' | t }}</span>
-                  </div>
-                }
-
-                @if (cliResult(); as result) {
-                  <div class="cli-result" [class.unavailable]="!result.success">
-                    <app-icon [name]="result.success ? 'check' : 'shield'" [size]="15" />
-                    <span>
-                      <strong>{{ result.diagnostic }}</strong>
-                      <small>
-                        {{ result.installation.diagnostic }} · {{ result.durationMs }} ms
-                      </small>
-                      @if (result.stderr) {
-                        <code>{{ result.stderr }}</code>
-                      }
-                    </span>
-                  </div>
-                }
-              </section>
+              <app-agent-install-panel
+                [initialAgent]="initialCliAgent()"
+                [workspaceId]="activeWorkspaceId()"
+                (networkRequested)="selectTab('network')"
+              />
             }
             @case ('accounts') {
               <div class="settings-split account-settings">
@@ -1486,8 +1212,6 @@ export class AgentSettingsDialogComponent {
   readonly initialCliAgent = input<ManagedAgentType | ''>('');
   readonly initialModelProfileId = input('');
   readonly networkTestResult = input<NetworkTestResult | null>(null);
-  readonly cliPlan = input<CliOperationPlan | null>(null);
-  readonly cliResult = input<CliOperationResult | null>(null);
   readonly busy = input(false);
   /** A profile save is in flight; its result lands in this dialog, so it cannot close meanwhile. */
   readonly saving = input(false);
@@ -1502,8 +1226,6 @@ export class AgentSettingsDialogComponent {
   readonly updateDownloadRequested = output<void>();
   readonly updateNpmRequested = output<void>();
   readonly autoCheckChanged = output<boolean>();
-  readonly cliPreviewRequested = output<CliOperationRequest>();
-  readonly cliExecuteRequested = output<CliOperationRequest>();
   readonly modelSaved = output<ModelProfileInput>();
   readonly deleteModelRequested = output<string>();
   readonly mcpSaved = output<McpProfileInput>();
@@ -1589,11 +1311,6 @@ export class AgentSettingsDialogComponent {
   });
   protected readonly hasNetworkCredential = signal(false);
   protected readonly allPresets = PROVIDER_PRESETS;
-  protected cliAgentType: ManagedAgentType = 'claude';
-  /** Which of the agent's installers to use; the first it offers until the user picks. */
-  protected cliInstaller: CliInstaller = MANAGED_AGENT_INSTALLERS.claude[0];
-  protected cliTargetVersion = 'latest';
-  protected cliConfirmed = false;
   protected modelName = 'Claude Sonnet';
   protected modelProvider = 'Anthropic';
   protected claudeEnabled = true;
@@ -1655,10 +1372,6 @@ export class AgentSettingsDialogComponent {
       }
       this.initialSelectionApplied = true;
       this.tab.set(requestedTab);
-      const requestedAgent = this.initialCliAgent();
-      if (requestedAgent) {
-        this.selectCliAgent(requestedAgent);
-      }
       if (requestedProfile) {
         this.editModel(requestedProfile);
       }
@@ -1692,23 +1405,6 @@ export class AgentSettingsDialogComponent {
     } else if (tab === 'network') {
       this.syncNetworkProfileEditor(this.networkProfiles());
     }
-  }
-
-  protected selectCliAgent(agentType: ManagedAgentType): void {
-    this.cliAgentType = agentType;
-    // The installer belonged to the agent being left; this one may not even offer it.
-    this.cliInstaller = MANAGED_AGENT_INSTALLERS[agentType][0];
-    this.cliConfirmed = false;
-  }
-
-  protected selectCliInstaller(installer: CliInstaller): void {
-    this.cliInstaller = installer;
-    this.cliConfirmed = false;
-  }
-
-  /** The ways the selected agent can be installed. */
-  protected cliInstallers(): readonly CliInstaller[] {
-    return MANAGED_AGENT_INSTALLERS[this.cliAgentType];
   }
 
   protected selectedAccount(): AccountProfile | undefined {
@@ -1759,18 +1455,6 @@ export class AgentSettingsDialogComponent {
     });
   }
 
-  protected previewCli(): void {
-    this.cliConfirmed = false;
-    this.cliPreviewRequested.emit(this.cliRequest());
-  }
-
-  protected executeCli(): void {
-    if (this.cliConfirmed && this.cliPlanMatches()) {
-      this.cliExecuteRequested.emit({ ...this.cliRequest(), confirmed: true });
-      this.cliConfirmed = false;
-    }
-  }
-
   /**
    * Confirms inside the editor clear the pending flag and re-emit the original event so the
    * surrounding `App` handler runs unchanged. The pending signals themselves are the truth the
@@ -1802,55 +1486,6 @@ export class AgentSettingsDialogComponent {
     if (!id) return;
     this.pendingNetworkDelete.set(null);
     this.deleteNetworkRequested.emit(id);
-  }
-
-  /** Heading verb: an already-current CLI must not read as an available upgrade. */
-  protected planHeadline(): string {
-    const action = this.cliPlan()?.action;
-    if (action === 'install') {
-      return this.i18n.t('settings.prepareInstall');
-    }
-    return this.i18n.t(
-      action === 'reinstall' ? 'settings.prepareReinstall' : 'settings.prepareUpgrade',
-    );
-  }
-
-  protected confirmLabel(): string {
-    if (this.busy()) {
-      return this.i18n.t('settings.cliRunning');
-    }
-    const action = this.cliPlan()?.action;
-    if (action === 'install') {
-      return this.i18n.t('settings.confirmInstall');
-    }
-    return this.i18n.t(
-      action === 'reinstall' ? 'settings.confirmReinstall' : 'settings.confirmUpgrade',
-    );
-  }
-
-  protected cliPlanMatches(): boolean {
-    const plan = this.cliPlan();
-    if (plan?.agentType !== this.cliAgentType || plan.installer !== this.cliInstaller) {
-      return false;
-    }
-    // A script install has no version to match on: the plan is for the agent, not for a version.
-    return (
-      !plan.supportsVersion || plan.targetVersion === (this.cliTargetVersion.trim() || 'latest')
-    );
-  }
-
-  /** Whether the chosen installer takes a version at all; a script install always takes latest. */
-  protected cliTakesVersion(): boolean {
-    return this.cliInstaller === 'npm';
-  }
-
-  private cliRequest(): CliOperationRequest {
-    return {
-      agentType: this.cliAgentType,
-      installer: this.cliInstaller,
-      targetVersion: this.cliTakesVersion() ? this.cliTargetVersion.trim() || 'latest' : undefined,
-      workspaceId: this.activeWorkspaceId() || undefined,
-    };
   }
 
   private captureModelDraft(): ModelEditorDraft {

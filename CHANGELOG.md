@@ -2,6 +2,14 @@
 
 Release notes for every Termexo version, newest first. The current release is summarised in [README.md](README.md).
 
+## V0.10.14
+
+- **Easier Agent installation and updates.** Settings → Install & update shows six Agents with clear readiness states. Install a missing Agent with one click, check existing versions before updating, and return to the result after closing settings. Advanced version, command and log details stay collapsed.
+- **Official Antigravity upgrades.** Existing installations use `agy update`, avoiding the install script's already-installed skip.
+- **Reminders keep flashing until handled.** Approval, input and completion notices keep the Windows taskbar icon flashing until acknowledged or cleared, including after activating the window.
+- **Pi Agent joins the workbench.** Install and launch Pi, resume native sessions, execute tasks, receive lifecycle events and connect through local MCP. Thanks to [wuyh410](https://github.com/wuyh410) for the integration in [#33](https://github.com/gemron/Termexo/pull/33).
+- **Clear setup and network recovery.** Missing Node.js has a guided setup link, newly installed npm can be found without restarting Termexo, and a failed version lookup shows retry and network settings instead of offering an unverified update.
+
 ## V0.10.13
 
 - **Cleaner proxy environment on Windows.** Only the uppercase `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` forms are injected there, instead of two casings fighting over one system variable. Unix keeps both spellings.

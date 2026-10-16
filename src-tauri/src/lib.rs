@@ -220,6 +220,7 @@ pub fn run() {
             commands::config::delete_account_profile,
             commands::config::validate_claude_profile,
             commands::notification::show_desktop_notification,
+            commands::notification::set_taskbar_attention,
             commands::update::check_for_update,
             commands::update::open_release_page,
             commands::update::update_via_npm,

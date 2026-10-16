@@ -1,7 +1,6 @@
 ﻿import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import {
-  type CliOperationRequest,
   type AccountProfile,
   ModelProfile,
   ModelProfileInput,
@@ -9,8 +8,6 @@ import {
   NetworkProfileInput,
 } from '../core/models/agent.models';
 import { AgentSettingsDialogComponent } from './agent-settings-dialog';
-
-type CliRequest = CliOperationRequest;
 
 const CUSTOM_PROFILE: ModelProfile = {
   id: 'custom-default',
@@ -227,115 +224,15 @@ describe('AgentSettingsDialogComponent', () => {
     expect(testedIds).toEqual(['network-workspace']);
   });
 
-  it('previews an official CLI package with the current workspace scope', async () => {
-    fixture.componentRef.setInput('activeWorkspaceId', 'workspace-1');
+  it('opens the simplified installer on the requested agent', async () => {
+    fixture.componentRef.setInput('initialTab', 'cli');
+    fixture.componentRef.setInput('initialCliAgent', 'antigravity');
     fixture.detectChanges();
     await fixture.whenStable();
-
-    clickButton('CLI 安装与升级');
-    setLabeledInputValue('目标版本', '0.145.0');
-    const requests: CliRequest[] = [];
-    component.cliPreviewRequested.subscribe((request) => requests.push(request));
-    clickButton('生成安装计划');
-
-    expect(requests).toEqual([
-      {
-        agentType: 'claude',
-        installer: 'npm',
-        targetVersion: '0.145.0',
-        workspaceId: 'workspace-1',
-      },
-    ]);
-  });
-
-  it('asks for no version when the agent is installed by its own script', async () => {
-    fixture.componentRef.setInput('activeWorkspaceId', 'workspace-1');
     fixture.detectChanges();
-    await fixture.whenStable();
-
-    clickButton('CLI 安装与升级');
-    setLabeledInputValue('目标版本', '0.145.0');
-    clickButton('Antigravity');
-    fixture.detectChanges();
-
-    // The version box is gone, and the request carries no version for the script to ignore.
-    expect(root.textContent).toContain('官方脚本始终安装');
-    const requests: CliRequest[] = [];
-    component.cliPreviewRequested.subscribe((request) => requests.push(request));
-    clickButton('生成安装计划');
-
-    expect(requests).toEqual([
-      {
-        agentType: 'antigravity',
-        installer: 'script',
-        targetVersion: undefined,
-        workspaceId: 'workspace-1',
-      },
-    ]);
-  });
-
-  /** Claude Code publishes both, so the choice is the user's rather than Termexo's. */
-  it('can install an npm-published agent from its vendor script instead', async () => {
-    fixture.componentRef.setInput('activeWorkspaceId', 'workspace-1');
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    clickButton('CLI 安装与升级');
-    setLabeledInputValue('目标版本', '0.145.0');
-    clickButton('官方脚本');
-    fixture.detectChanges();
-
-    const requests: CliRequest[] = [];
-    component.cliPreviewRequested.subscribe((request) => requests.push(request));
-    clickButton('生成安装计划');
-
-    expect(requests).toEqual([
-      {
-        agentType: 'claude',
-        installer: 'script',
-        targetVersion: undefined,
-        workspaceId: 'workspace-1',
-      },
-    ]);
-  });
-
-  it('requires confirmation before emitting a CLI mutation', async () => {
-    fixture.componentRef.setInput('activeWorkspaceId', 'workspace-1');
-    fixture.componentRef.setInput('cliPlan', {
-      agentType: 'claude',
-      displayName: 'Claude Code',
-      packageName: '@anthropic-ai/claude-code',
-      targetVersion: 'latest',
-      installer: 'npm',
-      supportsVersion: true,
-      packageSpec: '@anthropic-ai/claude-code@latest',
-      action: 'upgrade',
-      currentVersion: '2.1.220',
-      npmPath: 'C:\\Program Files\\nodejs\\npm.cmd',
-      npmVersion: '11.6.2',
-      commandPreview: 'npm install --global @anthropic-ai/claude-code@latest --no-fund --no-audit',
-      networkProfileId: 'network-workspace',
-      networkProfileName: '内网代理',
-      npmRegistry: 'https://npm.internal.example/',
-      ready: true,
-      diagnostic: '可升级 Claude Code。',
-    });
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    clickButton('CLI 安装与升级');
-    const requests: Array<{ confirmed?: boolean }> = [];
-    component.cliExecuteRequested.subscribe((request) => requests.push(request));
-    clickButton('确认并升级');
-    expect(requests).toEqual([]);
-
-    const confirmation = root.querySelector<HTMLInputElement>('.cli-confirmation input');
-    expect(confirmation).toBeTruthy();
-    confirmation!.click();
-    fixture.detectChanges();
-    clickButton('确认并升级');
-
-    expect(requests).toEqual([expect.objectContaining({ confirmed: true })]);
+    expect(root.querySelector('app-agent-install-panel')).toBeTruthy();
+    expect(root.querySelector('.agent-card.selected')?.textContent).toContain('Antigravity');
+    expect(root.querySelector('.advanced')?.hasAttribute('open')).toBe(false);
   });
 
   it('retains separate drafts across profiles and categories, including a new profile', async () => {

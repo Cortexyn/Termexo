@@ -918,8 +918,6 @@
       [initialCliAgent]="settingsInitialCliAgent()"
       [initialModelProfileId]="settingsInitialModelProfileId()"
       [networkTestResult]="networkTestResult()"
-      [cliPlan]="cliOperationPlan()"
-      [cliResult]="cliOperationResult()"
       [busy]="agents.busy() || profileSaving() || profileDeleting()"
       [saving]="profileSaving()"
       [updateResult]="updates.result()"
@@ -932,8 +930,6 @@
       (updateDownloadRequested)="openReleasePage()"
       (updateNpmRequested)="installUpdateViaNpm()"
       (autoCheckChanged)="updates.setAutoCheckEnabled($event)"
-      (cliPreviewRequested)="previewCliOperation($event)"
-      (cliExecuteRequested)="executeCliOperation($event)"
       (modelSaved)="saveModelProfile($event)"
       (deleteModelRequested)="deleteModelProfile($event)"
       (mcpSaved)="saveMcpProfile($event)"
@@ -949,12 +945,7 @@
       (accountLoginRequested)="loginAccount($event)"
       (accountRefreshRequested)="refreshAccountProfile($event)"
       (accountConfigCopyRequested)="copyAccountConfiguration($event)"
-      (cancelled)="
-        settingsOpen.set(false);
-        networkTestResult.set(null);
-        cliOperationPlan.set(null);
-        cliOperationResult.set(null)
-      "
+      (cancelled)="settingsOpen.set(false); networkTestResult.set(null)"
     />
   }
 }

@@ -421,6 +421,8 @@ export class AgentService {
       const script = preview.package ? request.installer === 'script' : true;
       const source = (script ? preview.script : preview.package) ?? '';
       const targetVersion = script ? 'latest' : request.targetVersion?.trim() || 'latest';
+      const nativeUpdate = request.agentType === 'antigravity' && installation?.installed;
+      const updatePath = installation?.executablePath ?? 'agy';
       return {
         agentType: request.agentType,
         displayName: preview.displayName,
@@ -428,7 +430,7 @@ export class AgentService {
         targetVersion,
         installer: script ? 'script' : 'npm',
         supportsVersion: !script,
-        packageSpec: script ? source : `${source}@${targetVersion}`,
+        packageSpec: nativeUpdate ? updatePath : script ? source : `${source}@${targetVersion}`,
         action: installation?.installed ? 'upgrade' : 'install',
         currentVersion: installation?.version,
         // Browser preview cannot reach the registry, so no version is resolved and the plan
@@ -436,9 +438,11 @@ export class AgentService {
         upToDate: false,
         npmPath: script ? undefined : 'browser-preview/npm',
         npmVersion: script ? undefined : 'preview',
-        commandPreview: script
-          ? `powershell -NoProfile -ExecutionPolicy Bypass -Command "irm ${source} | iex"`
-          : `npm install --global ${source}@${targetVersion} --no-fund --no-audit`,
+        commandPreview: nativeUpdate
+          ? `powershell -NoProfile -ExecutionPolicy Bypass -Command "& '${updatePath.replaceAll("'", "''")}' update; exit $LASTEXITCODE"`
+          : script
+            ? `powershell -NoProfile -ExecutionPolicy Bypass -Command "irm ${source} | iex"`
+            : `npm install --global ${source}@${targetVersion} --no-fund --no-audit`,
         networkProfileId: this.networkProfileItems().find(
           (profile) =>
             profile.enabled &&
