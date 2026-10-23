@@ -1,3 +1,4 @@
+use crate::platform::{shell_quote};
 use std::collections::HashMap;
 use std::fs;
 use std::io::ErrorKind;
@@ -378,7 +379,7 @@ fn login_command(
     executable: &str,
 ) -> Result<String, String> {
     let arguments = login_arguments(agent_type, method)?;
-    Ok(format!("& {} {arguments}", powershell_quote(executable)))
+    Ok(format!("& {} {arguments}", shell_quote(executable)))
 }
 
 fn detect(agent_type: &str) -> Result<AgentInstallation, String> {
@@ -431,14 +432,12 @@ fn output_text(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).trim().to_owned()
 }
 
-fn powershell_quote(value: &str) -> String {
-    format!("'{}'", value.replace('\'', "''"))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[cfg(windows)] // asserts Windows paths or PowerShell syntax
 
     #[test]
     fn each_agent_uses_its_native_authentication_subcommand() {
@@ -462,6 +461,8 @@ mod tests {
         );
         assert!(login_command("unknown-agent", AccountLoginMethod::Browser, "agent.exe").is_err());
     }
+
+    #[cfg(windows)] // asserts Windows paths or PowerShell syntax
 
     #[test]
     fn builds_only_the_login_methods_supported_by_each_agent() {
