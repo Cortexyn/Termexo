@@ -1,4 +1,4 @@
-use crate::platform::{shell_quote};
+use crate::platform::shell_quote;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;

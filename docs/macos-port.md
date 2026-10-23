@@ -35,3 +35,18 @@ Branch: `macos-port`. Regel: Windows-Verhalten bleibt unverändert; macOS/Unix k
 6. Fenster-UI (Ampelknöpfe, Drag-Region)
 7. Benachrichtigungen
 8. `cargo test`, `tauri dev`, `tauri build` → `.app`/`.dmg`
+
+## Stand und bekannte Grenzen
+
+- **Claude-Quota:** Sie kommt aus der Statusline von Claude Code (`rate_limits`), nicht aus dem
+  Schlüsselbund. Das gilt nur für Pro- und Max-Abos, die Werte erscheinen nach der ersten Antwort in
+  einem Termexo-Terminal, und eine eigene `statusLine` in `~/.claude/settings.json` hat Vorrang
+  (dann zeigt die Quota-Ansicht einen entsprechenden Hinweis).
+- **Agent-Installation:** Claude, Codex und Antigravity nutzen unter macOS die `install.sh` des
+  Herstellers (`curl -fsSL … | bash`); die übrigen Agents laufen über npm.
+- **Login-Shell:** `-l` wird nur an zsh, bash, sh, dash, ksh und fish übergeben. Der Start-PATH wird
+  einmalig über `$SHELL -ilc` bestimmt (Zeitlimit 5 s).
+- **Texte:** Alle Meldungen sind englisch; das Frontend ordnet die Quota-Beschriftungen über die
+  i18n-Tabellen zu.
+- **Nicht portiert:** Auto-Update (zeigt auf das Original-Repository), Windows-Systemproxy,
+  Notarisierung/Signierung.

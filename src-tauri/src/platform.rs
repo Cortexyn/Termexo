@@ -168,6 +168,10 @@ fn merge_paths(login: Option<&str>, current: &str, extra: &[PathBuf]) -> String 
 /// An app launched from Finder or the Dock inherits launchd's minimal `PATH`, so `claude`,
 /// `codex` and `node` installed through Homebrew or npm would not be found, neither by detection
 /// nor by the terminals that inherit this environment. Must run before other threads start.
+///
+/// The probe waits for the user's shell dotfiles, so a slow `.zshrc` delays the window by up to
+/// `LOGIN_SHELL_TIMEOUT`; after that the current `PATH` is kept and the well-known directories are
+/// added anyway.
 #[cfg(target_os = "macos")]
 pub fn inherit_login_environment() {
     let current = env::var("PATH").unwrap_or_default();
