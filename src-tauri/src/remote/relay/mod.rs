@@ -439,14 +439,20 @@ mod tests {
         );
         assert_eq!(
             next_step(
-                &ended(true, SessionEnd::Refused("The credentials are invalid.".into())),
+                &ended(
+                    true,
+                    SessionEnd::Refused("The credentials are invalid.".into())
+                ),
                 &mut backoff
             ),
             SupervisorStep::Stop
         );
         assert_eq!(
             next_step(
-                &ended(true, SessionEnd::Interrupted("The connection was lost.".into())),
+                &ended(
+                    true,
+                    SessionEnd::Interrupted("The connection was lost.".into())
+                ),
                 &mut backoff
             ),
             SupervisorStep::RetryAfter(INITIAL_RECONNECT_DELAY)
@@ -460,7 +466,10 @@ mod tests {
         for _ in 0..3 {
             assert!(matches!(
                 next_step(
-                    &ended(false, SessionEnd::Interrupted("The connection was refused.".into())),
+                    &ended(
+                        false,
+                        SessionEnd::Interrupted("The connection was refused.".into())
+                    ),
                     &mut backoff
                 ),
                 SupervisorStep::RetryAfter(_)
@@ -469,7 +478,10 @@ mod tests {
 
         assert_eq!(
             next_step(
-                &ended(true, SessionEnd::Revoked("Access was revoked by the relay.".into())),
+                &ended(
+                    true,
+                    SessionEnd::Revoked("Access was revoked by the relay.".into())
+                ),
                 &mut backoff
             ),
             SupervisorStep::Revoked
@@ -484,7 +496,10 @@ mod tests {
         let delays: Vec<u64> = (0..4)
             .map(|_| {
                 match next_step(
-                    &ended(false, SessionEnd::Interrupted("The connection was refused.".into())),
+                    &ended(
+                        false,
+                        SessionEnd::Interrupted("The connection was refused.".into()),
+                    ),
                     &mut backoff,
                 ) {
                     SupervisorStep::RetryAfter(delay) => delay.as_secs(),
@@ -544,7 +559,10 @@ mod tests {
 
         let snapshot = status.snapshot();
         assert_eq!(snapshot.state, RelayLinkState::Revoked);
-        assert_eq!(snapshot.error.as_deref(), Some("Access was revoked by the relay."));
+        assert_eq!(
+            snapshot.error.as_deref(),
+            Some("Access was revoked by the relay.")
+        );
         assert!(snapshot.addresses.is_empty());
         assert_eq!(snapshot.connected_since, None);
         assert_eq!(

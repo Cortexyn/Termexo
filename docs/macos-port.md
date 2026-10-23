@@ -49,7 +49,11 @@ Branch: `macos-port`. Regel: Windows-Verhalten bleibt unverändert; macOS/Unix k
 - **Texte:** Alle Meldungen sind englisch; das Frontend ordnet die Quota-Beschriftungen über die
   i18n-Tabellen zu.
 - **Nicht portiert:** Auto-Update (zeigt auf das Original-Repository), Windows-Systemproxy,
-  Notarisierung/Signierung.
+  Notarisierung.
+- **Sprachen:** Die deutsche Übersetzung ist vollständig (alle Schlüssel der englischen Tabelle).
+  Dafür liegt die Fehlergrenze für das Start-Bundle in `angular.json` bei 1640 kB statt 1622 kB.
+  Es gibt eine Prüfung, dass `en` und `de` dieselben Schlüssel haben, nur über die Schlüssellisten,
+  nicht als Test im Repository.
 - **Content Security Policy:** Die macOS-Konfiguration (`tauri.macos.conf.json`) setzt eine CSP
   (`script-src 'self'`, keine externen Quellen, `connect-src` nur für die Tauri-Schnittstelle).
   Dafür baut macOS Angular mit der Konfiguration `macos` (`inlineCritical` aus), weil der sonst
@@ -57,3 +61,24 @@ Branch: `macos-port`. Regel: Windows-Verhalten bleibt unverändert; macOS/Unix k
   Windows bleibt `csp: null`. Geprüft wurde die ausgelieferte Oberfläche in WKWebView ohne
   Verstöße; nicht geprüft sind die Abläufe mit echter Tauri-Schnittstelle (Terminals, xterm,
   Einstellungen) — beim ersten Start einmal durchklicken.
+
+## Bauen und Signieren
+
+```sh
+. ~/.cargo/env
+cd apps/desktop-ui
+# nur .app, oder --bundles dmg für das DMG (baut die .app mit)
+APPLE_SIGNING_IDENTITY="Apple Development: …" node scripts/run-tauri.mjs build --bundles dmg
+```
+
+- Ohne `APPLE_SIGNING_IDENTITY` entsteht eine ad-hoc-signierte App. Die Identität gehört nicht in
+  die Konfiguration, sondern wird beim Aufruf übergeben.
+- Ein „Apple Development“-Zertifikat reicht für den eigenen Mac. Für die Weitergabe braucht es ein
+  „Developer ID Application“-Zertifikat und die Notarisierung (`APPLE_ID`, `APPLE_PASSWORD`,
+  `APPLE_TEAM_ID` oder `APPLE_API_KEY`, `APPLE_API_ISSUER`, `APPLE_API_KEY_PATH`); Tauri reicht die
+  App dann selbst ein.
+- Fehlt dem Zertifikat die Vertrauenskette, muss das passende WWDR-Zwischenzertifikat von
+  https://www.apple.com/certificateauthority/ in den Anmelde-Schlüsselbund (nicht „iCloud“).
+- Der Schlüsselbund muss entsperrt sein, sonst endet `codesign` mit `errSecInternalComponent`.
+- Vor dem Commit: `cargo fmt` in `src-tauri`; `cargo clippy` zeigt auf macOS einige Warnungen zu
+  Windows-Code, der hier nicht benutzt wird (Systemproxy, `command_on_path`).

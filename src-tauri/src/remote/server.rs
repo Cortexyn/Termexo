@@ -64,9 +64,11 @@ const HANDSHAKE_EXPECTED_MESSAGE: &str = "The first frame must be an authenticat
 const MALFORMED_HANDSHAKE_MESSAGE: &str = "The handshake parameters are malformed.";
 /// Refuses the v1 handshake where the page could have sealed the session, so a man in the middle
 /// cannot force the downgrade and read the token out of the `auth` frame.
-const SEALED_REQUIRED_MESSAGE: &str = "This connection requires an encrypted handshake. Open the remote workbench over HTTPS.";
+const SEALED_REQUIRED_MESSAGE: &str =
+    "This connection requires an encrypted handshake. Open the remote workbench over HTTPS.";
 const UNSEALED_FRAME_MESSAGE: &str = "An unsealed frame arrived on an encrypted session.";
-const UNEXPECTED_SEAL_MESSAGE: &str = "A sealed frame was sent before the encryption handshake finished.";
+const UNEXPECTED_SEAL_MESSAGE: &str =
+    "A sealed frame was sent before the encryption handshake finished.";
 const NESTED_SEAL_MESSAGE: &str = "A sealed frame cannot contain another sealed frame.";
 
 /// Tells every open WebSocket task what the service wants it to do next.
@@ -454,9 +456,12 @@ fn validate_lan_origin(headers: &HeaderMap, secure: bool, port: u16) -> Result<(
 /// actually typed is the one the entry relay forwards. Every page reaching this router came out of
 /// a browser, so a missing `Origin` is a malformed request rather than a tolerable client.
 fn validate_tunnel_origin(headers: &HeaderMap) -> Result<(), &'static str> {
-    let proto = header_str(headers, HEADER_FORWARDED_PROTO).ok_or("The forwarded protocol header is missing.")?;
-    let host = header_str(headers, HEADER_FORWARDED_HOST).ok_or("The forwarded host header is missing.")?;
-    let origin = header_str(headers, header::ORIGIN.as_str()).ok_or("The Origin header is missing.")?;
+    let proto = header_str(headers, HEADER_FORWARDED_PROTO)
+        .ok_or("The forwarded protocol header is missing.")?;
+    let host = header_str(headers, HEADER_FORWARDED_HOST)
+        .ok_or("The forwarded host header is missing.")?;
+    let origin =
+        header_str(headers, header::ORIGIN.as_str()).ok_or("The Origin header is missing.")?;
     if origin != format!("{proto}://{host}") {
         return Err("The Origin does not match the relay address.");
     }
@@ -863,7 +868,12 @@ async fn authenticate(
         Ok(nonce) => nonce,
         Err(error) => {
             tracing::warn!(%peer, %error, "Could not generate the handshake nonce");
-            close_sink(sink, CLOSE_PROTOCOL_ERROR, "Could not start the encryption handshake.").await;
+            close_sink(
+                sink,
+                CLOSE_PROTOCOL_ERROR,
+                "Could not start the encryption handshake.",
+            )
+            .await;
             return Err(());
         }
     };
@@ -876,7 +886,12 @@ async fn authenticate(
 
     let first = timeout(AUTH_TIMEOUT, stream.next()).await;
     let Ok(Some(Ok(Message::Text(text)))) = first else {
-        close_sink(sink, CLOSE_AUTH_TIMEOUT, "Authentication was not completed in time.").await;
+        close_sink(
+            sink,
+            CLOSE_AUTH_TIMEOUT,
+            "Authentication was not completed in time.",
+        )
+        .await;
         return Err(());
     };
     let Ok(ClientFrame::Auth(auth)) = serde_json::from_str::<ClientFrame>(text.as_str()) else {

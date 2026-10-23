@@ -99,7 +99,9 @@ pub async fn enroll(
     if !status.is_success() {
         return Err(enrollment_failure(status, &body));
     }
-    serde_json::from_str(&body).map_err(|error| format!("The relay returned an enrollment response that could not be parsed: {error}"))
+    serde_json::from_str(&body).map_err(|error| {
+        format!("The relay returned an enrollment response that could not be parsed: {error}")
+    })
 }
 
 /// The same trust decision the tunnel makes: a pinned certificate when the panel stored one, the
@@ -127,7 +129,12 @@ fn connect_failure(error: &reqwest::Error) -> String {
 fn enrollment_failure(status: StatusCode, body: &str) -> String {
     serde_json::from_str::<RelayFailure>(body)
         .map(|failure| failure.error)
-        .unwrap_or_else(|_| format!("The relay refused the enrollment request (HTTP {}).", status.as_u16()))
+        .unwrap_or_else(|_| {
+            format!(
+                "The relay refused the enrollment request (HTTP {}).",
+                status.as_u16()
+            )
+        })
 }
 
 #[cfg(test)]

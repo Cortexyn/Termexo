@@ -197,7 +197,9 @@ pub fn is_remote_command_allowed(command: &str) -> bool {
 /// deserialization and its validation, instead of a second dispatcher that would drift.
 pub async fn dispatch(app: &AppHandle, command: String, args: Value) -> Result<Value, Value> {
     if !is_remote_command_allowed(&command) {
-        return Err(Value::String("This command cannot be called remotely.".into()));
+        return Err(Value::String(
+            "This command cannot be called remotely.".into(),
+        ));
     }
     let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
         return Err(Value::String("The desktop window is unavailable.".into()));
@@ -228,7 +230,9 @@ pub async fn dispatch(app: &AppHandle, command: String, args: Value) -> Result<V
     })
     .await;
     if let Err(error) = dispatched {
-        return Err(Value::String(format!("Could not dispatch the command: {error}")));
+        return Err(Value::String(format!(
+            "Could not dispatch the command: {error}"
+        )));
     }
 
     match receiver.await {
@@ -236,7 +240,9 @@ pub async fn dispatch(app: &AppHandle, command: String, args: Value) -> Result<V
         Ok(InvokeResponse::Err(error)) => Err(error.0),
         // `on_message` returns without answering when the invoke key does not match, which drops
         // the responder and with it the sender half.
-        Err(_) => Err(Value::String("The desktop window did not respond to the command.".into())),
+        Err(_) => Err(Value::String(
+            "The desktop window did not respond to the command.".into(),
+        )),
     }
 }
 

@@ -78,7 +78,8 @@ pub struct HandshakeNonce {
 impl HandshakeNonce {
     pub fn generate() -> Result<Self, String> {
         let encoded = random_base64url(NONCE_BYTES)?;
-        let bytes = decode_nonce(&encoded).ok_or_else(|| "The handshake nonce is badly encoded.".to_string())?;
+        let bytes = decode_nonce(&encoded)
+            .ok_or_else(|| "The handshake nonce is badly encoded.".to_string())?;
         Ok(Self { bytes, encoded })
     }
 }

@@ -108,7 +108,8 @@ pub fn export_network_profiles(
             .map(ExportedNetworkProfile::from)
             .collect(),
     };
-    serde_json::to_string_pretty(&document).map_err(|error| format!("Could not generate the export: {error}"))
+    serde_json::to_string_pretty(&document)
+        .map_err(|error| format!("Could not generate the export: {error}"))
 }
 
 /// Writes the export to `path`.
@@ -116,7 +117,8 @@ pub fn export_network_profiles(
 /// The frontend picks the path through the save dialog, so this only has to persist the bytes.
 #[tauri::command(async)]
 pub fn write_network_profile_export(path: String, contents: String) -> Result<(), String> {
-    std::fs::write(&path, contents).map_err(|error| format!("Could not write the export file: {error}"))
+    std::fs::write(&path, contents)
+        .map_err(|error| format!("Could not write the export file: {error}"))
 }
 
 /// Document as read back from disk. Every field is optional so a hand-edited file with a
@@ -168,8 +170,8 @@ pub fn import_network_profiles(
     path: String,
     database: State<'_, WorkspaceDatabase>,
 ) -> Result<ImportSummary, String> {
-    let contents =
-        std::fs::read_to_string(&path).map_err(|error| format!("Could not read the import file: {error}"))?;
+    let contents = std::fs::read_to_string(&path)
+        .map_err(|error| format!("Could not read the import file: {error}"))?;
     let document = serde_json::from_str::<NetworkProfileImport>(&contents)
         .map_err(|error| format!("The import file is not valid JSON: {error}"))?;
     if let Some(version) = document.version {

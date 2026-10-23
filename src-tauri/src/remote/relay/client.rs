@@ -222,8 +222,9 @@ async fn next_control_frame(stream: &mut TunnelStream) -> Result<ControlFrame, S
 }
 
 fn decode_control(text: &str) -> Result<ControlFrame, SessionEnd> {
-    ControlFrame::decode(text)
-        .map_err(|error| SessionEnd::Interrupted(format!("Could not parse the relay control frame: {error}")))
+    ControlFrame::decode(text).map_err(|error| {
+        SessionEnd::Interrupted(format!("Could not parse the relay control frame: {error}"))
+    })
 }
 
 fn read_failure(error: &TungsteniteError) -> SessionEnd {
@@ -359,7 +360,11 @@ fn close_reason(frame: Option<CloseFrame>) -> SessionEnd {
 async fn send_control(sink: &mut TunnelSink, frame: ControlFrame) -> Result<(), SessionEnd> {
     sink.send(Message::Text(frame.encode().into()))
         .await
-        .map_err(|error| SessionEnd::Interrupted(format!("Could not send a control frame to the relay: {error}")))
+        .map_err(|error| {
+            SessionEnd::Interrupted(format!(
+                "Could not send a control frame to the relay: {error}"
+            ))
+        })
 }
 
 #[cfg(test)]
@@ -385,7 +390,10 @@ mod tests {
             SessionEnd::Revoked(reason) if reason == "Access was revoked."
         ));
         assert!(matches!(
-            close_reason(close_frame(CLOSE_UNAUTHORIZED, "The credentials are invalid.")),
+            close_reason(close_frame(
+                CLOSE_UNAUTHORIZED,
+                "The credentials are invalid."
+            )),
             SessionEnd::Refused(_)
         ));
         assert!(matches!(

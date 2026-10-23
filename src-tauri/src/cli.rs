@@ -169,10 +169,12 @@ fn choose_installer(
     requested: Option<&str>,
 ) -> Result<Installer, String> {
     match requested {
-        Some(SCRIPT_INSTALLER) => definition
-            .script
-            .map(Installer::Script)
-            .ok_or_else(|| format!("{} has no official install script.", definition.display_name)),
+        Some(SCRIPT_INSTALLER) => definition.script.map(Installer::Script).ok_or_else(|| {
+            format!(
+                "{} has no official install script.",
+                definition.display_name
+            )
+        }),
         Some(NPM_INSTALLER) => definition
             .package_name
             .map(|package_name| Installer::Npm { package_name })
@@ -183,7 +185,12 @@ fn choose_installer(
             .package_name
             .map(|package_name| Installer::Npm { package_name })
             .or_else(|| definition.script.map(Installer::Script))
-            .ok_or_else(|| format!("{} has no available install method.", definition.display_name)),
+            .ok_or_else(|| {
+                format!(
+                    "{} has no available install method.",
+                    definition.display_name
+                )
+            }),
     }
 }
 
@@ -431,7 +438,10 @@ pub fn execute_operation(
             } else {
                 "Upgrade"
             },
-            installation.version.as_deref().unwrap_or("the CLI runs normally")
+            installation
+                .version
+                .as_deref()
+                .unwrap_or("the CLI runs normally")
         )
     } else {
         return Ok(failed_result_with_rollback(
@@ -468,7 +478,9 @@ fn execute_vendor_operation(
     environment: HashMap<String, String>,
 ) -> Result<CliOperationResult, String> {
     let Some(shell) = find_script_shell() else {
-        return Err("PowerShell was not found, so the official install script cannot run.".to_owned());
+        return Err(
+            "PowerShell was not found, so the official install script cannot run.".to_owned(),
+        );
     };
     let script = definition(&plan.agent_type)?
         .script
@@ -531,7 +543,10 @@ fn execute_vendor_operation(
         } else {
             "Installation"
         },
-        installation.version.as_deref().unwrap_or("the CLI runs normally"),
+        installation
+            .version
+            .as_deref()
+            .unwrap_or("the CLI runs normally"),
         if native_update {
             "Restart any running CLI to use the current version."
         } else {
@@ -779,7 +794,10 @@ fn normalize_target_version(value: Option<&str>) -> Result<String, String> {
             .chars()
             .all(|character| character.is_ascii_alphanumeric() || ".-_".contains(character))
     {
-        return Err("The target version may only contain letters, digits, dots, hyphens and underscores.".into());
+        return Err(
+            "The target version may only contain letters, digits, dots, hyphens and underscores."
+                .into(),
+        );
     }
     Ok(value.into())
 }
@@ -955,7 +973,10 @@ fn run_command(
             return Ok(CommandResult {
                 success: false,
                 stdout,
-                stderr: append_message(stderr, &format!("{name} timed out and the process was terminated.")),
+                stderr: append_message(
+                    stderr,
+                    &format!("{name} timed out and the process was terminated."),
+                ),
             });
         }
         thread::sleep(Duration::from_millis(100));
@@ -1047,7 +1068,11 @@ impl ScriptInstaller {
 /// prompt, and this says so outright rather than relying on that.
 /// Where the vendors' installers put a user-level binary, per platform.
 const HOME_VARIABLE: &str = if cfg!(windows) { "USERPROFILE" } else { "HOME" };
-const LOCAL_BIN_SUFFIX: &str = if cfg!(windows) { ".local\\bin" } else { ".local/bin" };
+const LOCAL_BIN_SUFFIX: &str = if cfg!(windows) {
+    ".local\\bin"
+} else {
+    ".local/bin"
+};
 const LOCAL_BIN_LABEL: &str = if cfg!(windows) {
     "%USERPROFILE%\\.local\\bin"
 } else {
@@ -1087,7 +1112,11 @@ fn definition(agent_type: &str) -> Result<CliDefinition, String> {
                 },
                 update_command: None,
                 // The Unix script installs next to Claude's, in `~/.local/bin`.
-                directory_root: if cfg!(windows) { "LOCALAPPDATA" } else { HOME_VARIABLE },
+                directory_root: if cfg!(windows) {
+                    "LOCALAPPDATA"
+                } else {
+                    HOME_VARIABLE
+                },
                 directory_suffix: if cfg!(windows) {
                     "Programs\\OpenAI\\Codex\\bin"
                 } else {
@@ -1132,8 +1161,16 @@ fn definition(agent_type: &str) -> Result<CliDefinition, String> {
                     "https://antigravity.google/cli/install.sh"
                 },
                 update_command: Some("update"),
-                directory_root: if cfg!(windows) { "LOCALAPPDATA" } else { HOME_VARIABLE },
-                directory_suffix: if cfg!(windows) { "agy\\bin" } else { LOCAL_BIN_SUFFIX },
+                directory_root: if cfg!(windows) {
+                    "LOCALAPPDATA"
+                } else {
+                    HOME_VARIABLE
+                },
+                directory_suffix: if cfg!(windows) {
+                    "agy\\bin"
+                } else {
+                    LOCAL_BIN_SUFFIX
+                },
                 directory_label: if cfg!(windows) {
                     "%LOCALAPPDATA%\\agy\\bin"
                 } else {

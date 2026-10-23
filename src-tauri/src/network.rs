@@ -278,7 +278,8 @@ pub fn test_profile(
             latency_ms: 0,
         });
     };
-    let parsed = Url::parse(target).map_err(|error| format!("The test address is invalid: {error}"))?;
+    let parsed =
+        Url::parse(target).map_err(|error| format!("The test address is invalid: {error}"))?;
     let host = parsed
         .host_str()
         .ok_or_else(|| "The test address has no host name".to_owned())?;
@@ -341,23 +342,31 @@ fn probe_http_tunnel(mut stream: TcpStream, proxy: &Url) -> Option<(bool, String
         "CONNECT {PROBE_HOST}:{PROBE_PORT} HTTP/1.1\r\nHost: {PROBE_HOST}:{PROBE_PORT}\r\n\r\n"
     );
     if stream.write_all(request.as_bytes()).is_err() {
-        return Some((false, format!("The proxy did not respond to the CONNECT {PROBE_HOST} request")));
+        return Some((
+            false,
+            format!("The proxy did not respond to the CONNECT {PROBE_HOST} request"),
+        ));
     }
 
     let mut buffer = [0u8; 256];
-    let read = match stream.read(&mut buffer) {
-        Ok(0) => return Some((false, "The proxy closed the connection immediately after receiving the CONNECT request".into())),
-        Ok(read) => read,
-        Err(_) => {
-            return Some((
+    let read =
+        match stream.read(&mut buffer) {
+            Ok(0) => return Some((
                 false,
-                format!(
-                    "The proxy did not answer the CONNECT request within {} seconds",
-                    TUNNEL_TIMEOUT.as_secs()
-                ),
-            ))
-        }
-    };
+                "The proxy closed the connection immediately after receiving the CONNECT request"
+                    .into(),
+            )),
+            Ok(read) => read,
+            Err(_) => {
+                return Some((
+                    false,
+                    format!(
+                        "The proxy did not answer the CONNECT request within {} seconds",
+                        TUNNEL_TIMEOUT.as_secs()
+                    ),
+                ))
+            }
+        };
     let status_line = String::from_utf8_lossy(&buffer[..read])
         .lines()
         .next()
@@ -413,7 +422,10 @@ fn probe_tunnel_reaches_destination(stream: &mut TcpStream) -> Result<(), String
         Ok(read) if read > 0 && matches!(buffer[0], 0x16 | 0x15) => Ok(()),
         Ok(0) => Err("The tunnel was closed immediately; the target is unreachable".into()),
         Ok(_) => Err("The target returned a non-TLS response".into()),
-        Err(_) => Err(format!("No response from the target within {} seconds", TUNNEL_TIMEOUT.as_secs())),
+        Err(_) => Err(format!(
+            "No response from the target within {} seconds",
+            TUNNEL_TIMEOUT.as_secs()
+        )),
     }
 }
 
@@ -476,7 +488,8 @@ fn reject_tls_proxy_scheme(label: &str, value: &str) -> Result<(), String> {
 }
 
 fn validate_url(label: &str, value: &str, allowed_schemes: &[&str]) -> Result<(), String> {
-    let parsed = Url::parse(value).map_err(|error| format!("The {label} address is invalid: {error}"))?;
+    let parsed =
+        Url::parse(value).map_err(|error| format!("The {label} address is invalid: {error}"))?;
     if !allowed_schemes.contains(&parsed.scheme()) {
         return Err(format!(
             "{label} does not support the {} scheme; supported schemes: {}",
@@ -522,8 +535,13 @@ pub(crate) fn insert_proxy_env(
     lowercase_key: &str,
     value: String,
 ) {
-    insert_proxy_env_with_flag(environment, uppercase_key, lowercase_key, value,
-        should_emit_lowercase_proxy_vars())
+    insert_proxy_env_with_flag(
+        environment,
+        uppercase_key,
+        lowercase_key,
+        value,
+        should_emit_lowercase_proxy_vars(),
+    )
 }
 
 fn insert_proxy_env_with_flag(
@@ -588,7 +606,8 @@ fn proxy_url_with_credentials(
     username: Option<&str>,
     password: Option<&str>,
 ) -> Result<String, String> {
-    let mut parsed = Url::parse(value).map_err(|error| format!("The proxy address is invalid: {error}"))?;
+    let mut parsed =
+        Url::parse(value).map_err(|error| format!("The proxy address is invalid: {error}"))?;
     let Some(username) = username.map(str::trim).filter(|value| !value.is_empty()) else {
         // No credentials to add, so the address is passed through exactly as entered.
         // `Url::to_string` normalises `http://host:8080` into `http://host:8080/`, and that
@@ -735,11 +754,7 @@ mod tests {
         );
 
         let mut bypass_uppercase_only = HashMap::new();
-        insert_no_proxy_env_with_flag(
-            &mut bypass_uppercase_only,
-            "localhost".into(),
-            false,
-        );
+        insert_no_proxy_env_with_flag(&mut bypass_uppercase_only, "localhost".into(), false);
         assert_eq!(
             bypass_uppercase_only.get("NO_PROXY").map(String::as_str),
             Some("localhost")

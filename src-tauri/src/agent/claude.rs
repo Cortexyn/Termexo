@@ -262,10 +262,7 @@ impl AgentAdapter for ClaudeCodeAdapter {
             .as_deref()
             .filter(|value| !value.trim().is_empty())
         {
-            command.push_str(&format!(
-                " {ATTACH_SUBCOMMAND} {}",
-                shell_quote(short_id)
-            ));
+            command.push_str(&format!(" {ATTACH_SUBCOMMAND} {}", shell_quote(short_id)));
             return Ok(AgentLaunchSpec {
                 command,
                 executable_path: executable.to_string_lossy().into_owned(),

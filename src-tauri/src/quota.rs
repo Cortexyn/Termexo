@@ -289,8 +289,8 @@ fn parse_kimi(body: &Value) -> Result<Vec<QuotaEntry>, String> {
         .get("data")
         .filter(|data| data.is_object())
         .ok_or_else(|| "Kimi returned an unrecognized balance structure".to_owned())?;
-    let available =
-        loose_number(data, "available_balance").ok_or_else(|| "Kimi returned no available balance".to_owned())?;
+    let available = loose_number(data, "available_balance")
+        .ok_or_else(|| "Kimi returned no available balance".to_owned())?;
     let mut entry = QuotaEntry::new("Available balance", QuotaUnit::Currency);
     entry.currency = Some("USD".to_owned());
     entry.remaining = Some(available);
@@ -369,12 +369,17 @@ fn parse_minimax(body: &Value) -> Result<Vec<QuotaEntry>, String> {
             .and_then(|resp| resp.get("status_msg"))
             .and_then(Value::as_str)
             .unwrap_or("no description provided");
-        return Err(format!("The MiniMax allowance endpoint returned error {code}: {message}"));
+        return Err(format!(
+            "The MiniMax allowance endpoint returned error {code}: {message}"
+        ));
     }
 
-    let models = body
-        .get("model_remains")
-        .ok_or_else(|| format!("MiniMax returned an unrecognized structure (fields: {})", key_outline(body)))?;
+    let models = body.get("model_remains").ok_or_else(|| {
+        format!(
+            "MiniMax returned an unrecognized structure (fields: {})",
+            key_outline(body)
+        )
+    })?;
     // A single-model plan may arrive as one object rather than a list.
     let models: Vec<&Value> = match models {
         Value::Array(items) => items.iter().collect(),
@@ -524,10 +529,13 @@ pub fn read_opencode_credentials() -> Result<OpenCodeCredentials, String> {
         None => {
             let path = opencode_auth_path();
             match fs::read_to_string(&path) {
-                Ok(content) => serde_json::from_str::<Value>(&content)
-                    .map_err(|error| format!("Could not parse the OpenCode credentials: {error}"))?,
+                Ok(content) => serde_json::from_str::<Value>(&content).map_err(|error| {
+                    format!("Could not parse the OpenCode credentials: {error}")
+                })?,
                 Err(error) if error.kind() == ErrorKind::NotFound => Value::Object(Map::new()),
-                Err(error) => return Err(format!("Could not read the OpenCode credentials: {error}")),
+                Err(error) => {
+                    return Err(format!("Could not read the OpenCode credentials: {error}"))
+                }
             }
         }
     };
@@ -676,7 +684,8 @@ pub struct GrokCredential {
 
 /// Reuses the Grok CLI's signed-in account without copying its refresh token.
 pub fn read_grok_credential() -> Result<GrokCredential, String> {
-    let home = grok_home().ok_or_else(|| "Could not find the Grok Build configuration directory".to_owned())?;
+    let home = grok_home()
+        .ok_or_else(|| "Could not find the Grok Build configuration directory".to_owned())?;
     let auth = read_json(&home.join("auth.json"))?;
     parse_grok_credential(&auth)
 }
@@ -738,7 +747,9 @@ fn parse_grok_credential(auth: &Value) -> Result<GrokCredential, String> {
             })
         })
         .next();
-    candidate.ok_or_else(|| "Grok Build is not signed in through grok.com. Run grok login first".to_owned())
+    candidate.ok_or_else(|| {
+        "Grok Build is not signed in through grok.com. Run grok login first".to_owned()
+    })
 }
 
 pub fn build_grok_request(
@@ -859,7 +870,8 @@ pub fn parse_grok_response_with_exhaustion(
 }
 
 fn read_json(path: &Path) -> Result<Value, String> {
-    let text = fs::read_to_string(path).map_err(|_| "Not signed in; no credentials found".to_owned())?;
+    let text =
+        fs::read_to_string(path).map_err(|_| "Not signed in; no credentials found".to_owned())?;
     serde_json::from_str(&text).map_err(|error| format!("Could not parse the credentials: {error}"))
 }
 
@@ -925,8 +937,18 @@ pub fn parse_opencode_go_response(body: &Value) -> Result<Vec<QuotaEntry>, Strin
         .ok_or_else(|| "OpenCode Go returned no subscription allowance".to_owned())?;
     Ok(vec![
         parse_used_window(usage.get("rolling"), "5-hour window", "percent", "resetsAt")?,
-        parse_used_window(usage.get("weekly"), "Weekly allowance", "percent", "resetsAt")?,
-        parse_used_window(usage.get("monthly"), "Monthly allowance", "percent", "resetsAt")?,
+        parse_used_window(
+            usage.get("weekly"),
+            "Weekly allowance",
+            "percent",
+            "resetsAt",
+        )?,
+        parse_used_window(
+            usage.get("monthly"),
+            "Monthly allowance",
+            "percent",
+            "resetsAt",
+        )?,
     ])
 }
 
@@ -1588,7 +1610,9 @@ mod tests {
         assert_eq!(five_hour.percent, Some(45.0));
         // 2026-08-10T05:00:00Z
         assert_eq!(five_hour.resets_at, Some(1_786_338_000_000));
-        assert!(entries.iter().any(|entry| entry.label == "Weekly allowance"));
+        assert!(entries
+            .iter()
+            .any(|entry| entry.label == "Weekly allowance"));
     }
 
     #[test]

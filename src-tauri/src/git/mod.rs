@@ -333,7 +333,9 @@ impl RepositoryManager {
     ) -> Result<RepositoryOverview, String> {
         let (directory, baseline) = self.resolve_target(target, database)?;
         let Some(root) = self.cached_repository_root(&directory)? else {
-            return Ok(unavailable_overview("The current terminal directory is not a Git working tree."));
+            return Ok(unavailable_overview(
+                "The current terminal directory is not a Git working tree.",
+            ));
         };
         let baseline = baseline.filter(|item| {
             item.root == root || (item.repository_missing_at_start && root.starts_with(&item.root))
@@ -546,7 +548,9 @@ fn repository_root(directory: &Path) -> Result<Option<PathBuf>, String> {
     }
 
     let mut candidates = fs::read_dir(directory)
-        .map_err(|error| format!("Could not scan the terminal directory for Git repositories: {error}"))?
+        .map_err(|error| {
+            format!("Could not scan the terminal directory for Git repositories: {error}")
+        })?
         .filter_map(Result::ok)
         .map(|entry| entry.path())
         .filter(|path| path.is_dir() && path.join(".git").exists())
@@ -1094,7 +1098,8 @@ fn read_worktree_file(root: &Path, path: &str) -> Result<Vec<u8>, String> {
     if !canonical_file.starts_with(canonical_root) {
         return Err("The changed file is outside the Git working tree.".into());
     }
-    let file = File::open(canonical_file).map_err(|error| format!("Could not read the changed file: {error}"))?;
+    let file = File::open(canonical_file)
+        .map_err(|error| format!("Could not read the changed file: {error}"))?;
     read_limited(file.take((MAX_FILE_BYTES + 1) as u64))
 }
 

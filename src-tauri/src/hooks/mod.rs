@@ -1131,14 +1131,14 @@ fn merge_opencode_plugin_config(
             .map_err(|error| HookError::InvalidOpenCodeConfig(error.to_string()))?,
         None => json!({}),
     };
-    let object = config
-        .as_object_mut()
-        .ok_or_else(|| HookError::InvalidOpenCodeConfig("The configuration must be a JSON object".into()))?;
+    let object = config.as_object_mut().ok_or_else(|| {
+        HookError::InvalidOpenCodeConfig("The configuration must be a JSON object".into())
+    })?;
     let field = if v2 { "plugins" } else { "plugin" };
     let plugins = object.entry(field).or_insert_with(|| json!([]));
-    let plugins = plugins
-        .as_array_mut()
-        .ok_or_else(|| HookError::InvalidOpenCodeConfig(format!("The {field} field must be an array")))?;
+    let plugins = plugins.as_array_mut().ok_or_else(|| {
+        HookError::InvalidOpenCodeConfig(format!("The {field} field must be an array"))
+    })?;
     if !plugins.iter().any(|plugin| {
         plugin.as_str() == Some(plugin_url)
             || plugin
@@ -1819,7 +1819,10 @@ mod tests {
             serde_json::from_str::<Value>(&fs::read_to_string(runtime.settings_path).unwrap())
                 .unwrap();
 
-        match settings.pointer("/statusLine/command").and_then(Value::as_str) {
+        match settings
+            .pointer("/statusLine/command")
+            .and_then(Value::as_str)
+        {
             Some(command) => {
                 assert!(!crate::claude_status::user_has_status_line());
                 assert!(command.contains("claude-status --event-file"));

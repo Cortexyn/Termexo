@@ -32,10 +32,12 @@ pub fn update_via_npm(app: AppHandle) -> Result<(), String> {
     use std::process::{Command, Stdio};
 
     if !update::is_npm_installation() {
-        return Err("This is not an npm installation. Download the installer from the release page.".into());
+        return Err(
+            "This is not an npm installation. Download the installer from the release page.".into(),
+        );
     }
-    let executable =
-        std::env::current_exe().map_err(|error| format!("Could not determine the current program path: {error}"))?;
+    let executable = std::env::current_exe()
+        .map_err(|error| format!("Could not determine the current program path: {error}"))?;
     let package = update::NPM_PACKAGE;
 
     // Waits for the PID to disappear before installing, then starts the new build. Quoting the

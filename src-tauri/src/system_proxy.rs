@@ -46,7 +46,8 @@ fn discover_environment() -> SystemProxyDiscovery {
         https_proxy,
         all_proxy,
         no_proxy,
-        diagnostic: "Read the standard proxy environment variables inherited by this process.".into(),
+        diagnostic: "Read the standard proxy environment variables inherited by this process."
+            .into(),
     }
 }
 
@@ -74,12 +75,16 @@ fn discover_windows_registry() -> Result<SystemProxyDiscovery, String> {
     }
     let server = registry_value("ProxyServer")?
         .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| "The Windows system proxy is enabled, but ProxyServer is empty.".to_owned())?;
+        .ok_or_else(|| {
+            "The Windows system proxy is enabled, but ProxyServer is empty.".to_owned()
+        })?;
     let overrides = registry_value("ProxyOverride")?;
     let mut discovery = parse_windows_proxy_server(&server);
     discovery.source = "windows".into();
     discovery.no_proxy = overrides.and_then(|value| normalize_proxy_override(&value));
-    discovery.diagnostic = "Imported from the current user's Windows system proxy; the proxy password is not read.".into();
+    discovery.diagnostic =
+        "Imported from the current user's Windows system proxy; the proxy password is not read."
+            .into();
     Ok(discovery)
 }
 

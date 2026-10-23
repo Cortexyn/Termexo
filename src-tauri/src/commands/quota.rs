@@ -222,7 +222,9 @@ fn resolve(
         return Err(unavailable("This provider offers no allowance endpoint"));
     }
     let Some(target) = profile.credential_target.as_deref() else {
-        return Err(unavailable("No API key is configured, so the allowance cannot be queried"));
+        return Err(unavailable(
+            "No API key is configured, so the allowance cannot be queried",
+        ));
     };
     let api_key = match credentials.get(target) {
         Ok(key) => key,
@@ -280,9 +282,8 @@ fn claude_status_quota(
     data_directory: &std::path::Path,
 ) -> ProviderQuota {
     let provider = quota::agent_display_name(&account.agent_type);
-    let unavailable = |reason: &str| {
-        ProviderQuota::unavailable(cache_key, &account.name, provider, now, reason)
-    };
+    let unavailable =
+        |reason: &str| ProviderQuota::unavailable(cache_key, &account.name, provider, now, reason);
     if crate::claude_status::user_has_status_line() {
         return unavailable(
             "Claude Code is using your own status line, so Termexo cannot read the allowance from it.",
@@ -357,20 +358,18 @@ fn resolve_opencode(
     let credentials = credentials.map_err(|reason| unavailable(reason.clone()))?;
     let (parser, request) = match source {
         OpenCodeSource::Codex => {
-            let credential = credentials
-                .codex
-                .as_ref()
-                .ok_or_else(|| unavailable("OpenCode is not connected to ChatGPT Plus/Pro".to_owned()))?;
+            let credential = credentials.codex.as_ref().ok_or_else(|| {
+                unavailable("OpenCode is not connected to ChatGPT Plus/Pro".to_owned())
+            })?;
             (
                 QuotaParser::OpenCodeCodex,
                 quota::build_opencode_codex_request(credential),
             )
         }
         OpenCodeSource::Go => {
-            let api_key = credentials
-                .go_api_key
-                .as_deref()
-                .ok_or_else(|| unavailable("OpenCode is not connected to OpenCode Go".to_owned()))?;
+            let api_key = credentials.go_api_key.as_deref().ok_or_else(|| {
+                unavailable("OpenCode is not connected to OpenCode Go".to_owned())
+            })?;
             (
                 QuotaParser::OpenCodeGo,
                 quota::build_opencode_go_request(api_key),
@@ -522,11 +521,16 @@ async fn execute(client: reqwest::Client, query: PendingQuery) -> ProviderQuota 
         return unavailable("The Grok Build sign-in is no longer valid. Run grok login".into());
     }
     if !response.status().is_success() {
-        return unavailable(format!("The allowance endpoint returned {}", response.status()));
+        return unavailable(format!(
+            "The allowance endpoint returned {}",
+            response.status()
+        ));
     }
     let body = match response.json::<serde_json::Value>().await {
         Ok(body) => body,
-        Err(error) => return unavailable(format!("Could not parse the allowance response: {error}")),
+        Err(error) => {
+            return unavailable(format!("Could not parse the allowance response: {error}"))
+        }
     };
 
     let parsed = match &query.parser {
@@ -564,8 +568,11 @@ fn build_client(proxy: Option<&str>) -> Result<reqwest::Client, String> {
         .user_agent(USER_AGENT)
         .timeout(REQUEST_TIMEOUT);
     if let Some(proxy) = proxy {
-        let proxy = reqwest::Proxy::all(proxy)
-            .map_err(|error| format!("The proxy configuration is invalid, so the allowance cannot be queried: {error}"))?;
+        let proxy = reqwest::Proxy::all(proxy).map_err(|error| {
+            format!(
+                "The proxy configuration is invalid, so the allowance cannot be queried: {error}"
+            )
+        })?;
         builder = builder.proxy(proxy);
     }
     builder

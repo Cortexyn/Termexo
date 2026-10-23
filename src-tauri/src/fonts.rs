@@ -65,14 +65,17 @@ mod platform {
         // SAFETY: every call below is a plain COM call on an interface DirectWrite just handed
         // back, and each pointer passed in is a live local.
         unsafe {
-            let factory: IDWriteFactory = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED)
-                .map_err(|error| format!("Could not initialize the system font service: {error}"))?;
+            let factory: IDWriteFactory =
+                DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED).map_err(|error| {
+                    format!("Could not initialize the system font service: {error}")
+                })?;
 
             let mut collection: Option<IDWriteFontCollection> = None;
             factory
                 .GetSystemFontCollection(&mut collection, false)
                 .map_err(|error| format!("Could not read the system font list: {error}"))?;
-            let collection = collection.ok_or_else(|| "The system returned no fonts.".to_string())?;
+            let collection =
+                collection.ok_or_else(|| "The system returned no fonts.".to_string())?;
 
             let count = collection.GetFontFamilyCount();
             let mut fonts = Vec::with_capacity(count as usize);
@@ -141,7 +144,9 @@ mod platform {
     use std::ptr;
 
     use objc2_core_foundation::CFString;
-    use objc2_core_text::{CTFont, CTFontManagerCopyAvailableFontFamilyNames, CTFontSymbolicTraits};
+    use objc2_core_text::{
+        CTFont, CTFontManagerCopyAvailableFontFamilyNames, CTFontSymbolicTraits,
+    };
 
     use super::SystemFont;
 
@@ -218,8 +223,12 @@ mod tests {
     fn lists_macos_families_with_monospaced_ones_flagged() {
         let fonts = list_system_fonts().expect("system font enumeration should succeed");
 
-        assert!(fonts.iter().any(|font| font.name == "Menlo" && font.monospaced));
-        assert!(fonts.iter().any(|font| font.name == "Helvetica" && !font.monospaced));
+        assert!(fonts
+            .iter()
+            .any(|font| font.name == "Menlo" && font.monospaced));
+        assert!(fonts
+            .iter()
+            .any(|font| font.name == "Helvetica" && !font.monospaced));
     }
 
     #[cfg(windows)]

@@ -83,7 +83,8 @@ impl RelaySettings {
 /// Rejects anything that is not a bare `http(s)://host[:port]`, and drops the optional trailing
 /// slash so the tunnel and enrollment paths can be appended without producing a double slash.
 fn normalized_relay_url(raw: &str) -> Result<String, String> {
-    let parsed = Url::parse(raw).map_err(|_| format!("The relay address '{raw}' is not a valid URL."))?;
+    let parsed =
+        Url::parse(raw).map_err(|_| format!("The relay address '{raw}' is not a valid URL."))?;
     if !RELAY_SCHEMES.contains(&parsed.scheme()) {
         return Err("The relay address must start with http:// or https://.".into());
     }
@@ -181,10 +182,12 @@ impl RemoteAccessSettings {
     }
 
     fn parse_bind_address(&self) -> Result<Ipv4Addr, String> {
-        self.bind_address
-            .trim()
-            .parse::<Ipv4Addr>()
-            .map_err(|_| format!("The bind address '{}' is not a valid IPv4 address.", self.bind_address))
+        self.bind_address.trim().parse::<Ipv4Addr>().map_err(|_| {
+            format!(
+                "The bind address '{}' is not a valid IPv4 address.",
+                self.bind_address
+            )
+        })
     }
 }
 

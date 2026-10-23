@@ -102,17 +102,22 @@ async fn query_usage(client: &Client, token: &str) -> Result<AntigravityUsage, Q
         .json(&json!({ "metadata": { "ideType": "ANTIGRAVITY" } }))
         .send()
         .await
-        .map_err(|error| QueryError::Other(format!("Antigravity project request failed: {error}")))?;
+        .map_err(|error| {
+            QueryError::Other(format!("Antigravity project request failed: {error}"))
+        })?;
     let response = checked_response(response)?;
-    let body: Value = response
-        .json()
-        .await
-        .map_err(|error| QueryError::Other(format!("Could not parse the Antigravity project: {error}")))?;
+    let body: Value = response.json().await.map_err(|error| {
+        QueryError::Other(format!("Could not parse the Antigravity project: {error}"))
+    })?;
     let project = body
         .get("cloudaicompanionProject")
         .and_then(Value::as_str)
         .filter(|project| !project.is_empty())
-        .ok_or_else(|| QueryError::Other("Antigravity did not return the project ID needed for the allowance query".into()))?;
+        .ok_or_else(|| {
+            QueryError::Other(
+                "Antigravity did not return the project ID needed for the allowance query".into(),
+            )
+        })?;
 
     let response = client
         .post(format!("{API_ORIGIN}/v1internal:retrieveUserQuotaSummary"))
@@ -121,12 +126,15 @@ async fn query_usage(client: &Client, token: &str) -> Result<AntigravityUsage, Q
         .json(&json!({ "project": project }))
         .send()
         .await
-        .map_err(|error| QueryError::Other(format!("Antigravity allowance request failed: {error}")))?;
+        .map_err(|error| {
+            QueryError::Other(format!("Antigravity allowance request failed: {error}"))
+        })?;
     let response = checked_response(response)?;
-    let summary: QuotaSummary = response
-        .json()
-        .await
-        .map_err(|error| QueryError::Other(format!("Could not parse the Antigravity allowance: {error}")))?;
+    let summary: QuotaSummary = response.json().await.map_err(|error| {
+        QueryError::Other(format!(
+            "Could not parse the Antigravity allowance: {error}"
+        ))
+    })?;
     usage_from_summary(summary).map_err(QueryError::Other)
 }
 
@@ -168,17 +176,22 @@ fn read_saved_credential() -> Result<SavedCredential, String> {
         keyring::Entry::new_with_target(CREDENTIAL_TARGET, CREDENTIAL_SERVICE, CREDENTIAL_USER)
             .map_err(|error| format!("Could not open the Antigravity credentials: {error}"))?;
     let secret = entry.get_secret().map_err(|error| match error {
-        keyring::Error::NoEntry => "Antigravity credentials not found. Sign in with agy first".to_owned(),
+        keyring::Error::NoEntry => {
+            "Antigravity credentials not found. Sign in with agy first".to_owned()
+        }
         other => format!("Could not read the Antigravity credentials: {other}"),
     })?;
-    let raw: Value = serde_json::from_slice(&secret)
-        .map_err(|_| "The Antigravity credentials are malformed. Sign in again in agy".to_owned())?;
+    let raw: Value = serde_json::from_slice(&secret).map_err(|_| {
+        "The Antigravity credentials are malformed. Sign in again in agy".to_owned()
+    })?;
     let field = |path: &str| {
         raw.pointer(path)
             .and_then(Value::as_str)
             .filter(|value| !value.is_empty())
             .map(str::to_owned)
-            .ok_or_else(|| "The Antigravity credentials are incomplete. Sign in again in agy".to_owned())
+            .ok_or_else(|| {
+                "The Antigravity credentials are incomplete. Sign in again in agy".to_owned()
+            })
     };
     Ok(SavedCredential {
         access_token: field("/token/access_token")?,
@@ -214,17 +227,15 @@ async fn refresh_access_token(
             .await
             .map_err(|error| format!("Could not refresh the Antigravity sign-in: {error}"))?;
         if response.status().is_success() {
-            refreshed = Some(
-                response
-                    .json::<RefreshedToken>()
-                    .await
-                    .map_err(|error| format!("Could not parse the Antigravity sign-in refresh result: {error}"))?,
-            );
+            refreshed = Some(response.json::<RefreshedToken>().await.map_err(|error| {
+                format!("Could not parse the Antigravity sign-in refresh result: {error}")
+            })?);
             break;
         }
     }
-    let refreshed =
-        refreshed.ok_or_else(|| "The Antigravity sign-in is no longer valid. Sign in again in agy".to_owned())?;
+    let refreshed = refreshed.ok_or_else(|| {
+        "The Antigravity sign-in is no longer valid. Sign in again in agy".to_owned()
+    })?;
     let token = refreshed.access_token.clone();
     tauri::async_runtime::spawn_blocking(move || save_refreshed_credential(credential, refreshed))
         .await
@@ -237,11 +248,12 @@ fn client_id_from_token(id_token: &str) -> Result<String, String> {
         .split('.')
         .nth(1)
         .ok_or_else(|| "The Antigravity credentials are missing client information".to_owned())?;
-    let payload = URL_SAFE_NO_PAD
-        .decode(payload)
-        .map_err(|_| "The client information in the Antigravity credentials is invalid".to_owned())?;
-    let claims: Value = serde_json::from_slice(&payload)
-        .map_err(|_| "The client information in the Antigravity credentials is invalid".to_owned())?;
+    let payload = URL_SAFE_NO_PAD.decode(payload).map_err(|_| {
+        "The client information in the Antigravity credentials is invalid".to_owned()
+    })?;
+    let claims: Value = serde_json::from_slice(&payload).map_err(|_| {
+        "The client information in the Antigravity credentials is invalid".to_owned()
+    })?;
     claims
         .get("aud")
         .and_then(Value::as_str)
@@ -253,7 +265,8 @@ fn client_id_from_token(id_token: &str) -> Result<String, String> {
 /// Read only the OAuth metadata in the user's installed CLI. Desktop OAuth secrets are bundled
 /// with the application; do not copy one into Termexo's source or print it in diagnostics.
 fn oauth_secrets(path: &Path) -> Result<Vec<String>, String> {
-    let mut file = File::open(path).map_err(|error| format!("Could not read the agy client: {error}"))?;
+    let mut file =
+        File::open(path).map_err(|error| format!("Could not read the agy client: {error}"))?;
     let mut chunk = [0u8; 8192];
     let mut carry = Vec::new();
     let mut secrets = Vec::new();

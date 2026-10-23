@@ -1478,9 +1478,11 @@ mod tests {
             .unwrap();
         let name = |id: &str| -> String {
             connection
-                .query_row("SELECT name FROM account_profiles WHERE id = ?1", [id], |row| {
-                    row.get(0)
-                })
+                .query_row(
+                    "SELECT name FROM account_profiles WHERE id = ?1",
+                    [id],
+                    |row| row.get(0),
+                )
                 .unwrap()
         };
         assert_eq!(name("claude-system"), "System Claude account");

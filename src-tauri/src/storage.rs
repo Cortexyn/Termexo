@@ -35,7 +35,9 @@ const DESCRIBED_FILES: &[&str] = &[
 pub enum StorageError {
     #[error("The data directory path is invalid: {0}")]
     InvalidTarget(String),
-    #[error("The target directory is not empty. Choose an empty directory or create a new one: {0}")]
+    #[error(
+        "The target directory is not empty. Choose an empty directory or create a new one: {0}"
+    )]
     TargetNotEmpty(String),
     #[error("Could not write to the target directory: {0}")]
     TargetNotWritable(String),

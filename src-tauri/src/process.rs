@@ -81,7 +81,10 @@ pub fn run_with_timeout(command: &mut Command, timeout: Duration) -> io::Result<
             terminate_process_tree(&mut child);
             return Err(io::Error::new(
                 io::ErrorKind::TimedOut,
-                format!("The command did not finish within {} seconds.", timeout.as_secs()),
+                format!(
+                    "The command did not finish within {} seconds.",
+                    timeout.as_secs()
+                ),
             ));
         }
         thread::sleep(POLL_INTERVAL);

@@ -41,7 +41,8 @@ pub(crate) const LOCALHOST_NAME: &str = "localhost";
 /// What a device is called on the relay when this machine does not report a name of its own.
 const FALLBACK_DEVICE_NAME: &str = "Termexo Desktop";
 
-const RELAY_NOT_ENROLLED: &str = "Not connected to a relay. Connect with an enrollment code or an account password first.";
+const RELAY_NOT_ENROLLED: &str =
+    "Not connected to a relay. Connect with an enrollment code or an account password first.";
 
 /// One local IPv4 address the workbench can be reached at.
 #[derive(Debug, Clone, Serialize)]
@@ -379,8 +380,9 @@ impl RemoteAccessManager {
         let handle = axum_server::Handle::<SocketAddr>::new();
 
         let task = if settings.tls {
-            let app_data_dir = crate::platform::app_data_dir(&self.app)
-                .map_err(|error| format!("Could not locate the application data directory: {error}"))?;
+            let app_data_dir = crate::platform::app_data_dir(&self.app).map_err(|error| {
+                format!("Could not locate the application data directory: {error}")
+            })?;
             let host_addresses: Vec<String> = local_addresses()
                 .into_iter()
                 .map(|entry| entry.address)

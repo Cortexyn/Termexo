@@ -70,7 +70,10 @@ mod platform {
             )
         };
         if status.is_err() {
-            return Err(format!("Could not register the notification identity: error code {}", status.0));
+            return Err(format!(
+                "Could not register the notification identity: error code {}",
+                status.0
+            ));
         }
 
         let write = |name: &str, value: &str| {

@@ -17,7 +17,8 @@ pub fn render(data: &str) -> Result<QrCodeImage, String> {
     if data.is_empty() {
         return Err("The QR code content cannot be empty.".into());
     }
-    let code = QrCode::new(data).map_err(|error| format!("Could not generate the QR code: {error}"))?;
+    let code =
+        QrCode::new(data).map_err(|error| format!("Could not generate the QR code: {error}"))?;
     let width = code.width();
     let modules: Vec<bool> = code
         .to_colors()

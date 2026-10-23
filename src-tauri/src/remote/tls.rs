@@ -21,8 +21,12 @@ pub async fn load_or_create_config(
     host_addresses: &[String],
 ) -> Result<RustlsConfig, String> {
     let directory = app_data_dir.join(TLS_DIRECTORY);
-    fs::create_dir_all(&directory)
-        .map_err(|error| format!("Could not create the certificate directory {}: {error}", directory.display()))?;
+    fs::create_dir_all(&directory).map_err(|error| {
+        format!(
+            "Could not create the certificate directory {}: {error}",
+            directory.display()
+        )
+    })?;
 
     let paths = MaterialPaths::new(&directory);
     if let Some(material) = paths.read() {

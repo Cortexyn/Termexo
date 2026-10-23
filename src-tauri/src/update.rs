@@ -118,10 +118,15 @@ pub async fn check_for_update(current_version: &str) -> Result<UpdateCheck, Stri
         .header("Accept", "application/vnd.github+json")
         .send()
         .await
-        .map_err(|error| format!("The update check failed. Check your network connection: {error}"))?;
+        .map_err(|error| {
+            format!("The update check failed. Check your network connection: {error}")
+        })?;
 
     if !response.status().is_success() {
-        return Err(format!("The update check failed: GitHub returned {}", response.status()));
+        return Err(format!(
+            "The update check failed: GitHub returned {}",
+            response.status()
+        ));
     }
 
     let release = response

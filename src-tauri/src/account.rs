@@ -60,7 +60,10 @@ pub fn validate_profile_id(profile_id: &str) -> Result<&str, String> {
             .chars()
             .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
     {
-        return Err("The account profile ID may only contain letters, digits, hyphens and underscores.".into());
+        return Err(
+            "The account profile ID may only contain letters, digits, hyphens and underscores."
+                .into(),
+        );
     }
     Ok(profile_id)
 }
@@ -83,8 +86,12 @@ pub fn prepare_managed_directory(profile: &AccountProfile) -> Result<(), String>
         return Ok(());
     };
     let directory = Path::new(config_dir);
-    fs::create_dir_all(directory)
-        .map_err(|error| format!("Could not create the account directory {}: {error}", directory.to_string_lossy()))?;
+    fs::create_dir_all(directory).map_err(|error| {
+        format!(
+            "Could not create the account directory {}: {error}",
+            directory.to_string_lossy()
+        )
+    })?;
     match profile.agent_type.as_str() {
         "codex" => ensure_codex_file_credentials(directory)?,
         "claude" => {
@@ -173,8 +180,9 @@ fn ensure_codex_file_credentials(directory: &Path) -> Result<(), String> {
         "{current}{}cli_auth_credentials_store = \"file\"\n",
         separator.unwrap_or_default()
     );
-    fs::write(&config_path, updated)
-        .map_err(|error| format!("Could not write the isolated Codex account configuration: {error}"))
+    fs::write(&config_path, updated).map_err(|error| {
+        format!("Could not write the isolated Codex account configuration: {error}")
+    })
 }
 
 pub fn environment(profile: &AccountProfile) -> HashMap<String, String> {
@@ -285,7 +293,8 @@ pub fn copy_configuration(
     }
     prepare_managed_directory(target)?;
     let target_dir = resolve_config_dir(target)?;
-    fs::create_dir_all(&target_dir).map_err(|error| format!("Could not create the target account directory: {error}"))?;
+    fs::create_dir_all(&target_dir)
+        .map_err(|error| format!("Could not create the target account directory: {error}"))?;
 
     let entries = if source.agent_type == "claude" {
         CLAUDE_PORTABLE_ENTRIES
@@ -303,8 +312,9 @@ pub fn copy_configuration(
             copy_directory(&from, &to)?;
         } else {
             if let Some(parent) = to.parent() {
-                fs::create_dir_all(parent)
-                    .map_err(|error| format!("Could not create {}: {error}", parent.to_string_lossy()))?;
+                fs::create_dir_all(parent).map_err(|error| {
+                    format!("Could not create {}: {error}", parent.to_string_lossy())
+                })?;
             }
             fs::copy(&from, &to).map_err(|error| format!("Could not copy {entry}: {error}"))?;
         }
@@ -325,7 +335,8 @@ fn copy_directory(from: &Path, to: &Path) -> Result<(), String> {
     let listing = fs::read_dir(from)
         .map_err(|error| format!("Could not read {}: {error}", from.to_string_lossy()))?;
     for entry in listing {
-        let entry = entry.map_err(|error| format!("Could not read the directory entry: {error}"))?;
+        let entry =
+            entry.map_err(|error| format!("Could not read the directory entry: {error}"))?;
         let name = entry.file_name();
         if NEVER_COPY.contains(&name.to_string_lossy().as_ref()) {
             continue;
@@ -335,8 +346,9 @@ fn copy_directory(from: &Path, to: &Path) -> Result<(), String> {
         if source_path.is_dir() {
             copy_directory(&source_path, &target_path)?;
         } else {
-            fs::copy(&source_path, &target_path)
-                .map_err(|error| format!("Could not copy {}: {error}", source_path.to_string_lossy()))?;
+            fs::copy(&source_path, &target_path).map_err(|error| {
+                format!("Could not copy {}: {error}", source_path.to_string_lossy())
+            })?;
         }
     }
     Ok(())
@@ -464,13 +476,21 @@ mod tests {
     #[test]
     fn login_commands_are_plain_posix_words() {
         assert_eq!(
-            login_command("claude", AccountLoginMethod::Browser, "/Users/me/my tools/claude")
-                .unwrap(),
+            login_command(
+                "claude",
+                AccountLoginMethod::Browser,
+                "/Users/me/my tools/claude"
+            )
+            .unwrap(),
             "'/Users/me/my tools/claude' auth login"
         );
         assert_eq!(
-            login_command("codex", AccountLoginMethod::DeviceCode, "/opt/codex's/bin/codex")
-                .unwrap(),
+            login_command(
+                "codex",
+                AccountLoginMethod::DeviceCode,
+                "/opt/codex's/bin/codex"
+            )
+            .unwrap(),
             r"'/opt/codex'\''s/bin/codex' login --device-auth"
         );
         assert!(login_command("unknown-agent", AccountLoginMethod::Browser, "agent").is_err());
