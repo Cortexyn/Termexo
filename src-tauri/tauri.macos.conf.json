@@ -1,0 +1,30 @@
+{
+  "app": {
+    "windows": [
+      {
+        "title": "Termexo",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 720,
+        "minHeight": 480,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": { "x": 16, "y": 20 },
+        "dragDropEnabled": false
+      }
+    ]
+  },
+  "bundle": {
+    "resources": {
+      "vendor/conpty/conpty.dll": null,
+      "vendor/conpty/OpenConsole.exe": null
+    },
+    "macOS": {
+      "minimumSystemVersion": "12.0"
+    }
+  }
+}
