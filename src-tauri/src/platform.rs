@@ -59,6 +59,25 @@ pub fn resolve_shell(requested: &str) -> String {
     requested.to_owned()
 }
 
+/// Quotes a value as one literal argument for the shell a terminal runs.
+///
+/// PowerShell and POSIX shells both use single quotes, but escape an embedded quote differently.
+pub fn shell_quote(value: &str) -> String {
+    #[cfg(windows)]
+    return format!("'{}'", value.replace('\'', "''"));
+    #[cfg(unix)]
+    return format!("'{}'", value.replace('\'', "'\\''"));
+}
+
+/// Runs the program at `executable`: PowerShell needs the call operator to treat a quoted path as
+/// a command rather than a string, a POSIX shell takes the quoted word as is.
+pub fn shell_invoke(executable: &str) -> String {
+    #[cfg(windows)]
+    return format!("& {}", shell_quote(executable));
+    #[cfg(unix)]
+    return shell_quote(executable);
+}
+
 /// Application data directory under the macOS convention, or the one Tauri chose elsewhere.
 pub fn app_data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     use tauri::Manager;
@@ -166,6 +185,13 @@ mod tests {
         for shell in ["powershell.exe", "powershell", "PowerShell.EXE", "cmd.exe", ""] {
             assert_eq!(resolve_shell(shell), default_shell(), "{shell}");
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn posix_quoting_survives_embedded_quotes() {
+        assert_eq!(shell_quote("it's"), r"'it'\''s'");
+        assert_eq!(shell_invoke("/bin/a b"), "'/bin/a b'");
     }
 
     #[cfg(unix)]
