@@ -5116,6 +5116,8 @@ dependencies = [
  "if-addrs",
  "keyring",
  "notify",
+ "objc2-core-foundation",
+ "objc2-core-text",
  "portable-pty",
  "qrcode",
  "rcgen",
