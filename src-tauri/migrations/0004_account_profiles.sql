@@ -17,7 +17,7 @@ CREATE INDEX IF NOT EXISTS idx_account_profiles_agent
 INSERT OR IGNORE INTO account_profiles (
     id, name, agent_type, config_dir, is_default, is_system, created_at, updated_at
 ) VALUES (
-    'claude-system', '系统 Claude 账号', 'claude', NULL, 1, 1,
+    'claude-system', 'System Claude account', 'claude', NULL, 1, 1,
     CAST(strftime('%s', 'now') AS INTEGER) * 1000,
     CAST(strftime('%s', 'now') AS INTEGER) * 1000
 );
@@ -25,7 +25,14 @@ INSERT OR IGNORE INTO account_profiles (
 INSERT OR IGNORE INTO account_profiles (
     id, name, agent_type, config_dir, is_default, is_system, created_at, updated_at
 ) VALUES (
-    'codex-system', '系统 ChatGPT 账号', 'codex', NULL, 1, 1,
+    'codex-system', 'System ChatGPT account', 'codex', NULL, 1, 1,
     CAST(strftime('%s', 'now') AS INTEGER) * 1000,
     CAST(strftime('%s', 'now') AS INTEGER) * 1000
 );
+
+-- Databases created before the seeds were in English still carry the Chinese names. Only the exact
+-- old seed text is replaced, so a name the user chose is never touched.
+UPDATE account_profiles SET name = 'System Claude account'
+    WHERE id = 'claude-system' AND name = '系统 Claude 账号';
+UPDATE account_profiles SET name = 'System ChatGPT account'
+    WHERE id = 'codex-system' AND name = '系统 ChatGPT 账号';

@@ -249,8 +249,8 @@ impl HookEventStore {
                 "type": "command",
                 "command": format!(
                     "{} claude-status {EVENT_FILE_FLAG} {}",
-                    command_quote(&executable.to_string_lossy()),
-                    command_quote(&self.event_file.to_string_lossy()),
+                    crate::platform::shell_quote(&executable.to_string_lossy()),
+                    crate::platform::shell_quote(&self.event_file.to_string_lossy()),
                 ),
             });
         }
@@ -2358,8 +2358,7 @@ mod tests {
         fs::remove_dir_all(directory).unwrap();
     }
 
-    #[cfg(windows)] // asserts Windows paths or PowerShell syntax
-
+    #[cfg(windows)]
     #[test]
     fn keeps_the_antigravity_memory_file_inside_the_spool_directory() {
         let memory =
