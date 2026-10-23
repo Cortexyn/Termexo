@@ -50,3 +50,10 @@ Branch: `macos-port`. Regel: Windows-Verhalten bleibt unverändert; macOS/Unix k
   i18n-Tabellen zu.
 - **Nicht portiert:** Auto-Update (zeigt auf das Original-Repository), Windows-Systemproxy,
   Notarisierung/Signierung.
+- **Content Security Policy:** Die macOS-Konfiguration (`tauri.macos.conf.json`) setzt eine CSP
+  (`script-src 'self'`, keine externen Quellen, `connect-src` nur für die Tauri-Schnittstelle).
+  Dafür baut macOS Angular mit der Konfiguration `macos` (`inlineCritical` aus), weil der sonst
+  erzeugte Inline-Handler `onload="this.media='all'"` von `script-src` blockiert würde. Unter
+  Windows bleibt `csp: null`. Geprüft wurde die ausgelieferte Oberfläche in WKWebView ohne
+  Verstöße; nicht geprüft sind die Abläufe mit echter Tauri-Schnittstelle (Terminals, xterm,
+  Einstellungen) — beim ersten Start einmal durchklicken.
