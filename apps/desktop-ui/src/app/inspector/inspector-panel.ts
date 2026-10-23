@@ -100,6 +100,12 @@ const QUOTA_LABEL_KEYS: Readonly<Record<string, string>> = {
   'Subscription allowance': 'quota.window.subscription',
   'Available balance': 'quota.window.balance',
   'Extra credit balance': 'quota.window.extraCredits',
+  'Request count': 'quota.window.requests',
+  'Token allowance (shorter window)': 'quota.window.tokensShort',
+  'Current period': 'quota.window.currentPeriod',
+  'This week': 'quota.window.thisWeek',
+  "Free allowance exhausted (based on Grok's limit error)": 'quota.window.freeExhausted',
+  "This period's allowance (the server gave no usage percentage)": 'quota.window.periodNoPercent',
 };
 
 @Component({
@@ -438,6 +444,15 @@ export class InspectorPanelComponent {
     if (hours) return this.i18n.t('quota.window.hours', { count: hours[1] });
     const days = /^(\d+)-day window$/.exec(label);
     if (days) return this.i18n.t('quota.window.days', { count: days[1] });
+    const tokens = /^Token allowance \(window (.+)\)$/.exec(label);
+    if (tokens) return this.i18n.t('quota.window.tokens', { window: tokens[1] });
+    // A model name can lead the line ("MiniMax-M3 · This week"); only the window is translated.
+    const separator = ' · ';
+    const split = label.lastIndexOf(separator);
+    if (split > 0) {
+      const head = label.slice(0, split + separator.length);
+      return head + this.quotaLabel(label.slice(split + separator.length));
+    }
     const key = QUOTA_LABEL_KEYS[label];
     return key ? this.i18n.t(key) : label;
   }
