@@ -13,7 +13,7 @@
     its own, so every control here still receives its click.
   -->
   <header class="topbar navbar" data-tauri-drag-region="deep">
-    <div class="topbar-lead">
+    <div class="topbar-lead" [class.native-traffic-lights]="windowControls.nativeChrome">
       <div class="app-brand">
         <span class="brand-mark" aria-hidden="true">
           <img src="termexo-mark.svg" alt="" />
