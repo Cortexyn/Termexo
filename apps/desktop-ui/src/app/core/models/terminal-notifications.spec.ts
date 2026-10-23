@@ -141,8 +141,8 @@ describe('createAttentionBanner', () => {
     );
 
     expect(banner).toMatchObject({
-      title: '等待输入',
-      detail: 'Workspace one · Terminal 2：等待输入',
+      title: 'Waiting for input',
+      detail: 'Workspace one · Terminal 2: Waiting for input',
       extraCount: 0,
     });
     expect(banner?.target.terminalId).toBe('one-terminal-1');
@@ -157,8 +157,8 @@ describe('createAttentionBanner', () => {
     );
 
     expect(banner).toMatchObject({
-      title: '2 个 Agent 等待处理',
-      detail: 'Workspace two · Terminal 1：等待授权',
+      title: '2 agents waiting',
+      detail: 'Workspace two · Terminal 1: Waiting for approval',
       extraCount: 1,
     });
     expect(banner?.target.status).toBe('WAITING_APPROVAL');
@@ -169,15 +169,15 @@ describe('createAttentionBanner', () => {
       collectGlobalTerminalNotices([workspace('one', ['FAILED'])]),
     );
     expect(failedOnly).toMatchObject({
-      title: '运行异常',
-      detail: 'Workspace one · Terminal 1：运行异常',
+      title: 'Failed',
+      detail: 'Workspace one · Terminal 1: Failed',
       extraCount: 0,
     });
 
     const mixed = createAttentionBanner(
       collectGlobalTerminalNotices([workspace('one', ['RATE_LIMITED', 'WAITING_INPUT'])]),
     );
-    expect(mixed).toMatchObject({ title: '2 个 Agent 等待处理', extraCount: 1 });
+    expect(mixed).toMatchObject({ title: '2 agents waiting', extraCount: 1 });
     expect(mixed?.target.status).toBe('WAITING_INPUT');
   });
 });
@@ -196,7 +196,7 @@ describe('createDesktopNotification', () => {
 
   it('creates a critical notification for an Agent waiting for approval', () => {
     expect(createDesktopNotification([notice('WAITING_APPROVAL')])).toEqual({
-      title: 'Termexo · 等待授权',
+      title: 'Termexo · Waiting for approval',
       body: 'Workspace one · Terminal 1',
       attention: 'critical',
     });
@@ -204,7 +204,7 @@ describe('createDesktopNotification', () => {
 
   it('creates a critical notification for an Agent waiting for input', () => {
     expect(createDesktopNotification([notice('WAITING_INPUT')])).toEqual({
-      title: 'Termexo · 等待输入',
+      title: 'Termexo · Waiting for input',
       body: 'Workspace one · Terminal 1',
       attention: 'critical',
     });
@@ -212,12 +212,12 @@ describe('createDesktopNotification', () => {
 
   it('creates a critical notification for a failed or rate-limited Agent', () => {
     expect(createDesktopNotification([notice('FAILED')])).toEqual({
-      title: 'Termexo · 运行异常',
+      title: 'Termexo · Failed',
       body: 'Workspace one · Terminal 1',
       attention: 'critical',
     });
     expect(createDesktopNotification([notice('RATE_LIMITED')])).toEqual({
-      title: 'Termexo · 触发限流',
+      title: 'Termexo · Rate limited',
       body: 'Workspace one · Terminal 1',
       attention: 'critical',
     });
@@ -236,7 +236,7 @@ describe('createDesktopNotification', () => {
 
   it('creates an informational notification for a completed Agent', () => {
     expect(createDesktopNotification([notice('COMPLETED')])).toEqual({
-      title: 'Termexo · 任务已完成',
+      title: 'Termexo · Task completed',
       body: 'Workspace one · Terminal 1',
       attention: 'informational',
     });
@@ -251,8 +251,8 @@ describe('createDesktopNotification', () => {
     ]);
 
     expect(notification).toEqual({
-      title: 'Termexo · 4 个 Agent 等待处理',
-      body: 'Workspace one · Terminal 1：任务已完成；Workspace one · Terminal 2：等待输入；Workspace one · Terminal 3：任务已完成；另有 1 个状态',
+      title: 'Termexo · 4 agents waiting',
+      body: 'Workspace one · Terminal 1: Task completed; Workspace one · Terminal 2: Waiting for input; Workspace one · Terminal 3: Task completed; 1 more',
       attention: 'critical',
     });
   });

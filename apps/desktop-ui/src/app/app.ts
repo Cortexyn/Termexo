@@ -39,6 +39,7 @@ import {
   normalizeTerminalGridDimension,
   normalizeWorkspaceThemeColor,
   ANTIGRAVITY_DEFAULT_MODEL,
+  isOpenCodeDefaultModel,
   OPENCODE_DEFAULT_MODEL,
   TerminalStatus,
   TerminalSession,
@@ -3102,7 +3103,7 @@ export class App {
       const copied = await this.agents.copyAccountConfiguration(request.sourceId, request.targetId);
       this.showToast(
         copied.length
-          ? this.i18n.t('settings.copyConfigDone', { items: copied.join('、') })
+          ? this.i18n.t('settings.copyConfigDone', { items: copied.join(', ') })
           : this.i18n.t('settings.copyConfigEmpty'),
         copied.length ? 'success' : 'attention',
       );
@@ -3246,7 +3247,7 @@ export class App {
       if (summary.needsPassword.length > 0) {
         parts.push(
           this.i18n.t('settings.importProxyNeedsPassword', {
-            names: summary.needsPassword.join('、'),
+            names: summary.needsPassword.join(', '),
           }),
         );
       }
@@ -4195,7 +4196,7 @@ export class App {
 
     const results = await Promise.allSettled(
       restored.map(async ({ workspaceId, terminal }) => {
-        const model = terminal.model === OPENCODE_DEFAULT_MODEL ? undefined : terminal.model;
+        const model = isOpenCodeDefaultModel(terminal.model) ? undefined : terminal.model;
         const task = this.todos
           .tasksFor(workspaceId)
           .find((candidate) => candidate.terminalId === terminal.id);

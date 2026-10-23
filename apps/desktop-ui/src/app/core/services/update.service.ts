@@ -160,7 +160,7 @@ export class UpdateService implements OnDestroy {
     }
     if (hasBackend()) {
       // Updating replaces the running executable and restarts it, which would strand this browser.
-      throw new Error('请在桌面端执行更新');
+      throw new Error('Run the update from the desktop app');
     }
   }
 

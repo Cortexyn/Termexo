@@ -33,18 +33,21 @@ const IDLE_TIMEOUT_MS = 45_000;
 /** Resolved against the page's base, so it is `/ws` on a LAN page and `/d/<id>/ws` behind a relay. */
 const BRIDGE_PATH = 'ws';
 
-const UNAUTHORIZED_ERROR = '未授权';
-const DISCONNECTED_ERROR = '连接已断开';
+const UNAUTHORIZED_ERROR = 'Unauthorized';
+const DISCONNECTED_ERROR = 'Connection closed';
 /** A plaintext frame on a sealed session is either tampering or a peer that lost its keys. */
-const UNSEALED_FRAME_ERROR = '连接收到了未加密的帧，已断开重连。';
-const UNEXPECTED_SEAL_ERROR = '尚未完成加密握手就收到了封装帧，已断开重连。';
-const NESTED_SEAL_ERROR = '连接收到了嵌套的封装帧，已断开重连。';
+const UNSEALED_FRAME_ERROR =
+  'The connection received an unencrypted frame and was dropped to reconnect.';
+const UNEXPECTED_SEAL_ERROR =
+  'A sealed frame arrived before the encryption handshake finished; the connection was dropped to reconnect.';
+const NESTED_SEAL_ERROR =
+  'The connection received a nested sealed frame and was dropped to reconnect.';
 /**
  * Why the page stopped before sending anything: it cannot seal the session, and this link refuses
  * the older handshake. The token is the part worth saying out loud — it was never sent.
  */
 const INSECURE_PAGE_ERROR =
-  '这个页面不是通过 HTTPS 打开的，无法加密连接。为保护访问令牌，页面没有发送令牌。请为中继启用 HTTPS 后再打开。';
+  'This page was not opened over HTTPS, so the connection cannot be encrypted. To protect the access token, the page did not send it. Enable HTTPS on the relay and open it again.';
 
 /** The event the client raises when the server reports that outbound frames were dropped. */
 export const RESYNC_EVENT = 'resync';

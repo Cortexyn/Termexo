@@ -204,7 +204,7 @@ describe('AgentSettingsDialogComponent', () => {
     const inputs = root.querySelectorAll<HTMLInputElement>(
       '.profile-editor input:not([type="checkbox"])',
     );
-    expect(inputs[0].value).toBe('DeepSeek 深度求索');
+    expect(inputs[0].value).toBe('DeepSeek');
     expect(inputs[1].value).toBe('deepseek-v4-pro[1m]');
     expect(inputs[2].value).toBe('https://api.deepseek.com/anthropic');
     expect(inputs[3].value).toBe('deepseek-v4');

@@ -63,11 +63,11 @@ const NOTICE_STATUS_LABEL_KEYS: Readonly<Record<GlobalTerminalNoticeStatus, stri
 
 /** Used when no translator is supplied. */
 const NOTICE_STATUS_LABELS: Readonly<Record<GlobalTerminalNoticeStatus, string>> = {
-  WAITING_APPROVAL: '等待授权',
-  WAITING_INPUT: '等待输入',
-  FAILED: '运行异常',
-  RATE_LIMITED: '触发限流',
-  COMPLETED: '任务已完成',
+  WAITING_APPROVAL: 'Waiting for approval',
+  WAITING_INPUT: 'Waiting for input',
+  FAILED: 'Failed',
+  RATE_LIMITED: 'Rate limited',
+  COMPLETED: 'Task completed',
 };
 
 export type NotificationTranslator = (
@@ -165,9 +165,9 @@ export function createAttentionBanner(
     title:
       waiting.length > 1
         ? (translate?.('notice.agentsWaiting', { count: waiting.length }) ??
-          `${waiting.length} 个 Agent 等待处理`)
+          `${waiting.length} agents waiting`)
         : statusLabel,
-    detail: `${target.workspaceName} · ${target.terminalName}${translate ? ': ' : '：'}${statusLabel}`,
+    detail: `${target.workspaceName} · ${target.terminalName}: ${statusLabel}`,
     target,
     extraCount: waiting.length - 1,
   };
@@ -195,20 +195,18 @@ export function createDesktopNotification(
     .slice(0, 3)
     .map(
       (notice) =>
-        `${notice.workspaceName} · ${notice.terminalName}${translate ? ': ' : '：'}${noticeStatusLabel(notice.status, translate)}`,
+        `${notice.workspaceName} · ${notice.terminalName}: ${noticeStatusLabel(notice.status, translate)}`,
     );
   const remaining = notices.length - details.length;
   if (remaining > 0) {
-    details.push(
-      translate?.('notice.otherStatuses', { count: remaining }) ?? `另有 ${remaining} 个状态`,
-    );
+    details.push(translate?.('notice.otherStatuses', { count: remaining }) ?? `${remaining} more`);
   }
 
   return {
     title: requiresAttention
-      ? `Termexo · ${translate?.('notice.agentsWaiting', { count: notices.length }) ?? `${notices.length} 个 Agent 等待处理`}`
-      : `Termexo · ${translate?.('notice.agentsCompleted', { count: notices.length }) ?? `${notices.length} 个 Agent 已完成`}`,
-    body: details.join(translate ? '; ' : '；'),
+      ? `Termexo · ${translate?.('notice.agentsWaiting', { count: notices.length }) ?? `${notices.length} agents waiting`}`
+      : `Termexo · ${translate?.('notice.agentsCompleted', { count: notices.length }) ?? `${notices.length} agents completed`}`,
+    body: details.join('; '),
     attention: requiresAttention ? 'critical' : 'informational',
   };
 }

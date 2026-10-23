@@ -11,7 +11,7 @@ export interface BackendEvent<T> {
   payload: T;
 }
 
-const PREVIEW_ERROR = '仅桌面应用可用';
+const PREVIEW_ERROR = 'Only available in the desktop app';
 
 /**
  * Loads the WebSocket bridge only where it is used.

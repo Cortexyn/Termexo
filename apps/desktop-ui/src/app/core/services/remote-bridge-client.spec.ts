@@ -214,7 +214,7 @@ describe('RemoteBridgeClient', () => {
 
     expect(socket.closed).toBe(true);
     expect(client.state).toBe('reconnecting');
-    expect(client.error).toContain('未加密');
+    expect(client.error).toContain('unencrypted');
   });
 
   /**
@@ -238,7 +238,7 @@ describe('RemoteBridgeClient', () => {
     expect(sent).not.toContain('secret');
     expect(newestSocket().frames()).toEqual([]);
     expect(client.state).toBe('unauthorized');
-    expect(client.error).toContain('没有发送令牌');
+    expect(client.error).toContain('did not send it');
   });
 
   it('does not reconnect after withholding the token, since the same challenge would follow', async () => {
@@ -298,10 +298,10 @@ describe('RemoteBridgeClient', () => {
 
     newestSocket().receive({ type: 'auth-failed', reason: '令牌无效' });
 
-    await expect(pending).rejects.toThrow('未授权');
+    await expect(pending).rejects.toThrow('Unauthorized');
     expect(client.state).toBe('unauthorized');
     expect(client.error).toBe('令牌无效');
-    await expect(client.invoke('list_workspaces')).rejects.toThrow('未授权');
+    await expect(client.invoke('list_workspaces')).rejects.toThrow('Unauthorized');
   });
 
   it('rejects in-flight calls when the connection drops', async () => {
@@ -311,7 +311,7 @@ describe('RemoteBridgeClient', () => {
 
     newestSocket().drop();
 
-    await expect(pending).rejects.toThrow('连接已断开');
+    await expect(pending).rejects.toThrow('Connection closed');
     expect(client.state).toBe('reconnecting');
   });
 
@@ -398,7 +398,7 @@ describe('RemoteBridgeClient', () => {
 
     expect(sockets[0].closed).toBe(true);
     expect(client.state).toBe('unauthorized');
-    await expect(client.invoke('list_workspaces')).rejects.toThrow('未授权');
+    await expect(client.invoke('list_workspaces')).rejects.toThrow('Unauthorized');
   });
 });
 

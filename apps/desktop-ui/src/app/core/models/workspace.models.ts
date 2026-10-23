@@ -7,9 +7,15 @@ export type AgentType = 'claude' | 'codex' | 'opencode' | 'pi' | 'grok' | 'antig
  * label doubles as the marker that no explicit model was chosen, and a relaunch must therefore
  * pass no `--model` at all rather than feeding this text back to the CLI.
  */
-export const OPENCODE_DEFAULT_MODEL = 'OpenCode 默认模型';
+export const OPENCODE_DEFAULT_MODEL = 'OpenCode default model';
+/** The label earlier versions stored on a terminal, which restored workspaces may still carry. */
+const LEGACY_OPENCODE_DEFAULT_MODEL = 'OpenCode 默认模型';
+
+export function isOpenCodeDefaultModel(model: string | undefined): boolean {
+  return model === OPENCODE_DEFAULT_MODEL || model === LEGACY_OPENCODE_DEFAULT_MODEL;
+}
 /** Shown until the CLI reports which model it chose; Antigravity picks its own default. */
-export const ANTIGRAVITY_DEFAULT_MODEL = 'Antigravity 默认模型';
+export const ANTIGRAVITY_DEFAULT_MODEL = 'Antigravity default model';
 
 export type TerminalStatus =
   | 'STARTING'
@@ -52,12 +58,12 @@ export const WORKSPACE_ICON_OPTIONS = [
 ] as const;
 
 export const WORKSPACE_THEME_PRESETS = [
-  { name: '翡翠', color: '#58c7a0' },
-  { name: '海蓝', color: '#68a9e8' },
-  { name: '紫罗兰', color: '#a78bfa' },
-  { name: '暖橙', color: '#e4a35a' },
-  { name: '玫红', color: '#ef7890' },
-  { name: '青色', color: '#52c7d9' },
+  { name: 'Jade', color: '#58c7a0' },
+  { name: 'Ocean', color: '#68a9e8' },
+  { name: 'Violet', color: '#a78bfa' },
+  { name: 'Amber', color: '#e4a35a' },
+  { name: 'Rose', color: '#ef7890' },
+  { name: 'Teal', color: '#52c7d9' },
 ] as const;
 
 export function normalizeTerminalGridDimension(value: number | undefined): number {

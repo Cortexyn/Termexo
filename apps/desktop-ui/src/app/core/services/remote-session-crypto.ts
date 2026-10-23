@@ -24,9 +24,9 @@ const SERVER_TO_CLIENT_INFO = 'termexo-s2c';
 
 const SEALED_FRAME_TYPE = 'sealed';
 
-const HANDSHAKE_NONCE_ERROR = '服务端的握手随机数格式不正确。';
-const REPLAYED_COUNTER_ERROR = '封装帧的计数器没有递增。';
-const FORGED_FRAME_ERROR = '封装帧无法解密。';
+const HANDSHAKE_NONCE_ERROR = 'The server handshake nonce is malformed.';
+const REPLAYED_COUNTER_ERROR = 'The sealed frame counter did not increase.';
+const FORGED_FRAME_ERROR = 'The sealed frame could not be decrypted.';
 
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();

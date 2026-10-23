@@ -77,8 +77,8 @@ describe('remote session crypto', () => {
     const second = envelopeOf(await desktop.seal('{"type":"pong"}'));
 
     await expect(browser.open(second)).resolves.toBe('{"type":"pong"}');
-    await expect(browser.open(second)).rejects.toThrow('计数器');
-    await expect(browser.open(first)).rejects.toThrow('计数器');
+    await expect(browser.open(second)).rejects.toThrow('counter');
+    await expect(browser.open(first)).rejects.toThrow('counter');
   });
 
   it('refuses a payload that was tampered with or is not base64url', async () => {
@@ -89,8 +89,8 @@ describe('remote session crypto', () => {
     // The leading character is flipped rather than the trailing one: base64url's last character
     // carries spare bits that a decoder ignores, so changing it need not change a single byte.
     const tampered = `${sealed.c.startsWith('A') ? 'B' : 'A'}${sealed.c.slice(1)}`;
-    await expect(browser.open({ n: sealed.n, c: tampered })).rejects.toThrow('无法解密');
-    await expect(browser.open({ n: 0, c: 'not base64url!' })).rejects.toThrow('无法解密');
+    await expect(browser.open({ n: sealed.n, c: tampered })).rejects.toThrow('could not be decrypted');
+    await expect(browser.open({ n: 0, c: 'not base64url!' })).rejects.toThrow('could not be decrypted');
   });
 
   /**

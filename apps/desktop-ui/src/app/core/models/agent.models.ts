@@ -458,7 +458,7 @@ export function terminalAccountName(
 export const PROVIDER_PRESETS: readonly ProviderPreset[] = [
   {
     provider: 'Anthropic',
-    label: 'Anthropic 官方',
+    label: 'Anthropic (official)',
     claudeModel: 'sonnet',
     claudeBaseUrl: '',
     codexModel: '',
@@ -466,7 +466,7 @@ export const PROVIDER_PRESETS: readonly ProviderPreset[] = [
   },
   {
     provider: 'OpenAI',
-    label: 'OpenAI 官方',
+    label: 'OpenAI (official)',
     claudeModel: '',
     claudeBaseUrl: '',
     codexModel: 'gpt-5.6-sol',
@@ -474,7 +474,7 @@ export const PROVIDER_PRESETS: readonly ProviderPreset[] = [
   },
   {
     provider: 'DeepSeek',
-    label: 'DeepSeek 深度求索',
+    label: 'DeepSeek',
     claudeModel: 'deepseek-v4-pro[1m]',
     claudeBaseUrl: 'https://api.deepseek.com/anthropic',
     codexModel: 'deepseek-v4',
@@ -483,7 +483,7 @@ export const PROVIDER_PRESETS: readonly ProviderPreset[] = [
   },
   {
     provider: 'MiniMax',
-    label: 'MiniMax 稀宇',
+    label: 'MiniMax',
     claudeModel: 'MiniMax-M3',
     claudeBaseUrl: 'https://api.minimaxi.com/anthropic',
     codexModel: 'MiniMax-M3',
@@ -492,7 +492,7 @@ export const PROVIDER_PRESETS: readonly ProviderPreset[] = [
   },
   {
     provider: 'GLM',
-    label: 'GLM 智谱',
+    label: 'GLM (Zhipu)',
     claudeModel: 'glm-5.2[1m]',
     claudeBaseUrl: 'https://open.bigmodel.cn/api/anthropic',
     codexModel: 'glm-5.2',
@@ -501,7 +501,7 @@ export const PROVIDER_PRESETS: readonly ProviderPreset[] = [
   },
   {
     provider: 'Kimi',
-    label: 'Kimi 月之暗面',
+    label: 'Kimi (Moonshot)',
     claudeModel: 'kimi-k3',
     claudeBaseUrl: 'https://api.moonshot.cn/anthropic',
     codexModel: 'kimi-k3',
@@ -510,7 +510,7 @@ export const PROVIDER_PRESETS: readonly ProviderPreset[] = [
   },
   {
     provider: 'SCNet',
-    label: '超算互联网',
+    label: 'China Supercomputing Internet',
     claudeModel: 'DeepSeek-V4',
     claudeBaseUrl: 'https://api.scnet.cn/api/llm/anthropic',
     codexModel: 'DeepSeek-V4',
@@ -519,7 +519,7 @@ export const PROVIDER_PRESETS: readonly ProviderPreset[] = [
   },
   {
     provider: CUSTOM_PROVIDER,
-    label: '自定义',
+    label: 'Custom',
     claudeModel: '',
     claudeBaseUrl: '',
     codexModel: '',

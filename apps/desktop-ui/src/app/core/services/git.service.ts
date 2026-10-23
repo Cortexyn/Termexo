@@ -146,7 +146,7 @@ export class GitService {
   }
 
   async loadDiff(target: RepositoryTarget, path: string): Promise<RepositoryDiff> {
-    if (!hasBackend()) throw new Error('Git Diff 仅在桌面应用中可用。');
+    if (!hasBackend()) throw new Error('Git diff is only available in the desktop app.');
     return invoke<RepositoryDiff>('get_repository_diff', {
       request: { target, path },
     });
