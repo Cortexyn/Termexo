@@ -48,7 +48,7 @@ Branch: `macos-port`. Regel: Windows-Verhalten bleibt unverändert; macOS/Unix k
   einmalig über `$SHELL -ilc` bestimmt (Zeitlimit 5 s).
 - **Texte:** Alle Meldungen sind englisch; das Frontend ordnet die Quota-Beschriftungen über die
   i18n-Tabellen zu.
-- **Nicht portiert:** Auto-Update (zeigt auf das Original-Repository), Windows-Systemproxy,
+- **Nicht portiert:** Update-Prüfung (auf macOS meldet sie immer „aktuell“, weil die Original-Releases Windows-Installer sind), Windows-Systemproxy,
   Notarisierung.
 - **Sprachen:** Die deutsche Übersetzung ist vollständig (alle Schlüssel der englischen Tabelle).
   Dafür liegt die Fehlergrenze für das Start-Bundle in `angular.json` bei 1640 kB statt 1622 kB.
