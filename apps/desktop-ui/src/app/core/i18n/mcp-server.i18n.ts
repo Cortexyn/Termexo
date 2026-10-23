@@ -158,4 +158,85 @@ const MCP_TRANSLATIONS = {
     'mcpServer.localOnly': '此连接仅供本机使用，与工作台的远程访问独立。',
     'mcpServer.invalidPort': '请输入 1–65535 之间的端口。',
   },
+  de: {
+    'mcpServer.tab': 'KI-Steuerung (MCP)',
+    'mcpServer.title': 'KI Termexo steuern lassen',
+    'mcpServer.description':
+      'MCP verbindet KI mit Termexo, damit sie nach deinen Anweisungen handeln kann: Terminals öffnen, Ausgaben lesen und Aufgaben verwalten. Du kannst in Alltagssprache fragen.',
+    'mcpServer.quickStart': 'Starte hier: in 3 Schritten verbinden',
+    'mcpServer.stepEnable':
+      'Wähle „Lokalen MCP-Server aktivieren“ und lass die automatische Verbindung angehakt. Wähle die Berechtigungen, klicke auf „Anwenden“ und achte auf „Läuft“.',
+    'mcpServer.stepLaunch':
+      'Starte in Termexo ein neues KI-Terminal, etwa Claude Code oder Codex. Starte eine bereits laufende KI-Sitzung neu, damit sie die Verbindung lädt.',
+    'mcpServer.stepAsk':
+      'Füge das folgende Beispiel in dieses KI-Terminal ein und drücke die Eingabetaste. Die KI wählt die Werkzeuge für dich aus.',
+    'mcpServer.keepOpen':
+      'Lass Termexo geöffnet. Hier gestartete KI-Terminals verbinden sich automatisch; Adresse, Token oder Konfigurationsdatei sind nicht nötig.',
+    'mcpServer.statusHint':
+      '„Läuft“ bedeutet, dass Termexo für Verbindungen bereit ist. Prüfe die KI-Verbindung mit dem folgenden Beispiel.',
+    'mcpServer.tryTitle': 'Probiere zuerst dies aus',
+    'mcpServer.tryHint': 'Sende dies im KI-Terminal, nicht in einer PowerShell- oder CMD-Shell.',
+    'mcpServer.firstPrompt':
+      'Nutze Termexo MCP, um meine Arbeitsbereiche und Terminals aufzulisten, und sag mir, welche laufen. Ändere noch nichts.',
+    'mcpServer.copyPrompt': 'Beispielnachricht kopieren',
+    'mcpServer.successHint':
+      'Verbunden: Die KI ruft Termexo-Werkzeuge auf und liefert die tatsächlichen Namen deiner Arbeitsbereiche und Terminal-Zustände. Allein „Das kann ich“ zu sagen, bestätigt keine Verbindung.',
+    'mcpServer.moreExamples': 'Frage dann nach dem, was du brauchst',
+    'mcpServer.terminalExample':
+      '„Öffne im aktuellen Arbeitsbereich ein Shell-Terminal, führe git status aus und nenne mir das Ergebnis.“ (Terminal-Zugriff)',
+    'mcpServer.taskExample':
+      '„Erstelle im aktuellen Arbeitsbereich eine Claude-Code-Aufgabe namens ‚Projektstruktur prüfen‘. Speichere sie, ohne sie zu starten.“ (Aufgaben-Zugriff)',
+    'mcpServer.settingsExample':
+      '„Stelle die Terminal-Schriftgröße von Termexo auf 18.“ (Einstellungs-Zugriff)',
+    'mcpServer.helpTitle': 'Funktioniert es nicht? Prüfe zuerst Folgendes',
+    'mcpServer.helpConnection':
+      'Die KI findet die Termexo-Werkzeuge nicht: Prüfe „Läuft“ und die automatische Verbindung und starte die KI-Sitzung dann aus Termexo neu. Nutze ein KI-Terminal, keine einfache Shell.',
+    'mcpServer.helpPermission':
+      'Die KI kann nicht handeln: Aktiviere hier die passende Berechtigung und klicke auf „Anwenden“. Verbinde die KI neu, um ihre Werkzeuge zu aktualisieren, und beantworte Freigabeanfragen für Werkzeuge in diesem KI-Client.',
+    'mcpServer.helpLogin':
+      'Anmeldung abgelaufen: Das KI-Konto muss sich erneut anmelden. Gib in Claude Code /login ein, folge den Anweisungen und sende deine Nachricht dann erneut.',
+    'mcpServer.helpWaiting':
+      'Eingabe gesendet oder Aufgabe gestartet: Bitte die KI, die Terminal-Ausgabe oder den Aufgabenstatus zu lesen, um das Ergebnis zu prüfen. Prüfe nach einem Timeout den Status, bevor du sie bittest, es erneut zu versuchen.',
+    'mcpServer.advancedTitle': 'Erweitert: KI-Apps außerhalb von Termexo verbinden / Port ändern',
+    'mcpServer.manualHint':
+      'Nur nötig für eine KI-App, die außerhalb von Termexo auf diesem PC gestartet wurde. Suche ihre MCP-Einstellungen, füge die passende Konfiguration unten ein und verbinde dich dann neu. Browserbasierte Cloud-KI kann diese lokale Adresse nicht direkt erreichen.',
+    'mcpServer.portHint':
+      'Behalte den Standardport bei, sofern er nicht belegt ist. Klicke nach einer Änderung auf „Anwenden“.',
+    'mcpServer.globalConfigHint':
+      'Die automatische Verbindung für Grok und Antigravity fügt ihrer MCP-Benutzerkonfiguration einen Termexo-Eintrag hinzu. Wird die automatische Verbindung deaktiviert und angewendet, wird dieser Eintrag entfernt.',
+    'mcpServer.desktopOnly': 'Verwalte diese Verbindung in der Termexo-Desktop-App.',
+    'mcpServer.enabled': 'Lokalen MCP-Server aktivieren',
+    'mcpServer.autoConnectAgents': 'Von Termexo gestartete Agents automatisch verbinden',
+    'mcpServer.autoConnectHint':
+      'Unterstützt Claude Code, Codex, OpenCode, Grok Build und Antigravity.',
+    'mcpServer.port': 'Lokaler Port',
+    'mcpServer.permissions': 'KI Zugriff erlauben auf',
+    'mcpServer.terminals':
+      'Terminals: Arbeitsbereiche auflisten, Terminals öffnen, Befehle senden und Ausgaben lesen',
+    'mcpServer.tasks': 'Aufgaben: Arbeit erstellen, starten, stoppen und fortsetzen',
+    'mcpServer.settings':
+      'Einstellungen: Sprache, Schriftart und vorhandene Modell-/Netzwerkprofile ändern',
+    'mcpServer.accessHint':
+      'Terminal- und Aufgaben-Zugriff können Befehle auf diesem Computer ausführen. Der Einstellungs-Zugriff kann deine App-Einstellungen und die Modellkonfiguration ändern.',
+    'mcpServer.apply': 'Anwenden',
+    'mcpServer.running': 'Läuft',
+    'mcpServer.stopped': 'Gestoppt',
+    'mcpServer.endpoint': 'Server-URL',
+    'mcpServer.token': 'Zugriffstoken',
+    'mcpServer.showToken': 'Token anzeigen',
+    'mcpServer.hideToken': 'Token ausblenden',
+    'mcpServer.rotateToken': 'Token neu generieren',
+    'mcpServer.rotateHint':
+      'Manuell konfigurierte Clients benötigen das neue Token. Automatisch verbundene Agents aktualisieren sich bei ihrer nächsten Anfrage.',
+    'mcpServer.config': 'Client-Verbindung',
+    'mcpServer.configHint':
+      'Die KI-App muss Streamable HTTP MCP unterstützen. Kopiere JSON für Apps, die mcpServers-JSON akzeptieren, oder TOML für die config.toml von Codex. Die Kopie enthält dein Zugriffstoken; halte es geheim. Lass Termexo geöffnet.',
+    'mcpServer.copyJson': 'JSON-Konfiguration kopieren',
+    'mcpServer.copyCodex': 'TOML-Konfiguration kopieren',
+    'mcpServer.copyToken': 'Token kopieren',
+    'mcpServer.copied': 'Kopiert',
+    'mcpServer.localOnly':
+      'Diese Verbindung ist nur auf diesem Computer verfügbar und unabhängig vom Remote-Zugriff auf die Workbench.',
+    'mcpServer.invalidPort': 'Gib einen Port zwischen 1 und 65535 ein.',
+  },
 };

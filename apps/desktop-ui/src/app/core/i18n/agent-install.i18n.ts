@@ -113,4 +113,65 @@ const TRANSLATIONS = {
     'install.close': '关闭此窗口后安装仍会继续。',
     'install.preview': '浏览器预览模式，请在桌面客户端中安装 Agent。',
   },
+  de: {
+    'install.title': 'Agents installieren und aktualisieren',
+    'install.intro':
+      'Wähle einen Agent. Termexo prüft deinen Computer und übernimmt die Installation.',
+    'install.select': 'Agent auswählen',
+    'install.ready': 'Einsatzbereit',
+    'install.missing': 'Nicht installiert',
+    'install.checkingStatus': 'Wird erkannt…',
+    'install.needsRepair': 'Erfordert Aufmerksamkeit',
+    'install.refresh': 'Erneut erkennen',
+    'install.latest': 'Neueste Version installieren',
+    'install.check': 'Nach Updates suchen',
+    'install.update': 'Jetzt aktualisieren',
+    'install.nativeUpdate': 'Prüfen und aktualisieren',
+    'install.current': 'Du bist auf dem neuesten Stand',
+    'install.selectedCurrent': 'Diese Version ist bereits installiert',
+    'install.version': 'Installierte Version',
+    'install.newVersion': 'Verfügbare Version',
+    'install.defaultHelp':
+      'Wir wählen die Installationsmethode für dich aus. Du musst keine Befehle eingeben.',
+    'install.checkHelp': 'Prüfe vor dem Aktualisieren, ob eine neuere Version verfügbar ist.',
+    'install.nativeHelp':
+      'Der offizielle Updater sucht nach einer neuen Version und aktualisiert automatisch.',
+    'install.checking': 'Dein Computer und die verfügbare Version werden geprüft…',
+    'install.installing': 'Wird heruntergeladen und installiert…',
+    'install.background':
+      'Das kann einige Minuten dauern. Du kannst die Einstellungen schließen und später zurückkehren.',
+    'install.success': '{name} ist bereit',
+    'install.next':
+      'Schließe die Einstellungen, wähle „Neu“ und dann {name}, um zu starten. Der Agent fordert dich möglicherweise zur Anmeldung auf.',
+    'install.restart':
+      'Starte alle geöffneten {name}-Terminals neu, um die aktualisierte Version zu verwenden.',
+    'install.failed': 'Die Installation konnte nicht abgeschlossen werden',
+    'install.checkFailed': 'Die verfügbare Version konnte nicht geprüft werden',
+    'install.retry': 'Erneut versuchen',
+    'install.network':
+      'Der Download konnte den Server nicht erreichen. Prüfe deine Verbindung oder den Proxy und versuche es dann erneut.',
+    'install.permissions':
+      'Die Dateien konnten nicht aktualisiert werden. Schließe die laufenden Terminals dieses Agents, prüfe die Ordnerberechtigungen und versuche es dann erneut.',
+    'install.genericError':
+      'Die Installation wurde nicht abgeschlossen. Versuche es erneut oder öffne die Details, um die Ursache zu sehen.',
+    'install.nodeTitle': 'Installiere zuerst Node.js',
+    'install.nodeHelp':
+      'Dieser Agent benötigt Node.js. Installiere die LTS-Version mit den Standardoptionen und kehre dann zurück, um erneut zu erkennen.',
+    'install.nodeDownload': 'Node.js von der offiziellen Website herunterladen',
+    'install.environment': 'Dein Computer benötigt noch einen Einrichtungsschritt',
+    'install.networkSettings': 'Netzwerkeinstellungen',
+    'install.advanced': 'Erweiterte Optionen und Details',
+    'install.auto': 'Automatisch (empfohlen)',
+    'install.method': 'Installationsmethode',
+    'install.target': 'Version (leer lassen für die neueste)',
+    'install.plan': 'Diese Konfiguration prüfen',
+    'install.repair': 'Installation reparieren',
+    'install.repairHelp':
+      'Installiere die ausgewählte Version erneut, falls der Agent nicht richtig funktioniert.',
+    'install.details': 'Installationsdetails',
+    'install.logs': 'Protokolle',
+    'install.error': 'Fehlerdetails',
+    'install.close': 'Die Installation läuft weiter, wenn du dieses Fenster schließt.',
+    'install.preview': 'Browser-Vorschau. Die Agent-Installation erfordert die Desktop-App.',
+  },
 };
