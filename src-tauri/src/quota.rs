@@ -653,11 +653,7 @@ pub fn read_agent_token(agent_type: &str, config_dir: Option<&str>) -> Result<St
         ("auth.json", ["tokens", "access_token"])
     };
     let path = home.join(file);
-    let value = match read_json(&path) {
-        Ok(value) => value,
-        // macOS keeps Claude Code's login in the Keychain instead of a file.
-        Err(file_error) => claude_keychain_credentials(agent_type, config_dir).ok_or(file_error)?,
-    };
+    let value = read_json(&path)?;
     value
         .get(path_to_token[0])
         .and_then(|nested| nested.get(path_to_token[1]))
@@ -670,33 +666,6 @@ pub fn read_agent_token(agent_type: &str, config_dir: Option<&str>) -> Result<St
                 agent_display_name(agent_type)
             )
         })
-}
-
-/// Keychain item Claude Code stores its OAuth login in on macOS; the account is the user name.
-#[cfg(target_os = "macos")]
-const CLAUDE_KEYCHAIN_SERVICE: &str = "Claude Code-credentials";
-
-/// Reads that login for the default account. macOS asks the user to allow the access the first
-/// time, because the item belongs to the Claude CLI. A profile with its own config directory keeps
-/// a differently named item, which is not guessed at.
-#[cfg(target_os = "macos")]
-fn claude_keychain_credentials(agent_type: &str, config_dir: Option<&str>) -> Option<Value> {
-    let default_account = config_dir.map_or(true, |directory| directory.trim().is_empty())
-        && std::env::var_os("CLAUDE_CONFIG_DIR").is_none();
-    if agent_type != "claude" || !default_account {
-        return None;
-    }
-    let user = std::env::var("USER").ok()?;
-    let secret = keyring::Entry::new(CLAUDE_KEYCHAIN_SERVICE, &user)
-        .ok()?
-        .get_password()
-        .ok()?;
-    serde_json::from_str(&secret).ok()
-}
-
-#[cfg(not(target_os = "macos"))]
-fn claude_keychain_credentials(_agent_type: &str, _config_dir: Option<&str>) -> Option<Value> {
-    None
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
