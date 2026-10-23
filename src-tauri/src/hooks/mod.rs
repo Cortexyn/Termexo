@@ -227,7 +227,7 @@ impl HookEventStore {
                 }]
             })
         };
-        let settings = json!({
+        let mut settings = json!({
             "hooks": {
                 "SessionStart": [hook()],
                 "UserPromptSubmit": [hook()],
@@ -241,6 +241,19 @@ impl HookEventStore {
                 "SessionEnd": [hook()]
             }
         });
+        // On macOS the subscription allowance has no file to read, so the status line carries it.
+        // A status line the user set up themselves is theirs and stays.
+        #[cfg(target_os = "macos")]
+        if !crate::claude_status::user_has_status_line() {
+            settings["statusLine"] = json!({
+                "type": "command",
+                "command": format!(
+                    "{} claude-status {EVENT_FILE_FLAG} {}",
+                    command_quote(&executable.to_string_lossy()),
+                    command_quote(&self.event_file.to_string_lossy()),
+                ),
+            });
+        }
         let settings_path = self
             .runtime_directory
             .join(format!("claude-{terminal_id}.settings.json"));
@@ -1791,6 +1804,28 @@ mod tests {
         assert!(settings.pointer("/hooks/PermissionRequest/0").is_some());
         assert!(settings.pointer("/hooks/SessionEnd/0").is_some());
 
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    /// macOS reads the subscription allowance from the status line, but never takes the user's own.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn registers_the_allowance_status_line_unless_the_user_has_one() {
+        let directory = test_directory("hooks-status-line");
+        let store = HookEventStore::new(&directory).unwrap();
+
+        let runtime = store.prepare_claude_runtime("terminal-1").unwrap();
+        let settings =
+            serde_json::from_str::<Value>(&fs::read_to_string(runtime.settings_path).unwrap())
+                .unwrap();
+
+        match settings.pointer("/statusLine/command").and_then(Value::as_str) {
+            Some(command) => {
+                assert!(!crate::claude_status::user_has_status_line());
+                assert!(command.contains("claude-status --event-file"));
+            }
+            None => assert!(crate::claude_status::user_has_status_line()),
+        }
         fs::remove_dir_all(directory).unwrap();
     }
 

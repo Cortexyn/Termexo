@@ -1,5 +1,6 @@
 mod account;
 mod agent;
+mod claude_status;
 mod cli;
 mod commands;
 mod config;
@@ -46,6 +47,11 @@ pub fn capture_codex_notification_from_cli() -> Result<(), String> {
 /// Records one Antigravity status update, which is how its agent state reaches Termexo.
 pub fn capture_antigravity_status_from_cli() -> Result<(), String> {
     hooks::capture_antigravity_status_from_cli().map_err(|error| error.to_string())
+}
+
+/// Records Claude Code's subscription allowance from its status line input.
+pub fn capture_claude_status_from_cli() -> Result<(), String> {
+    claude_status::capture_from_cli()
 }
 
 pub fn capture_codex_hook_event_from_cli() -> Result<(), String> {
