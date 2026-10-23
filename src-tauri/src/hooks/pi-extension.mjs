@@ -25,7 +25,7 @@ export default function termexo(pi) {
       }) + '\n');
     } catch (error) {
       // Losing the desktop status feed must not interrupt the agent's work.
-      console.error(`Termexo: 无法写入 Pi 状态事件：${error.message}`);
+      console.error(`Termexo: Could not write the Pi status event: ${error.message}`);
     }
   };
   pi.on('session_start', (_event, ctx) => {

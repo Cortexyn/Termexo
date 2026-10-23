@@ -21,7 +21,7 @@ pub fn random_base64url(bytes: usize) -> Result<String, String> {
 
 /// Generates a fresh access token.
 pub fn generate_token() -> Result<String, String> {
-    random_base64url(TOKEN_BYTES).map_err(|error| format!("无法生成访问令牌：{error}"))
+    random_base64url(TOKEN_BYTES).map_err(|error| format!("Could not generate an access token: {error}"))
 }
 
 /// Compares two tokens without leaking how far they matched through timing.
