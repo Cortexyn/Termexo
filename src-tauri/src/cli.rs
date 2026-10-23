@@ -1,3 +1,4 @@
+use crate::platform::shell_quote;
 use std::collections::HashMap;
 use std::env;
 use std::io::Read;
@@ -285,7 +286,7 @@ fn build_script_plan_for_installation(
     script: ScriptInstaller,
     installation: AgentInstallation,
 ) -> CliOperationPlan {
-    let ready = find_powershell().is_some();
+    let ready = find_script_shell().is_some();
     let native_update = installation.installed && script.update_command.is_some();
     let action = if native_update {
         "upgrade"
@@ -466,7 +467,7 @@ fn execute_vendor_operation(
     plan: CliOperationPlan,
     environment: HashMap<String, String>,
 ) -> Result<CliOperationResult, String> {
-    let Some(shell) = find_powershell() else {
+    let Some(shell) = find_script_shell() else {
         return Err("未找到 PowerShell，无法运行官方安装脚本。".to_owned());
     };
     let script = definition(&plan.agent_type)?
@@ -475,16 +476,20 @@ fn execute_vendor_operation(
     let started = Instant::now();
     let native_update = plan.action == "upgrade" && script.update_command.is_some();
 
+    let expression = vendor_expression(script, &plan.package_spec, &plan.action);
     let mut command = Command::new(shell);
+    #[cfg(windows)]
+    command.args([
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        &expression,
+    ]);
+    #[cfg(unix)]
+    command.args(["-c", &expression]);
     command
-        .args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            &vendor_expression(script, &plan.package_spec, &plan.action),
-        ])
         .envs(&environment)
         // Last, so a script that must not stop to ask cannot be overridden by the proxy
         // environment carrying the same name.
@@ -548,26 +553,39 @@ fn execute_vendor_operation(
 }
 
 /// The one-liner the vendor documents, which downloads the script and runs it.
+#[cfg(windows)]
 fn script_expression(url: &str) -> String {
     format!("irm {url} | iex")
 }
 
+/// The same one-liner for macOS and Linux, where the vendors publish a shell script.
+#[cfg(unix)]
+fn script_expression(url: &str) -> String {
+    format!("curl -fsSL {} | bash", shell_quote(url))
+}
+
 /// The whole command as the user sees it before confirming, shell included.
 fn script_command_preview(url: &str) -> String {
-    format!(
+    #[cfg(windows)]
+    return format!(
         "powershell -NoProfile -ExecutionPolicy Bypass -Command \"{}\"",
         script_expression(url)
-    )
+    );
+    #[cfg(unix)]
+    return script_expression(url);
 }
 
 /// The existing Antigravity binary owns upgrades; its install script skips existing files.
 fn vendor_expression(script: ScriptInstaller, source: &str, action: &str) -> String {
     if let Some(update_command) = script.update_command.filter(|_| action == "upgrade") {
         // Invoke the detected installation, even when PATH points at another copy.
-        format!(
+        #[cfg(windows)]
+        return format!(
             "& '{}' {update_command}; exit $LASTEXITCODE",
             source.replace('\'', "''")
-        )
+        );
+        #[cfg(unix)]
+        format!("{} {update_command}", shell_quote(source))
     } else {
         script_expression(source)
     }
@@ -577,14 +595,17 @@ fn vendor_command_preview(script: ScriptInstaller, source: &str, action: &str) -
     if action != "upgrade" || script.update_command.is_none() {
         return script_command_preview(source);
     }
-    format!(
+    #[cfg(windows)]
+    return format!(
         "powershell -NoProfile -ExecutionPolicy Bypass -Command \"{}\"",
         vendor_expression(script, source, action)
-    )
+    );
+    #[cfg(unix)]
+    vendor_expression(script, source, action)
 }
 
-/// Windows PowerShell, which every supported Windows carries.
-fn find_powershell() -> Option<PathBuf> {
+/// The shell that runs vendor installers: Windows PowerShell, or `/bin/sh` on Unix.
+fn find_script_shell() -> Option<PathBuf> {
     #[cfg(windows)]
     {
         if let Some(root) = env::var_os("SystemRoot") {
@@ -599,9 +620,10 @@ fn find_powershell() -> Option<PathBuf> {
         }
         return command_on_path("powershell.exe");
     }
-    #[cfg(not(windows))]
+    #[cfg(unix)]
     {
-        command_on_path("pwsh")
+        // `sh` runs the vendors' one-liners (`curl … | bash`) and is on every Unix.
+        Some(PathBuf::from("/bin/sh")).filter(|path| path.is_file())
     }
 }
 
@@ -1023,6 +1045,15 @@ impl ScriptInstaller {
 
 /// Codex asks before replacing an existing install; captured output already suppresses the
 /// prompt, and this says so outright rather than relying on that.
+/// Where the vendors' installers put a user-level binary, per platform.
+const HOME_VARIABLE: &str = if cfg!(windows) { "USERPROFILE" } else { "HOME" };
+const LOCAL_BIN_SUFFIX: &str = if cfg!(windows) { ".local\\bin" } else { ".local/bin" };
+const LOCAL_BIN_LABEL: &str = if cfg!(windows) {
+    "%USERPROFILE%\\.local\\bin"
+} else {
+    "~/.local/bin"
+};
+
 const CODEX_NON_INTERACTIVE: &[(&str, &str)] = &[("CODEX_NON_INTERACTIVE", "1")];
 
 fn definition(agent_type: &str) -> Result<CliDefinition, String> {
@@ -1032,11 +1063,15 @@ fn definition(agent_type: &str) -> Result<CliDefinition, String> {
             display_name: "Claude Code",
             package_name: Some("@anthropic-ai/claude-code"),
             script: Some(ScriptInstaller {
-                url: "https://claude.ai/install.ps1",
+                url: if cfg!(windows) {
+                    "https://claude.ai/install.ps1"
+                } else {
+                    "https://claude.ai/install.sh"
+                },
                 update_command: None,
-                directory_root: "USERPROFILE",
-                directory_suffix: ".local\\bin",
-                directory_label: "%USERPROFILE%\\.local\\bin",
+                directory_root: HOME_VARIABLE,
+                directory_suffix: LOCAL_BIN_SUFFIX,
+                directory_label: LOCAL_BIN_LABEL,
                 environment: &[],
             }),
         }),
@@ -1045,11 +1080,24 @@ fn definition(agent_type: &str) -> Result<CliDefinition, String> {
             display_name: "Codex CLI",
             package_name: Some("@openai/codex"),
             script: Some(ScriptInstaller {
-                url: "https://chatgpt.com/codex/install.ps1",
+                url: if cfg!(windows) {
+                    "https://chatgpt.com/codex/install.ps1"
+                } else {
+                    "https://chatgpt.com/codex/install.sh"
+                },
                 update_command: None,
-                directory_root: "LOCALAPPDATA",
-                directory_suffix: "Programs\\OpenAI\\Codex\\bin",
-                directory_label: "%LOCALAPPDATA%\\Programs\\OpenAI\\Codex\\bin",
+                // The Unix script installs next to Claude's, in `~/.local/bin`.
+                directory_root: if cfg!(windows) { "LOCALAPPDATA" } else { HOME_VARIABLE },
+                directory_suffix: if cfg!(windows) {
+                    "Programs\\OpenAI\\Codex\\bin"
+                } else {
+                    LOCAL_BIN_SUFFIX
+                },
+                directory_label: if cfg!(windows) {
+                    "%LOCALAPPDATA%\\Programs\\OpenAI\\Codex\\bin"
+                } else {
+                    LOCAL_BIN_LABEL
+                },
                 environment: CODEX_NON_INTERACTIVE,
             }),
         }),
@@ -1078,11 +1126,19 @@ fn definition(agent_type: &str) -> Result<CliDefinition, String> {
             display_name: "Antigravity",
             package_name: None,
             script: Some(ScriptInstaller {
-                url: "https://antigravity.google/cli/install.ps1",
+                url: if cfg!(windows) {
+                    "https://antigravity.google/cli/install.ps1"
+                } else {
+                    "https://antigravity.google/cli/install.sh"
+                },
                 update_command: Some("update"),
-                directory_root: "LOCALAPPDATA",
-                directory_suffix: "agy\\bin",
-                directory_label: "%LOCALAPPDATA%\\agy\\bin",
+                directory_root: if cfg!(windows) { "LOCALAPPDATA" } else { HOME_VARIABLE },
+                directory_suffix: if cfg!(windows) { "agy\\bin" } else { LOCAL_BIN_SUFFIX },
+                directory_label: if cfg!(windows) {
+                    "%LOCALAPPDATA%\\agy\\bin"
+                } else {
+                    LOCAL_BIN_LABEL
+                },
                 environment: &[],
             }),
         }),
@@ -1160,6 +1216,7 @@ mod tests {
 
     /// Every script offered is the vendor's own, and the command shown is the documented
     /// one-liner rather than anything Termexo invented.
+    #[cfg(windows)]
     #[test]
     fn every_script_installer_is_the_vendors_own() {
         let expected = [
@@ -1177,6 +1234,45 @@ mod tests {
         assert!(definition("grok").unwrap().script.is_none());
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn every_unix_script_installer_is_the_vendors_own() {
+        let expected = [
+            ("claude", "https://claude.ai/install.sh"),
+            ("codex", "https://chatgpt.com/codex/install.sh"),
+            ("antigravity", "https://antigravity.google/cli/install.sh"),
+        ];
+        for (agent_type, url) in expected {
+            let script = definition(agent_type).unwrap().script.unwrap();
+            assert_eq!(script.url, url);
+            assert_eq!(
+                script_command_preview(url),
+                format!("curl -fsSL '{url}' | bash")
+            );
+            assert_eq!(script.directory().unwrap().file_name().unwrap(), "bin");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn antigravity_unix_update_invokes_the_installed_binary() {
+        let definition = definition("antigravity").unwrap();
+        let script = definition.script.unwrap();
+        let installation = AgentInstallation {
+            agent_type: "antigravity".into(),
+            installed: true,
+            executable_path: Some("/Users/me/my tools/agy".into()),
+            version: Some("1.2.10".into()),
+            healthy: true,
+            diagnostic: String::new(),
+        };
+        let plan = build_script_plan_for_installation(&definition, script, installation);
+        assert_eq!(plan.action, "upgrade");
+        assert_eq!(plan.command_preview, "'/Users/me/my tools/agy' update");
+        assert!(plan.ready);
+    }
+
+    #[cfg(windows)]
     #[test]
     fn antigravity_uses_its_installed_binary_for_official_updates() {
         let definition = definition("antigravity").unwrap();
@@ -1236,7 +1332,7 @@ mod tests {
         fs::create_dir_all(&directory).unwrap();
         let executable = directory.join("agy.cmd");
         fs::write(&executable, "@echo off\r\necho command=%1\r\necho proxy=%HTTPS_PROXY%\r\necho download failed 1>&2\r\nexit /b 7\r\n").unwrap();
-        let mut command = Command::new(find_powershell().unwrap());
+        let mut command = Command::new(find_script_shell().unwrap());
         command.args([
             "-NoProfile",
             "-NonInteractive",
