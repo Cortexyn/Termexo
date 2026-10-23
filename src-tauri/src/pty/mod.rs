@@ -1051,6 +1051,13 @@ fn spawn_reader(terminal: TerminalReader, mut reader: Box<dyn Read + Send>) {
     });
 }
 
+/// Shells that take `-l` to start as a login shell; an unknown one is left to start as it would.
+fn accepts_login_flag(shell: &str) -> bool {
+    const LOGIN_SHELLS: [&str; 6] = ["zsh", "bash", "sh", "dash", "ksh", "fish"];
+    let name = shell.rsplit('/').next().unwrap_or(shell);
+    LOGIN_SHELLS.contains(&name)
+}
+
 fn configure_shell(
     command: &mut CommandBuilder,
     shell: &str,
@@ -1067,11 +1074,13 @@ fn configure_shell(
             command.arg(initial_command);
             return true;
         }
-    } else if cfg!(unix) {
+    } else if cfg!(unix) && accepts_login_flag(shell) {
         // A login shell reads the user's profile, which is where PATH and the agents' environment
         // are set up; a terminal inside an app bundle would otherwise start without them.
         command.arg("-l");
     }
+    // Only PowerShell can run the initial command without echoing it; on Unix it is typed into
+    // the PTY afterwards, so the user sees it, which is what a terminal normally does.
     false
 }
 
@@ -1208,6 +1217,21 @@ mod tests {
 
         let mut pwsh = CommandBuilder::new("pwsh");
         assert!(configure_shell(&mut pwsh, "pwsh", Some("codex")));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn only_shells_known_to_take_it_get_the_login_flag() {
+        for (shell, expected) in [
+            ("/bin/zsh", true),
+            ("/opt/homebrew/bin/fish", true),
+            ("/usr/bin/env", false),
+            ("/opt/homebrew/bin/nu", false),
+        ] {
+            let mut command = CommandBuilder::new(shell);
+            configure_shell(&mut command, shell, Some("codex"));
+            assert_eq!(command.get_argv().len() == 2, expected, "{shell}");
+        }
     }
 
     #[test]

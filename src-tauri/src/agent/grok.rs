@@ -292,8 +292,7 @@ mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    #[cfg(windows)] // asserts Windows paths or PowerShell syntax
-
+    #[cfg(windows)]
     #[test]
     fn builds_documented_launch_flags_and_reads_session_summary() {
         let unique = SystemTime::now()

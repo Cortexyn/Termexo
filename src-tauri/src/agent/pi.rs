@@ -419,8 +419,7 @@ mod tests {
         assert_eq!(fs::read(path).unwrap(), original);
     }
 
-    #[cfg(windows)] // asserts Windows paths or PowerShell syntax
-
+    #[cfg(windows)]
     #[test]
     fn launch_resolves_session_file_quotes_arguments_and_prefers_it_over_continue() {
         let fixture = Fixture::new();

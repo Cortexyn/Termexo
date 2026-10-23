@@ -1,4 +1,4 @@
-use crate::platform::{shell_quote};
+use crate::platform::shell_invoke;
 use std::collections::HashMap;
 use std::fs;
 use std::io::ErrorKind;
@@ -249,8 +249,7 @@ pub fn resolve_config_dir(profile: &AccountProfile) -> Result<PathBuf, String> {
     if let Some(config_dir) = profile.config_dir.as_deref() {
         return Ok(PathBuf::from(config_dir));
     }
-    let home = std::env::var_os("USERPROFILE")
-        .or_else(|| std::env::var_os("HOME"))
+    let home = crate::platform::home_dir()
         .ok_or_else(|| "Could not locate the home directory, so the system account's configuration location is unknown.".to_owned())?;
     let default_dir = if profile.agent_type == "claude" {
         PathBuf::from(home).join(".claude")
@@ -379,7 +378,7 @@ fn login_command(
     executable: &str,
 ) -> Result<String, String> {
     let arguments = login_arguments(agent_type, method)?;
-    Ok(format!("& {} {arguments}", shell_quote(executable)))
+    Ok(format!("{} {arguments}", shell_invoke(executable)))
 }
 
 fn detect(agent_type: &str) -> Result<AgentInstallation, String> {
@@ -437,8 +436,7 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    #[cfg(windows)] // asserts Windows paths or PowerShell syntax
-
+    #[cfg(windows)]
     #[test]
     fn each_agent_uses_its_native_authentication_subcommand() {
         assert_eq!(
@@ -462,8 +460,23 @@ mod tests {
         assert!(login_command("unknown-agent", AccountLoginMethod::Browser, "agent.exe").is_err());
     }
 
-    #[cfg(windows)] // asserts Windows paths or PowerShell syntax
+    #[cfg(unix)]
+    #[test]
+    fn login_commands_are_plain_posix_words() {
+        assert_eq!(
+            login_command("claude", AccountLoginMethod::Browser, "/Users/me/my tools/claude")
+                .unwrap(),
+            "'/Users/me/my tools/claude' auth login"
+        );
+        assert_eq!(
+            login_command("codex", AccountLoginMethod::DeviceCode, "/opt/codex's/bin/codex")
+                .unwrap(),
+            r"'/opt/codex'\''s/bin/codex' login --device-auth"
+        );
+        assert!(login_command("unknown-agent", AccountLoginMethod::Browser, "agent").is_err());
+    }
 
+    #[cfg(windows)]
     #[test]
     fn builds_only_the_login_methods_supported_by_each_agent() {
         for (agent, method, arguments) in [

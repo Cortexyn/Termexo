@@ -283,6 +283,11 @@ fn claude_status_quota(
     let unavailable = |reason: &str| {
         ProviderQuota::unavailable(cache_key, &account.name, provider, now, reason)
     };
+    if crate::claude_status::user_has_status_line() {
+        return unavailable(
+            "Claude Code is using your own status line, so Termexo cannot read the allowance from it.",
+        );
+    }
     let Some(stored) = crate::claude_status::read_allowance(
         data_directory,
         account.config_dir.as_deref(),
