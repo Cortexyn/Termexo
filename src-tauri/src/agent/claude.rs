@@ -41,7 +41,7 @@ pub enum ClaudeError {
         #[source]
         source: std::io::Error,
     },
-    #[error("无法停止后台会话 {id}：{detail}")]
+    #[error("Could not stop background session {id}: {detail}")]
     StopFailed { id: String, detail: String },
 }
 
@@ -222,16 +222,16 @@ impl AgentAdapter for ClaudeCodeAdapter {
                 executable_path: None,
                 version: None,
                 healthy: false,
-                diagnostic: "未检测到 Claude Code，请先安装后重试。".into(),
+                diagnostic: "Claude Code was not found. Install it and try again.".into(),
             });
         };
 
         let version = self.read_version(&executable);
         let healthy = version.is_some();
         let diagnostic = if healthy {
-            "Claude Code 可用".into()
+            "Claude Code is available".into()
         } else {
-            "已找到 Claude Code，但版本检测失败。".into()
+            "Claude Code was found, but its version check failed.".into()
         };
 
         Ok(AgentInstallation {
@@ -519,7 +519,7 @@ fn parse_session(path: &Path) -> Result<AgentSession, ClaudeError> {
     let title = title
         .or_else(|| summary.clone())
         .filter(|value| !value.trim().is_empty())
-        .unwrap_or_else(|| format!("Claude 会话 {}", short_id(&native_session_id)));
+        .unwrap_or_else(|| format!("Claude session {}", short_id(&native_session_id)));
 
     Ok(AgentSession {
         id: format!("claude:{native_session_id}"),

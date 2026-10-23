@@ -10,13 +10,13 @@ use std::io;
 
 use super::endpoint::FINGERPRINT_MISMATCH;
 
-const CONNECT_FAILED_PREFIX: &str = "无法连接中继：";
-const LAYER_SEPARATOR: &str = "：";
+const CONNECT_FAILED_PREFIX: &str = "Could not connect to the relay: ";
+const LAYER_SEPARATOR: &str = ": ";
 
-pub(super) const UNTRUSTED_CERTIFICATE: &str = "中继的 HTTPS 证书不受系统信任，自签名证书就会这样。请把中继启动日志里打印的 SHA-256 证书指纹填进「证书指纹」后重试。";
-pub(super) const CERTIFICATE_NOT_PINNED: &str = "中继出示的证书与证书指纹不一致。请核对中继启动日志里打印的指纹；中继重新生成过证书时需要重新接入。若指纹确实没变，可能有人在拦截这条连接。";
+pub(super) const UNTRUSTED_CERTIFICATE: &str = "The relay's HTTPS certificate is not trusted by the system, which is what a self-signed certificate looks like. Enter the SHA-256 certificate fingerprint printed in the relay's startup log into 'Certificate fingerprint' and try again.";
+pub(super) const CERTIFICATE_NOT_PINNED: &str = "The certificate the relay presented does not match the certificate fingerprint. Check the fingerprint printed in the relay's startup log; if the relay regenerated its certificate, enroll again. If the fingerprint really has not changed, someone may be intercepting this connection.";
 pub(super) const NOT_SPEAKING_TLS: &str =
-    "中继没有以 HTTPS 应答。中继若以 --tls off 启动，请把地址改成 http:// 开头。";
+    "The relay did not answer over HTTPS. If the relay was started with --tls off, change the address to start with http://.";
 
 /// The sentence for a failure to reach the relay at all.
 ///
@@ -164,7 +164,7 @@ mod tests {
 
         assert_eq!(
             describe(&error),
-            "无法连接中继：error sending request for url (https://relay.example.com/api/enroll)：connection refused"
+            "Could not connect to the relay: error sending request for url (https://relay.example.com/api/enroll): connection refused"
         );
     }
 
@@ -180,7 +180,7 @@ mod tests {
 
         assert_eq!(
             describe(&error),
-            "无法连接中继：IO error: connection refused"
+            "Could not connect to the relay: IO error: connection refused"
         );
     }
 }

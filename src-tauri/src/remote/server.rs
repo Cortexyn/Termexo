@@ -59,15 +59,15 @@ const CLOSE_PROTOCOL_ERROR: u16 = 1002;
 const CLOSE_UNAUTHORIZED: u16 = 4401;
 const CLOSE_AUTH_TIMEOUT: u16 = 4408;
 
-const UNKNOWN_PEER_MESSAGE: &str = "无法确定请求来源地址。";
-const HANDSHAKE_EXPECTED_MESSAGE: &str = "第一帧必须是鉴权帧。";
-const MALFORMED_HANDSHAKE_MESSAGE: &str = "握手参数格式不正确。";
+const UNKNOWN_PEER_MESSAGE: &str = "Could not determine the address the request came from.";
+const HANDSHAKE_EXPECTED_MESSAGE: &str = "The first frame must be an authentication frame.";
+const MALFORMED_HANDSHAKE_MESSAGE: &str = "The handshake parameters are malformed.";
 /// Refuses the v1 handshake where the page could have sealed the session, so a man in the middle
 /// cannot force the downgrade and read the token out of the `auth` frame.
-const SEALED_REQUIRED_MESSAGE: &str = "此连接要求加密握手，请改用 HTTPS 打开远程工作台。";
-const UNSEALED_FRAME_MESSAGE: &str = "加密会话上收到了未封装的帧。";
-const UNEXPECTED_SEAL_MESSAGE: &str = "未完成加密握手就发送了封装帧。";
-const NESTED_SEAL_MESSAGE: &str = "封装帧内不允许再嵌套封装帧。";
+const SEALED_REQUIRED_MESSAGE: &str = "This connection requires an encrypted handshake. Open the remote workbench over HTTPS.";
+const UNSEALED_FRAME_MESSAGE: &str = "An unsealed frame arrived on an encrypted session.";
+const UNEXPECTED_SEAL_MESSAGE: &str = "A sealed frame was sent before the encryption handshake finished.";
+const NESTED_SEAL_MESSAGE: &str = "A sealed frame cannot contain another sealed frame.";
 
 /// Tells every open WebSocket task what the service wants it to do next.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -85,11 +85,11 @@ impl ConnectionCommand {
             Self::Run => None,
             Self::Stop => Some(CloseFrame {
                 code: CLOSE_GOING_AWAY,
-                reason: Utf8Bytes::from_static("远程访问服务已停止。"),
+                reason: Utf8Bytes::from_static("The remote access service has stopped."),
             }),
             Self::Reauthenticate => Some(CloseFrame {
                 code: CLOSE_UNAUTHORIZED,
-                reason: Utf8Bytes::from_static("访问令牌已更换，请重新连接。"),
+                reason: Utf8Bytes::from_static("The access token was replaced. Reconnect."),
             }),
         }
     }
@@ -223,7 +223,7 @@ fn serve_asset(context: &ServerContext, headers: &HeaderMap, request_path: &str)
         return missing_asset_response(shell_available);
     };
     if is_production_html_fallback(&target, &asset.mime_type) {
-        return (StatusCode::NOT_FOUND, "资源不存在。").into_response();
+        return (StatusCode::NOT_FOUND, "Resource not found.").into_response();
     }
 
     let page = DocumentContext::resolve(context, headers);
@@ -268,10 +268,10 @@ fn missing_asset_response(shell_available: bool) -> Response {
     match missing_asset_status(tauri::is_dev(), shell_available) {
         StatusCode::SERVICE_UNAVAILABLE => (
             StatusCode::SERVICE_UNAVAILABLE,
-            "尚未构建前端产物，请先运行 npm run build。",
+            "The frontend has not been built. Run npm run build first.",
         )
             .into_response(),
-        status => (status, "资源不存在。").into_response(),
+        status => (status, "Resource not found.").into_response(),
     }
 }
 
@@ -342,7 +342,7 @@ fn rewrite_base_href(document: &str, base: &str) -> String {
         return document.to_string();
     }
     let Some(start) = document.find(BASE_TAG_OPENING) else {
-        tracing::warn!("前端产物缺少 <base> 标签，经中继打开的页面将解析错资源地址");
+        tracing::warn!("The frontend build has no <base> tag; pages opened through the relay will resolve asset URLs wrongly");
         return document.to_string();
     };
     let Some(offset) = document[start..].find('>') else {
@@ -437,14 +437,14 @@ fn validate_request_origin(
 /// with a leaked token, drive the workbench. The forwarding headers are deliberately not read
 /// here: on the local network anyone can send them, and the listener already proves the route.
 fn validate_lan_origin(headers: &HeaderMap, secure: bool, port: u16) -> Result<(), &'static str> {
-    let host = header_str(headers, header::HOST.as_str()).ok_or("缺少 Host 头。")?;
+    let host = header_str(headers, header::HOST.as_str()).ok_or("The Host header is missing.")?;
     if host_port(host, secure) != Some(port) {
-        return Err("Host 与服务端口不一致。");
+        return Err("The Host does not match the service port.");
     }
     if let Some(origin) = header_str(headers, header::ORIGIN.as_str()) {
         let scheme = if secure { "https" } else { "http" };
         if origin != format!("{scheme}://{host}") {
-            return Err("Origin 与服务地址不一致。");
+            return Err("The Origin does not match the service address.");
         }
     }
     Ok(())
@@ -454,11 +454,11 @@ fn validate_lan_origin(headers: &HeaderMap, secure: bool, port: u16) -> Result<(
 /// actually typed is the one the entry relay forwards. Every page reaching this router came out of
 /// a browser, so a missing `Origin` is a malformed request rather than a tolerable client.
 fn validate_tunnel_origin(headers: &HeaderMap) -> Result<(), &'static str> {
-    let proto = header_str(headers, HEADER_FORWARDED_PROTO).ok_or("缺少转发协议头。")?;
-    let host = header_str(headers, HEADER_FORWARDED_HOST).ok_or("缺少转发主机头。")?;
-    let origin = header_str(headers, header::ORIGIN.as_str()).ok_or("缺少 Origin 头。")?;
+    let proto = header_str(headers, HEADER_FORWARDED_PROTO).ok_or("The forwarded protocol header is missing.")?;
+    let host = header_str(headers, HEADER_FORWARDED_HOST).ok_or("The forwarded host header is missing.")?;
+    let origin = header_str(headers, header::ORIGIN.as_str()).ok_or("The Origin header is missing.")?;
     if origin != format!("{proto}://{host}") {
-        return Err("Origin 与中继地址不一致。");
+        return Err("The Origin does not match the relay address.");
     }
     Ok(())
 }
@@ -564,7 +564,7 @@ impl ServerFrame {
         match serde_json::to_string(&self) {
             Ok(encoded) => Message::text(encoded),
             Err(error) => {
-                tracing::warn!(%error, "无法序列化远程帧");
+                tracing::warn!(%error, "Could not serialize the remote frame");
                 Message::text("{\"type\":\"resync\"}")
             }
         }
@@ -648,7 +648,7 @@ async fn handle_connection(
     loop {
         tokio::select! {
             _ = tokio::time::sleep_until(idle_deadline) => {
-                send_close(&outbound, CLOSE_GOING_AWAY, "连接空闲超时。").await;
+                send_close(&outbound, CLOSE_GOING_AWAY, "The connection timed out while idle.").await;
                 break;
             }
             changed = commands.changed() => {
@@ -670,7 +670,7 @@ async fn handle_connection(
                 // The client consumed events more slowly than the PTYs produced them, so the
                 // gap is announced instead of silently delivering a torn stream.
                 Err(broadcast::error::RecvError::Lagged(skipped)) => {
-                    tracing::warn!(%peer, skipped, "远程客户端事件积压，已请求重新同步");
+                    tracing::warn!(%peer, skipped, "The remote client's events backed up; a resync was requested");
                     if outbound.send(ServerFrame::Resync.into_message()).await.is_err() {
                         break;
                     }
@@ -685,7 +685,7 @@ async fn handle_connection(
                     Incoming::Closed => break,
                     Incoming::Violation(reason) => {
                         // Only the reason is logged: the frame's contents never are.
-                        tracing::warn!(%peer, reason, "远程连接违反协议，已断开");
+                        tracing::warn!(%peer, reason, "The remote connection violated the protocol and was dropped");
                         send_close(&outbound, CLOSE_PROTOCOL_ERROR, reason).await;
                         break;
                     }
@@ -755,7 +755,7 @@ fn parse_client_frame(payload: &[u8], peer: IpAddr) -> Option<ClientFrame> {
     match serde_json::from_slice::<ClientFrame>(payload) {
         Ok(frame) => Some(frame),
         Err(error) => {
-            tracing::warn!(%peer, %error, "远程客户端发送了无法解析的帧");
+            tracing::warn!(%peer, %error, "The remote client sent a frame that could not be parsed");
             None
         }
     }
@@ -772,10 +772,10 @@ fn seal_message(message: Message, sealer: &mut FrameSealer) -> Message {
     match sealer.seal(text.as_bytes()) {
         Ok(sealed) => ServerFrame::Sealed(sealed).into_message(),
         Err(error) => {
-            tracing::warn!(reason = error.reason(), "无法封装远程帧");
+            tracing::warn!(reason = error.reason(), "Could not seal the remote frame");
             Message::Close(Some(CloseFrame {
                 code: CLOSE_PROTOCOL_ERROR,
-                reason: Utf8Bytes::from_static("无法加密返回帧。"),
+                reason: Utf8Bytes::from_static("The reply frame could not be encrypted."),
             }))
         }
     }
@@ -828,7 +828,7 @@ fn spawn_invoke(
             %command,
             elapsed_ms = started.elapsed().as_millis() as u64,
             ok = outcome.is_ok(),
-            "远程命令已处理"
+            "Remote command handled"
         );
         let frame = match outcome {
             Ok(value) => ServerFrame::Result {
@@ -862,8 +862,8 @@ async fn authenticate(
     let challenge = match HandshakeNonce::generate() {
         Ok(nonce) => nonce,
         Err(error) => {
-            tracing::warn!(%peer, %error, "无法生成握手随机数");
-            close_sink(sink, CLOSE_PROTOCOL_ERROR, "无法开始加密握手。").await;
+            tracing::warn!(%peer, %error, "Could not generate the handshake nonce");
+            close_sink(sink, CLOSE_PROTOCOL_ERROR, "Could not start the encryption handshake.").await;
             return Err(());
         }
     };
@@ -876,7 +876,7 @@ async fn authenticate(
 
     let first = timeout(AUTH_TIMEOUT, stream.next()).await;
     let Ok(Some(Ok(Message::Text(text)))) = first else {
-        close_sink(sink, CLOSE_AUTH_TIMEOUT, "未在规定时间内完成鉴权。").await;
+        close_sink(sink, CLOSE_AUTH_TIMEOUT, "Authentication was not completed in time.").await;
         return Err(());
     };
     let Ok(ClientFrame::Auth(auth)) = serde_json::from_str::<ClientFrame>(text.as_str()) else {
@@ -887,7 +887,7 @@ async fn authenticate(
     match choose_handshake(auth.protocol, sealed_required) {
         HandshakeChoice::Sealed => seal_session(sink, context, peer, &challenge, auth).await,
         HandshakeChoice::RefuseDowngrade => {
-            tracing::warn!(%peer, "远程客户端在要求加密的连接上使用了旧握手");
+            tracing::warn!(%peer, "The remote client used the old handshake on a connection that requires encryption");
             reject(sink, SEALED_REQUIRED_MESSAGE).await;
             Err(())
         }
@@ -972,7 +972,7 @@ async fn accept_or_reject<T>(
         Ok(accepted) => Ok(accepted),
         Err(rejection) => {
             // The token itself is never logged, only that this address failed.
-            tracing::warn!(%peer, reason = rejection.reason(), "远程鉴权失败");
+            tracing::warn!(%peer, reason = rejection.reason(), "Remote authentication failed");
             reject(sink, rejection.reason()).await;
             Err(())
         }

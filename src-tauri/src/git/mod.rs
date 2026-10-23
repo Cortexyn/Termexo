@@ -158,7 +158,7 @@ impl RepositoryManager {
             let mut baselines = self
                 .baselines
                 .lock()
-                .map_err(|_| "Git 会话基线锁已损坏。".to_owned())?;
+                .map_err(|_| "The Git session baseline lock is poisoned.".to_owned())?;
             if baselines.contains_key(&key) {
                 return Ok(());
             }
@@ -234,7 +234,7 @@ impl RepositoryManager {
         let mut baselines = self
             .baselines
             .lock()
-            .map_err(|_| "Git 会话基线锁已损坏。".to_owned())?;
+            .map_err(|_| "The Git session baseline lock is poisoned.".to_owned())?;
         baselines.retain(|candidate, _| candidate.terminal_id != terminal_id);
         baselines.insert(key, Arc::new(baseline));
         Ok(())
@@ -333,7 +333,7 @@ impl RepositoryManager {
     ) -> Result<RepositoryOverview, String> {
         let (directory, baseline) = self.resolve_target(target, database)?;
         let Some(root) = self.cached_repository_root(&directory)? else {
-            return Ok(unavailable_overview("当前终端目录不是 Git 工作树。"));
+            return Ok(unavailable_overview("The current terminal directory is not a Git working tree."));
         };
         let baseline = baseline.filter(|item| {
             item.root == root || (item.repository_missing_at_start && root.starts_with(&item.root))
@@ -384,18 +384,18 @@ impl RepositoryManager {
             .unwrap_or(DEFAULT_COMMIT_LIMIT)
             .clamp(1, MAX_COMMIT_LIMIT);
         let mut diagnostic: String = if derived.history_rewritten {
-            "当前 HEAD 已不再包含会话启动时的提交，变更列表仍按两个版本比较。".into()
+            "The current HEAD no longer contains the commit from when the session started; the change list still compares the two revisions.".into()
         } else if baseline.is_some() {
-            "显示当前终端会话启动以来的仓库差异。".into()
+            "Showing repository changes since this terminal session started.".into()
         } else {
-            "未找到当前终端的启动基线，显示工作树相对 HEAD 的差异。".into()
+            "No start baseline was found for this terminal; showing the working tree's differences from HEAD.".into()
         };
         if baseline
             .as_ref()
             .is_some_and(|item| item.snapshot_truncated)
         {
             diagnostic.push_str(
-                " 启动时部分文件超出快照限制，后续修改按文件大小和时间判断；其他文件仍正常统计。",
+                " Some files exceeded the snapshot limit at startup; later changes to them are judged by file size and time, while other files are counted normally.",
             );
         }
         Ok(RepositoryOverview {
@@ -428,7 +428,7 @@ impl RepositoryManager {
             .changes
             .iter()
             .find(|change| change.path == requested_path)
-            .ok_or_else(|| "只能查看当前变更列表中的文件。".to_owned())?;
+            .ok_or_else(|| "Only files in the current change list can be viewed.".to_owned())?;
         validate_relative_path(&change.path)?;
         let root = PathBuf::from(&overview.root);
         let old_path = change.old_path.as_deref().unwrap_or(&change.path);
@@ -489,7 +489,7 @@ impl RepositoryManager {
         database: &WorkspaceDatabase,
     ) -> Result<(PathBuf, Option<Arc<SessionBaseline>>), String> {
         if target.workspace_id.trim().is_empty() {
-            return Err("缺少 Git 查询所需的工作区标识。".into());
+            return Err("The workspace identifier needed for the Git query is missing.".into());
         }
         let key = SessionKey {
             terminal_id: target.terminal_id.clone(),
@@ -498,7 +498,7 @@ impl RepositoryManager {
         if let Some(baseline) = self
             .baselines
             .lock()
-            .map_err(|_| "Git 会话基线锁已损坏。".to_owned())?
+            .map_err(|_| "The Git session baseline lock is poisoned.".to_owned())?
             .get(&key)
             .filter(|item| item.workspace_id == target.workspace_id)
             .cloned()
@@ -510,12 +510,12 @@ impl RepositoryManager {
         let workspace = workspaces
             .iter()
             .find(|workspace| workspace.id == target.workspace_id)
-            .ok_or_else(|| "Git 查询对应的工作区不存在。".to_owned())?;
+            .ok_or_else(|| "The workspace for this Git query does not exist.".to_owned())?;
         let terminal = workspace
             .terminals
             .iter()
             .find(|terminal| terminal.id == target.terminal_id)
-            .ok_or_else(|| "Git 查询对应的终端不存在。".to_owned())?;
+            .ok_or_else(|| "The terminal for this Git query does not exist.".to_owned())?;
         Ok((PathBuf::from(&terminal.working_directory), None))
     }
 }
@@ -546,7 +546,7 @@ fn repository_root(directory: &Path) -> Result<Option<PathBuf>, String> {
     }
 
     let mut candidates = fs::read_dir(directory)
-        .map_err(|error| format!("无法扫描终端目录中的 Git 仓库：{error}"))?
+        .map_err(|error| format!("Could not scan the terminal directory for Git repositories: {error}"))?
         .filter_map(Result::ok)
         .map(|entry| entry.path())
         .filter(|path| path.is_dir() && path.join(".git").exists())
@@ -606,7 +606,7 @@ fn collect_status_snapshot(
     parse_porcelain_v2_status(&output, pre_existing)
 }
 
-const INVALID_STATUS_OUTPUT: &str = "Git 状态输出格式无效。";
+const INVALID_STATUS_OUTPUT: &str = "The Git status output is malformed.";
 
 /// Parses porcelain v2 with `-z`: header lines carry HEAD and the branch, entries carry a fixed
 /// number of space-separated fields before a path that may itself contain spaces.
@@ -652,7 +652,7 @@ fn parse_porcelain_v2_status(
                 let old_path = if kind == b'2' {
                     let value = records
                         .get(index)
-                        .ok_or_else(|| "Git 重命名状态不完整。".to_owned())?;
+                        .ok_or_else(|| "The Git rename status is incomplete.".to_owned())?;
                     index += 1;
                     Some(String::from_utf8_lossy(value).into_owned())
                 } else {
@@ -688,7 +688,7 @@ fn parse_porcelain_v2_status(
         _ => (
             head.as_deref()
                 .map(|value| format!("detached@{}", &value[..value.len().min(8)]))
-                .unwrap_or_else(|| "未提交分支".into()),
+                .unwrap_or_else(|| "No commits yet".into()),
             head.is_some(),
         ),
     };
@@ -737,7 +737,7 @@ fn parse_porcelain_status(
             continue;
         }
         if record.len() < 4 || record[2] != b' ' {
-            return Err("Git 状态输出格式无效。".into());
+            return Err("The Git status output is malformed.".into());
         }
         let index_status = record[0] as char;
         let worktree_status = record[1] as char;
@@ -745,7 +745,7 @@ fn parse_porcelain_status(
         let old_path = if matches!(index_status, 'R' | 'C') {
             let value = records
                 .get(index)
-                .ok_or_else(|| "Git 重命名状态不完整。".to_owned())?;
+                .ok_or_else(|| "The Git rename status is incomplete.".to_owned())?;
             index += 1;
             Some(String::from_utf8_lossy(value).into_owned())
         } else {
@@ -899,12 +899,12 @@ fn parse_name_status(
         let status_code = status.chars().next().unwrap_or('M');
         let first_path = fields
             .get(index)
-            .ok_or_else(|| "Git 文件变更输出不完整。".to_owned())?;
+            .ok_or_else(|| "The Git file change output is incomplete.".to_owned())?;
         index += 1;
         let (old_path, path) = if matches!(status_code, 'R' | 'C') {
             let new_path = fields
                 .get(index)
-                .ok_or_else(|| "Git 重命名输出不完整。".to_owned())?;
+                .ok_or_else(|| "The Git rename output is incomplete.".to_owned())?;
             index += 1;
             (
                 Some(String::from_utf8_lossy(first_path).into_owned()),
@@ -1081,20 +1081,20 @@ fn read_worktree_file(root: &Path, path: &str) -> Result<Vec<u8>, String> {
         return Ok(Vec::new());
     }
     let metadata = fs::symlink_metadata(&file_path)
-        .map_err(|error| format!("无法读取变更文件元数据：{error}"))?;
+        .map_err(|error| format!("Could not read the changed file's metadata: {error}"))?;
     if metadata.file_type().is_symlink() || !metadata.is_file() {
         return Ok(Vec::new());
     }
     let canonical_root = root
         .canonicalize()
-        .map_err(|error| format!("无法解析 Git 工作树路径：{error}"))?;
+        .map_err(|error| format!("Could not resolve the Git working tree path: {error}"))?;
     let canonical_file = file_path
         .canonicalize()
-        .map_err(|error| format!("无法解析变更文件路径：{error}"))?;
+        .map_err(|error| format!("Could not resolve the changed file path: {error}"))?;
     if !canonical_file.starts_with(canonical_root) {
-        return Err("变更文件位于 Git 工作树之外。".into());
+        return Err("The changed file is outside the Git working tree.".into());
     }
-    let file = File::open(canonical_file).map_err(|error| format!("无法读取变更文件：{error}"))?;
+    let file = File::open(canonical_file).map_err(|error| format!("Could not read the changed file: {error}"))?;
     read_limited(file.take((MAX_FILE_BYTES + 1) as u64))
 }
 
@@ -1102,7 +1102,7 @@ fn read_limited(mut reader: Take<File>) -> Result<Vec<u8>, String> {
     let mut output = Vec::new();
     reader
         .read_to_end(&mut output)
-        .map_err(|error| format!("无法读取变更文件：{error}"))?;
+        .map_err(|error| format!("Could not read the changed file: {error}"))?;
     Ok(output)
 }
 
@@ -1116,7 +1116,7 @@ fn validate_relative_path(value: &str) -> Result<(), String> {
             )
         })
     {
-        return Err("Git 文件路径无效。".into());
+        return Err("The Git file path is invalid.".into());
     }
     Ok(())
 }
@@ -1143,11 +1143,11 @@ fn run_git(directory: &Path, arguments: &[&str]) -> Result<Vec<u8>, String> {
         .env("GIT_OPTIONAL_LOCKS", "0")
         .stdin(Stdio::null());
     let output = run_with_timeout(&mut command, GIT_TIMEOUT)
-        .map_err(|error| format!("无法运行 Git：{error}"))?;
+        .map_err(|error| format!("Could not run Git: {error}"))?;
     if !output.status.success() {
         let diagnostic = clean_output(&output.stderr);
         return Err(if diagnostic.is_empty() {
-            "Git 命令执行失败。".into()
+            "The Git command failed.".into()
         } else {
             diagnostic
         });

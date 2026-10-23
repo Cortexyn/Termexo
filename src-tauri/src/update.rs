@@ -111,23 +111,23 @@ pub async fn check_for_update(current_version: &str) -> Result<UpdateCheck, Stri
         .user_agent(USER_AGENT)
         .timeout(REQUEST_TIMEOUT)
         .build()
-        .map_err(|error| format!("无法创建更新检查请求：{error}"))?;
+        .map_err(|error| format!("Could not create the update check request: {error}"))?;
 
     let response = client
         .get(LATEST_RELEASE_API)
         .header("Accept", "application/vnd.github+json")
         .send()
         .await
-        .map_err(|error| format!("检查更新失败，请确认网络连接：{error}"))?;
+        .map_err(|error| format!("The update check failed. Check your network connection: {error}"))?;
 
     if !response.status().is_success() {
-        return Err(format!("检查更新失败：GitHub 返回 {}", response.status()));
+        return Err(format!("The update check failed: GitHub returned {}", response.status()));
     }
 
     let release = response
         .json::<GitHubRelease>()
         .await
-        .map_err(|error| format!("解析更新信息失败：{error}"))?;
+        .map_err(|error| format!("Could not parse the update information: {error}"))?;
 
     // The "latest" endpoint already excludes drafts and prereleases, but a repository that
     // publishes one later must not push it to everyone.

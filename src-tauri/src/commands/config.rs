@@ -96,19 +96,19 @@ pub fn save_model_profile(
     };
     if !profile.claude_enabled && !profile.codex_enabled {
         return Err(format!(
-            "模型 Profile「{}」至少要为 Claude 或 Codex 其中之一启用。",
+            "Model profile '{}' must be enabled for at least one of Claude or Codex.",
             profile.name
         ));
     }
     if profile.claude_enabled && profile.claude_model.is_empty() {
         return Err(format!(
-            "模型 Profile「{}」已为 Claude 启用，必须填写 Claude 使用的模型。",
+            "Model profile '{}' is enabled for Claude, so the model Claude uses is required.",
             profile.name
         ));
     }
     if profile.codex_enabled && profile.codex_model.is_empty() {
         return Err(format!(
-            "模型 Profile「{}」已为 Codex 启用，必须填写 Codex 使用的模型。",
+            "Model profile '{}' is enabled for Codex, so the model Codex uses is required.",
             profile.name
         ));
     }
@@ -116,7 +116,7 @@ pub fn save_model_profile(
         || (profile.codex_enabled && profile.codex_base_url.is_some());
     if uses_third_party_endpoint && !profile.has_credential {
         return Err(format!(
-            "模型 Profile「{}」使用第三方 Endpoint，必须输入并保存 API Key。",
+            "Model profile '{}' uses a third-party endpoint, so an API key must be entered and saved.",
             profile.name
         ));
     }
@@ -167,9 +167,9 @@ pub fn save_mcp_profile(
     database: State<'_, WorkspaceDatabase>,
 ) -> Result<McpProfile, String> {
     let parsed = serde_json::from_str::<serde_json::Value>(&input.config_json)
-        .map_err(|error| format!("MCP 配置不是有效 JSON：{error}"))?;
+        .map_err(|error| format!("The MCP configuration is not valid JSON: {error}"))?;
     if !parsed.is_object() {
-        return Err("MCP 配置必须是 JSON 对象".into());
+        return Err("The MCP configuration must be a JSON object".into());
     }
     let profile = McpProfile {
         id: input.id,
@@ -261,7 +261,7 @@ pub fn save_network_profile(
     };
     network::validate_profile(&profile)?;
     if profile.has_credential && profile.proxy_username.is_none() {
-        return Err("代理密码存在时必须填写用户名".into());
+        return Err("A username is required when a proxy password is set".into());
     }
     database
         .save_network_profile(&profile)
@@ -296,7 +296,7 @@ pub fn list_account_profiles(
         .list_account_profiles()
         .map_err(|error| error.to_string())?;
     for profile in &mut profiles {
-        profile.diagnostic = "正在后台检测登录状态…".into();
+        profile.diagnostic = "Checking the sign-in state in the background…".into();
     }
     Ok(profiles)
 }
@@ -311,7 +311,7 @@ pub async fn save_account_profile(
     let profile_id = account::validate_profile_id(&input.id)?.to_owned();
     let name = input.name.trim().to_owned();
     if name.is_empty() {
-        return Err("账号名称不能为空。".into());
+        return Err("The account name cannot be empty.".into());
     }
     let existing = database
         .find_account_profile(&profile_id)
@@ -365,7 +365,7 @@ pub async fn refresh_account_profile(
     let profile = database
         .find_account_profile(&profile_id)
         .map_err(|error| error.to_string())?
-        .ok_or_else(|| "账号 Profile 不存在。".to_owned())?;
+        .ok_or_else(|| "The account profile does not exist.".to_owned())?;
     let refreshed = tauri::async_runtime::spawn_blocking(move || account::refresh_status(profile))
         .await
         .map_err(|error| error.to_string())?;
@@ -374,7 +374,7 @@ pub async fn refresh_account_profile(
     let mut current = database
         .find_account_profile(&profile_id)
         .map_err(|error| error.to_string())?
-        .ok_or_else(|| "账号 Profile 不存在。".to_owned())?;
+        .ok_or_else(|| "The account profile does not exist.".to_owned())?;
     current.authenticated = refreshed.authenticated;
     current.diagnostic = refreshed.diagnostic;
     Ok(current)
@@ -394,7 +394,7 @@ pub async fn copy_account_configuration(
         database
             .find_account_profile(profile_id)
             .map_err(|error| error.to_string())?
-            .ok_or_else(|| "账号 Profile 不存在。".to_owned())
+            .ok_or_else(|| "The account profile does not exist.".to_owned())
     };
     let source = find(&source_profile_id)?;
     let target = find(&target_profile_id)?;
@@ -411,9 +411,9 @@ pub fn delete_account_profile(
     let profile = database
         .find_account_profile(&profile_id)
         .map_err(|error| error.to_string())?
-        .ok_or_else(|| "账号 Profile 不存在。".to_owned())?;
+        .ok_or_else(|| "The account profile does not exist.".to_owned())?;
     if profile.is_system {
-        return Err("系统账号不能删除。".into());
+        return Err("The system account cannot be deleted.".into());
     }
     database
         .delete_account_profile(&profile_id)
@@ -429,7 +429,7 @@ pub async fn test_network_profile(
     let profile = database
         .find_network_profile(&profile_id)
         .map_err(|error| error.to_string())?
-        .ok_or_else(|| "代理 Profile 不存在".to_owned())?;
+        .ok_or_else(|| "The proxy profile does not exist".to_owned())?;
     let password = profile
         .credential_target
         .as_deref()
@@ -464,7 +464,7 @@ pub fn validate_claude_profile(
     let profile = database
         .find_model_profile(&request.profile_id)
         .map_err(|error| error.to_string())?
-        .ok_or_else(|| "模型 Profile 不存在".to_owned())?;
+        .ok_or_else(|| "The model profile does not exist".to_owned())?;
     if let Some(target) = profile.credential_target {
         if credentials
             .get_optional(&target)
@@ -472,7 +472,7 @@ pub fn validate_claude_profile(
             .is_none()
         {
             return Err(format!(
-                "模型 Profile「{}」的 API Key 不存在或已失效，请重新输入并保存。",
+                "The API key of model profile '{}' is missing or no longer valid. Enter it again and save.",
                 profile.name
             ));
         }

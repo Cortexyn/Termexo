@@ -95,7 +95,7 @@ impl RepositoryWatcher {
         let watcher = match self.start_watcher(root) {
             Ok(watcher) => watcher,
             Err(error) => {
-                tracing::warn!(root = %root.display(), %error, "无法监听仓库目录，改为定时刷新");
+                tracing::warn!(root = %root.display(), %error, "Could not watch the repository directory; falling back to periodic refresh");
                 return false;
             }
         };

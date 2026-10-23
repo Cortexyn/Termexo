@@ -33,11 +33,11 @@ const SUMMARY_DATABASE: &str = "conversation_summaries.db";
 
 #[derive(Debug, Error)]
 pub enum AntigravityError {
-    #[error("未检测到 Antigravity CLI（agy），请先安装后重试。")]
+    #[error("Antigravity CLI (agy) was not found. Install it and try again.")]
     NotInstalled,
-    #[error("Antigravity CLI 执行失败：{0}")]
+    #[error("Antigravity CLI failed: {0}")]
     CommandFailed(String),
-    #[error("读取 Antigravity 会话失败：{0}")]
+    #[error("Could not read the Antigravity sessions: {0}")]
     SessionRead(String),
 }
 
@@ -197,7 +197,7 @@ impl AgentAdapter for AntigravityAdapter {
                 executable_path: None,
                 version: None,
                 healthy: false,
-                diagnostic: "未检测到 Antigravity CLI（agy），请先安装后重试。".into(),
+                diagnostic: "Antigravity CLI (agy) was not found. Install it and try again.".into(),
             });
         };
         let version = self.read_version();
@@ -209,9 +209,9 @@ impl AgentAdapter for AntigravityAdapter {
             version,
             healthy,
             diagnostic: if healthy {
-                "Antigravity CLI 可用".into()
+                "Antigravity CLI is available".into()
             } else {
-                "已找到 Antigravity CLI，但版本检测失败。".into()
+                "Antigravity CLI was found, but its version check failed.".into()
             },
         })
     }

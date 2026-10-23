@@ -89,14 +89,17 @@ const DAY_MINUTES = 24 * HOUR_MINUTES;
 /** Keeps the minute-precision countdown honest without re-rendering every second. */
 const COUNTDOWN_TICK_MS = 20_000;
 
-/** Allowance line names the backend writes, and the wording that replaces each. */
+/** Allowance line names the backend writes, and the interface wording that replaces each. */
 const QUOTA_LABEL_KEYS: Readonly<Record<string, string>> = {
-  每周额度: 'quota.window.weekly',
-  周额度: 'quota.window.weekly',
-  'Opus 额度': 'quota.window.opus',
-  订阅额度: 'quota.window.subscription',
-  可用余额: 'quota.window.balance',
-  额外点数余额: 'quota.window.extraCredits',
+  'Weekly allowance': 'quota.window.weekly',
+  'Monthly allowance': 'quota.window.monthly',
+  'Weekly shared allowance': 'quota.window.weeklyShared',
+  'Monthly shared allowance': 'quota.window.monthlyShared',
+  'Subscription shared allowance': 'quota.window.subscriptionShared',
+  'Opus allowance': 'quota.window.opus',
+  'Subscription allowance': 'quota.window.subscription',
+  'Available balance': 'quota.window.balance',
+  'Extra credit balance': 'quota.window.extraCredits',
 };
 
 @Component({
@@ -427,13 +430,13 @@ export class InspectorPanelComponent {
   }
 
   /**
-   * The backend names allowance lines in Chinese, so the ones it is known to produce are shown
+   * The backend names allowance lines in English, so the ones it is known to produce are shown
    * in the interface language. Anything else is a provider's own wording and passes through.
    */
   protected quotaLabel(label: string): string {
-    const hours = /^(\d+) 小时窗口$/.exec(label);
+    const hours = /^(\d+)-hour window$/.exec(label);
     if (hours) return this.i18n.t('quota.window.hours', { count: hours[1] });
-    const days = /^(\d+) 天窗口$/.exec(label);
+    const days = /^(\d+)-day window$/.exec(label);
     if (days) return this.i18n.t('quota.window.days', { count: days[1] });
     const key = QUOTA_LABEL_KEYS[label];
     return key ? this.i18n.t(key) : label;

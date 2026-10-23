@@ -172,18 +172,18 @@ fn choose_installer(
         Some(SCRIPT_INSTALLER) => definition
             .script
             .map(Installer::Script)
-            .ok_or_else(|| format!("{} 没有官方安装脚本。", definition.display_name)),
+            .ok_or_else(|| format!("{} has no official install script.", definition.display_name)),
         Some(NPM_INSTALLER) => definition
             .package_name
             .map(|package_name| Installer::Npm { package_name })
-            .ok_or_else(|| format!("{} 未发布到 npm。", definition.display_name)),
-        Some(other) => Err(format!("不支持的安装方式：{other}")),
+            .ok_or_else(|| format!("{} is not published to npm.", definition.display_name)),
+        Some(other) => Err(format!("Unsupported install method: {other}")),
         // npm first where both exist: it is the one that can be pinned and rolled back.
         None => definition
             .package_name
             .map(|package_name| Installer::Npm { package_name })
             .or_else(|| definition.script.map(Installer::Script))
-            .ok_or_else(|| format!("{} 没有可用的安装方式。", definition.display_name)),
+            .ok_or_else(|| format!("{} has no available install method.", definition.display_name)),
     }
 }
 
@@ -223,34 +223,34 @@ fn build_npm_plan(
 
     let diagnostic = if !ready {
         if npm_path.is_some() {
-            "已找到 npm，但版本检测失败；请先修复 Node.js/npm 环境。".into()
+            "npm was found, but its version check failed. Fix the Node.js/npm setup first.".into()
         } else {
-            "未检测到 npm；请先安装 Node.js 与 npm。".into()
+            "npm was not found. Install Node.js and npm first.".into()
         }
     } else if up_to_date {
         format!(
-            "{} 已是最新版本 {}，无需升级。如需修复安装可继续执行。",
+            "{} is already at the latest version {}; no upgrade needed. You can still run it to repair the install.",
             definition.display_name,
             resolved_version.as_deref().unwrap_or_default()
         )
     } else {
         match (&resolved_version, action) {
             (Some(resolved), "upgrade") => format!(
-                "可将 {} 从 {} 升级到 {}。",
+                "{} can be upgraded from {} to {}.",
                 definition.display_name,
-                installed_version.as_deref().unwrap_or("未知版本"),
+                installed_version.as_deref().unwrap_or("unknown version"),
                 resolved
             ),
             (Some(resolved), _) => {
-                format!("可安装 {} {}。", definition.display_name, resolved)
+                format!("{} {} can be installed.", definition.display_name, resolved)
             }
             (None, _) => format!(
-                "已检测到 npm {}，可{} {}。（无法查询远端版本，可能是网络或代理问题）",
+                "npm {} was detected; you can {} {}. (The remote version could not be queried, possibly because of a network or proxy problem.)",
                 npm_version.as_deref().unwrap_or_default(),
                 if action == "install" {
-                    "安装"
+                    "install"
                 } else {
-                    "升级"
+                    "upgrade"
                 },
                 definition.display_name
             ),
@@ -308,21 +308,21 @@ fn build_script_plan_for_installation(
     };
     let ready = ready && !source.is_empty();
     let diagnostic = if native_update && source.is_empty() {
-        "未找到已安装 CLI 的执行路径，无法运行官方升级命令。".into()
+        "The installed CLI's executable path was not found, so the official upgrade command cannot run.".into()
     } else if !ready {
-        "未找到 PowerShell，无法运行官方安装脚本。".into()
+        "PowerShell was not found, so the official install script cannot run.".into()
     } else if native_update {
-        format!("将运行 {} 的官方升级命令 agy update，检查并更新到最新版本。完成后请重启正在运行的 CLI。", definition.display_name)
+        format!("Will run the official upgrade command `agy update` for {} to check for and install the latest version. Restart any running CLI afterwards.", definition.display_name)
     } else {
         let elsewhere = installs_elsewhere(&installation, directory.as_deref());
         let base = format!(
-            "将运行 {} 的官方安装脚本，安装当前发布的版本到 {shown}。",
+            "Will run the official install script for {} and install the currently published version to {shown}.",
             definition.display_name
         );
         if elsewhere {
             // Two copies on one machine differ in version, and PATH decides which one runs.
-            format!("{base} 当前检测到的是另一处安装（{}），安装后机器上会有两份，实际运行哪一份由 PATH 决定。",
-                installation.executable_path.as_deref().unwrap_or("未知路径"))
+            format!("{base} The detected CLI is a different installation ({}); after installing, the machine will have two copies and PATH decides which one runs.",
+                installation.executable_path.as_deref().unwrap_or("unknown path"))
         } else {
             base
         }
@@ -378,7 +378,7 @@ pub fn execute_operation(
         .npm_path
         .as_deref()
         .map(PathBuf::from)
-        .ok_or_else(|| "安装计划缺少 npm 路径。".to_owned())?;
+        .ok_or_else(|| "The install plan has no npm path.".to_owned())?;
     let started = Instant::now();
 
     let preflight = run_npm_command(
@@ -393,7 +393,7 @@ pub fn execute_operation(
             preflight.stdout,
             preflight.stderr,
             started,
-            "无法从配置的 npm registry 解析目标版本，未修改现有 CLI。",
+            "Could not resolve the target version from the configured npm registry; the existing CLI was not changed.",
         ));
     }
 
@@ -417,7 +417,7 @@ pub fn execute_operation(
             started,
             &npm_path,
             &environment,
-            "npm 安装或升级失败。",
+            "npm install or upgrade failed.",
         ));
     }
 
@@ -425,13 +425,13 @@ pub fn execute_operation(
     let success = installation.healthy;
     let diagnostic = if success {
         format!(
-            "{}完成，已验证 {}。",
+            "{} complete; verified {}.",
             if plan.action == "install" {
-                "安装"
+                "Installation"
             } else {
-                "升级"
+                "Upgrade"
             },
-            installation.version.as_deref().unwrap_or("CLI 可正常执行")
+            installation.version.as_deref().unwrap_or("the CLI runs normally")
         )
     } else {
         return Ok(failed_result_with_rollback(
@@ -441,7 +441,7 @@ pub fn execute_operation(
             started,
             &npm_path,
             &environment,
-            "npm 命令已完成，但 CLI 健康检查失败。",
+            "The npm command finished, but the CLI health check failed.",
         ));
     };
 
@@ -468,11 +468,11 @@ fn execute_vendor_operation(
     environment: HashMap<String, String>,
 ) -> Result<CliOperationResult, String> {
     let Some(shell) = find_script_shell() else {
-        return Err("未找到 PowerShell，无法运行官方安装脚本。".to_owned());
+        return Err("PowerShell was not found, so the official install script cannot run.".to_owned());
     };
     let script = definition(&plan.agent_type)?
         .script
-        .ok_or_else(|| format!("{} 没有官方安装脚本。", plan.display_name))?;
+        .ok_or_else(|| format!("{} has no official install script.", plan.display_name))?;
     let started = Instant::now();
     let native_update = plan.action == "upgrade" && script.update_command.is_some();
 
@@ -502,9 +502,9 @@ fn execute_vendor_operation(
             install.stderr,
             started,
             if native_update {
-                "官方升级命令执行失败。"
+                "The official upgrade command failed."
             } else {
-                "官方安装脚本执行失败。"
+                "The official install script failed."
             },
         ));
     }
@@ -517,23 +517,23 @@ fn execute_vendor_operation(
             install.stderr,
             started,
             if native_update {
-                "升级命令已完成，但 CLI 健康检查失败。"
+                "The upgrade command finished, but the CLI health check failed."
             } else {
-                "安装脚本已完成，但 CLI 健康检查失败。"
+                "The install script finished, but the CLI health check failed."
             },
         ));
     }
 
     let diagnostic = format!(
-        "{}完成，已验证 {}。{}",
+        "{} complete; verified {}. {}",
         if native_update {
-            "升级检查"
+            "Upgrade check"
         } else {
-            "安装"
+            "Installation"
         },
-        installation.version.as_deref().unwrap_or("CLI 可正常执行"),
+        installation.version.as_deref().unwrap_or("the CLI runs normally"),
         if native_update {
-            "请重启正在运行的 CLI 以使用当前版本。"
+            "Restart any running CLI to use the current version."
         } else {
             ""
         }
@@ -649,7 +649,7 @@ fn failed_result_with_rollback(
             stdout,
             stderr,
             started,
-            &format!("{diagnostic} 安装前未检测到可回滚版本，请查看诊断。"),
+            &format!("{diagnostic} No version to roll back to was found before the install; see the diagnostics."),
         );
     };
 
@@ -687,10 +687,10 @@ fn failed_result_with_rollback(
         && installation.healthy
         && restored_version.as_deref() == Some(expected_version.as_str());
     let rollback_diagnostic = if rollback_succeeded {
-        format!("已自动恢复原版本 {expected_version}，并通过健康检查。")
+        format!("Automatically restored the previous version {expected_version}, and it passed the health check.")
     } else {
         format!(
-            "自动回滚到 {expected_version} 失败；当前状态：{}",
+            "Automatic rollback to {expected_version} failed; current state: {}",
             installation.diagnostic
         )
     };
@@ -765,7 +765,7 @@ fn detect_agent(agent_type: &str) -> Result<AgentInstallation, String> {
         "antigravity" => AntigravityAdapter::new()
             .detect()
             .map_err(|error| error.to_string()),
-        _ => Err(format!("不支持的 Agent CLI：{agent_type}")),
+        _ => Err(format!("Unsupported agent CLI: {agent_type}")),
     }
 }
 
@@ -779,7 +779,7 @@ fn normalize_target_version(value: Option<&str>) -> Result<String, String> {
             .chars()
             .all(|character| character.is_ascii_alphanumeric() || ".-_".contains(character))
     {
-        return Err("目标版本只能包含字母、数字、点、短横线和下划线。".into());
+        return Err("The target version may only contain letters, digits, dots, hyphens and underscores.".into());
     }
     Ok(value.into())
 }
@@ -854,7 +854,7 @@ fn read_published_version(
         .next_back()
         .unwrap_or_default();
     if version.is_empty() {
-        Err("npm 未返回可用的版本号。".into())
+        Err("npm did not return a usable version number.".into())
     } else {
         Ok(version.to_owned())
     }
@@ -890,7 +890,7 @@ fn read_npm_version(path: &Path) -> Result<String, String> {
     }
     let version = result.stdout.trim();
     if version.is_empty() {
-        Err("npm 未返回版本号。".into())
+        Err("npm did not return a version number.".into())
     } else {
         Ok(version.into())
     }
@@ -929,22 +929,22 @@ fn run_command(
 
     let mut child = command
         .spawn()
-        .map_err(|error| format!("无法启动 {name}：{error}"))?;
+        .map_err(|error| format!("Could not start {name}: {error}"))?;
     let stdout = child
         .stdout
         .take()
-        .ok_or_else(|| format!("无法捕获 {name} 标准输出。"))?;
+        .ok_or_else(|| format!("Could not capture the standard output of {name}."))?;
     let stderr = child
         .stderr
         .take()
-        .ok_or_else(|| format!("无法捕获 {name} 错误输出。"))?;
+        .ok_or_else(|| format!("Could not capture the standard error of {name}."))?;
     let stdout_reader = thread::spawn(move || read_output(stdout));
     let stderr_reader = thread::spawn(move || read_output(stderr));
     let started = Instant::now();
     let status = loop {
         if let Some(status) = child
             .try_wait()
-            .map_err(|error| format!("等待 {name} 退出失败：{error}"))?
+            .map_err(|error| format!("Failed while waiting for {name} to exit: {error}"))?
         {
             break status;
         }
@@ -955,7 +955,7 @@ fn run_command(
             return Ok(CommandResult {
                 success: false,
                 stdout,
-                stderr: append_message(stderr, &format!("{name} 操作超时，进程已终止。")),
+                stderr: append_message(stderr, &format!("{name} timed out and the process was terminated.")),
             });
         }
         thread::sleep(Duration::from_millis(100));
@@ -1142,7 +1142,7 @@ fn definition(agent_type: &str) -> Result<CliDefinition, String> {
                 environment: &[],
             }),
         }),
-        _ => Err(format!("不支持的 Agent CLI：{agent_type}")),
+        _ => Err(format!("Unsupported agent CLI: {agent_type}")),
     }
 }
 
@@ -1498,7 +1498,7 @@ mod tests {
         let _ = fs::remove_file(&script_path);
 
         assert!(!result.success);
-        assert!(result.stderr.contains("npm 操作超时"), "{}", result.stderr);
+        assert!(result.stderr.contains("npm timed out"), "{}", result.stderr);
         assert!(
             elapsed < Duration::from_secs(5),
             "terminating the npm process tree took {elapsed:?}"

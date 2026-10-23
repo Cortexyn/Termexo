@@ -17,9 +17,9 @@ const GROK_PATH_ENV: &str = "TERMEXO_GROK_PATH";
 
 #[derive(Debug, Error)]
 pub enum GrokError {
-    #[error("未安装 Grok Build")]
+    #[error("Grok Build is not installed")]
     NotInstalled,
-    #[error("无法读取 Grok Build 会话：{0}")]
+    #[error("Could not read the Grok Build sessions: {0}")]
     SessionIo(#[from] std::io::Error),
 }
 
@@ -97,7 +97,7 @@ impl AgentAdapter for GrokBuildAdapter {
                 executable_path: None,
                 version: None,
                 healthy: false,
-                diagnostic: "未检测到 Grok Build，请先安装后重试。".into(),
+                diagnostic: "Grok Build was not found. Install it and try again.".into(),
             });
         };
         let version = self.version(&executable);
@@ -109,9 +109,9 @@ impl AgentAdapter for GrokBuildAdapter {
             version,
             healthy,
             diagnostic: if healthy {
-                "Grok Build 可用".into()
+                "Grok Build is available".into()
             } else {
-                "已找到 Grok Build，但版本检测失败。".into()
+                "Grok Build was found, but its version check failed.".into()
             },
         })
     }

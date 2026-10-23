@@ -70,7 +70,7 @@ mod platform {
             )
         };
         if status.is_err() {
-            return Err(format!("注册通知标识失败：错误码 {}", status.0));
+            return Err(format!("Could not register the notification identity: error code {}", status.0));
         }
 
         let write = |name: &str, value: &str| {
@@ -100,7 +100,7 @@ mod platform {
         let identifier = HSTRING::from(identifier);
         // SAFETY: `identifier` owns its buffer for the duration of the call.
         unsafe { SetCurrentProcessExplicitAppUserModelID(&identifier) }
-            .map_err(|error| format!("绑定通知标识失败：{error}"))
+            .map_err(|error| format!("Could not bind the notification identity: {error}"))
     }
 
     /// Shows a toast, reporting whether the shell accepted it.
@@ -113,7 +113,7 @@ mod platform {
             .title(title)
             .text1(body)
             .show()
-            .map_err(|error| format!("系统通知发送失败：{error}"))
+            .map_err(|error| format!("Could not send the system notification: {error}"))
     }
 }
 
@@ -150,12 +150,12 @@ pub fn show_toast(app: &tauri::AppHandle, title: &str, body: &str) -> Result<(),
         .title(title)
         .body(body)
         .show()
-        .map_err(|error| format!("系统通知发送失败：{error}"))
+        .map_err(|error| format!("Could not send the system notification: {error}"))
 }
 
 #[cfg(not(any(windows, target_os = "macos")))]
 pub fn show_toast(_app: &tauri::AppHandle, _title: &str, _body: &str) -> Result<(), String> {
-    Err("当前平台不支持系统通知。".into())
+    Err("System notifications are not supported on this platform.".into())
 }
 
 trait ProductName {

@@ -32,10 +32,10 @@ pub async fn execute_cli_operation(
     manager: State<'_, CliOperationManager>,
 ) -> Result<CliOperationResult, String> {
     if !request.confirmed {
-        return Err("执行安装或升级前必须明确确认。".into());
+        return Err("You must explicitly confirm before running an install or upgrade.".into());
     }
     if !manager.try_begin() {
-        return Err("已有 CLI 安装或升级任务正在运行，请等待完成。".into());
+        return Err("A CLI install or upgrade is already running. Wait for it to finish.".into());
     }
 
     let result = match prepare_operation(&request, &database, &credentials) {

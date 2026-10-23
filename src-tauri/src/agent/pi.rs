@@ -19,15 +19,15 @@ const PI_PATH_ENV: &str = "TERMEXO_PI_PATH";
 const PI_AGENT_DIR_ENV: &str = "PI_CODING_AGENT_DIR";
 const PI_SESSION_DIR_ENV: &str = "PI_CODING_AGENT_SESSION_DIR";
 const VERSION_TIMEOUT: Duration = Duration::from_secs(10);
-const DEFAULT_TITLE: &str = "Pi 会话";
+const DEFAULT_TITLE: &str = "Pi session";
 
 #[derive(Debug, Error)]
 pub enum PiError {
-    #[error("未安装 Pi Agent")]
+    #[error("Pi Agent is not installed")]
     NotInstalled,
-    #[error("无法读取 Pi 会话：{0}")]
+    #[error("Could not read the Pi sessions: {0}")]
     Io(#[from] std::io::Error),
-    #[error("未找到 Pi 会话：{0}")]
+    #[error("Pi session not found: {0}")]
     SessionNotFound(String),
 }
 
@@ -128,7 +128,7 @@ impl AgentAdapter for PiAdapter {
                 executable_path: None,
                 version: None,
                 healthy: false,
-                diagnostic: "未检测到 Pi Agent，请先安装后重试。".into(),
+                diagnostic: "Pi Agent was not found. Install it and try again.".into(),
             });
         };
         let version =
@@ -145,9 +145,9 @@ impl AgentAdapter for PiAdapter {
             version,
             healthy,
             diagnostic: if healthy {
-                "Pi Agent 可用"
+                "Pi Agent is available"
             } else {
-                "已找到 Pi Agent，但版本检测失败。"
+                "Pi Agent was found, but its version check failed."
             }
             .into(),
         })
@@ -373,8 +373,8 @@ mod tests {
             let records = [
                 json!({"type":"session","version":3,"id":id,"cwd":cwd,"timestamp":timestamp}),
                 json!({"type":"model_change","provider":"anthropic","modelId":"sonnet","timestamp":timestamp}),
-                json!({"type":"message","message":{"role":"user","content":[{"type":"text","text":"修复解析器"}]},"timestamp":timestamp}),
-                json!({"type":"session_info","name":"命名的 Pi 会话","timestamp":timestamp}),
+                json!({"type":"message","message":{"role":"user","content":[{"type":"text","text":"Fix the parser"}]},"timestamp":timestamp}),
+                json!({"type":"session_info","name":"Named Pi session","timestamp":timestamp}),
             ];
             fs::write(
                 &path,
@@ -412,7 +412,7 @@ mod tests {
         let filtered = fixture.adapter.list_sessions(Some("C:\\repo\\")).unwrap();
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].id, "pi:older");
-        assert_eq!(filtered[0].title, "命名的 Pi 会话");
+        assert_eq!(filtered[0].title, "Named Pi session");
         assert_eq!(filtered[0].model_name.as_deref(), Some("anthropic/sonnet"));
         assert_eq!(filtered[0].message_count, 1);
         assert_eq!(filtered[0].created_at, 1_790_848_800_000);

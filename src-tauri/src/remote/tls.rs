@@ -22,14 +22,14 @@ pub async fn load_or_create_config(
 ) -> Result<RustlsConfig, String> {
     let directory = app_data_dir.join(TLS_DIRECTORY);
     fs::create_dir_all(&directory)
-        .map_err(|error| format!("无法创建证书目录 {}：{error}", directory.display()))?;
+        .map_err(|error| format!("Could not create the certificate directory {}: {error}", directory.display()))?;
 
     let paths = MaterialPaths::new(&directory);
     if let Some(material) = paths.read() {
         match RustlsConfig::from_pem(material.certificate, material.private_key).await {
             Ok(config) => return Ok(config),
             Err(error) => {
-                tracing::warn!(%error, "已保存的远程访问证书无法加载，将重新生成");
+                tracing::warn!(%error, "The saved remote access certificate could not be loaded and will be regenerated");
             }
         }
     }
@@ -38,7 +38,7 @@ pub async fn load_or_create_config(
     paths.write(&material)?;
     RustlsConfig::from_pem(material.certificate, material.private_key)
         .await
-        .map_err(|error| format!("无法加载自签名证书：{error}"))
+        .map_err(|error| format!("Could not load the self-signed certificate: {error}"))
 }
 
 struct PemMaterial {
@@ -69,13 +69,13 @@ impl MaterialPaths {
     fn write(&self, material: &PemMaterial) -> Result<(), String> {
         fs::write(&self.certificate, &material.certificate)
             .and_then(|_| fs::write(&self.private_key, &material.private_key))
-            .map_err(|error| format!("无法保存自签名证书：{error}"))
+            .map_err(|error| format!("Could not save the self-signed certificate: {error}"))
     }
 }
 
 fn generate(host_addresses: &[String]) -> Result<PemMaterial, String> {
     let certified = rcgen::generate_simple_self_signed(subject_alt_names(host_addresses))
-        .map_err(|error| format!("无法生成自签名证书：{error}"))?;
+        .map_err(|error| format!("Could not generate the self-signed certificate: {error}"))?;
     Ok(PemMaterial {
         certificate: certified.cert.pem().into_bytes(),
         private_key: certified.signing_key.serialize_pem().into_bytes(),

@@ -75,15 +75,15 @@ pub fn warn_runtime_missing() {
     }
 
     let text = wide(&format!(
-        "Termexo 需要 Microsoft Edge WebView2 运行时，这台电脑上没有找到它。\n\n\
-         安装方式（任选其一）：\n\
-         1. 点“是”打开下载页，下载 Evergreen Bootstrapper 后运行；\n\
-         2. 在终端执行 winget install --id Microsoft.EdgeWebView2Runtime\n\n\
-         安装完成后重新启动 Termexo。\n\n\
-         下载地址：{DOWNLOAD_URL}\n\n\
-         现在打开下载页吗？"
+        "Termexo needs the Microsoft Edge WebView2 runtime, which was not found on this computer.\n\n\
+         To install it (either way):\n\
+         1. Click Yes to open the download page, download the Evergreen Bootstrapper and run it;\n\
+         2. Run winget install --id Microsoft.EdgeWebView2Runtime in a terminal\n\n\
+         Restart Termexo after the installation.\n\n\
+         Download address: {DOWNLOAD_URL}\n\n\
+         Open the download page now?"
     ));
-    let caption = wide("Termexo 无法启动");
+    let caption = wide("Termexo cannot start");
 
     // SAFETY: both buffers are NUL-terminated and outlive the call, and a null owner window is
     // valid for a dialog raised before any window exists.

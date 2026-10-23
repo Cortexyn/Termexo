@@ -75,7 +75,7 @@ enum QueryError {
 pub(super) async fn read_usage(client: &Client) -> Result<AntigravityUsage, String> {
     let credential = tauri::async_runtime::spawn_blocking(read_saved_credential)
         .await
-        .map_err(|error| format!("读取 Antigravity 登录状态失败：{error}"))??;
+        .map_err(|error| format!("Could not read the Antigravity sign-in state: {error}"))??;
 
     match query_usage(client, &credential.access_token).await {
         Ok(usage) => Ok(usage),
@@ -85,7 +85,7 @@ pub(super) async fn read_usage(client: &Client) -> Result<AntigravityUsage, Stri
                 .await
                 .map_err(|error| match error {
                     QueryError::Unauthorized => {
-                        "Antigravity 登录已失效，请在 agy 中重新登录".into()
+                        "The Antigravity sign-in is no longer valid. Sign in again in agy".into()
                     }
                     QueryError::Other(reason) => reason,
                 })
@@ -102,17 +102,17 @@ async fn query_usage(client: &Client, token: &str) -> Result<AntigravityUsage, Q
         .json(&json!({ "metadata": { "ideType": "ANTIGRAVITY" } }))
         .send()
         .await
-        .map_err(|error| QueryError::Other(format!("请求 Antigravity 项目失败：{error}")))?;
+        .map_err(|error| QueryError::Other(format!("Antigravity project request failed: {error}")))?;
     let response = checked_response(response)?;
     let body: Value = response
         .json()
         .await
-        .map_err(|error| QueryError::Other(format!("解析 Antigravity 项目失败：{error}")))?;
+        .map_err(|error| QueryError::Other(format!("Could not parse the Antigravity project: {error}")))?;
     let project = body
         .get("cloudaicompanionProject")
         .and_then(Value::as_str)
         .filter(|project| !project.is_empty())
-        .ok_or_else(|| QueryError::Other("Antigravity 未返回额度查询所需的项目 ID".into()))?;
+        .ok_or_else(|| QueryError::Other("Antigravity did not return the project ID needed for the allowance query".into()))?;
 
     let response = client
         .post(format!("{API_ORIGIN}/v1internal:retrieveUserQuotaSummary"))
@@ -121,12 +121,12 @@ async fn query_usage(client: &Client, token: &str) -> Result<AntigravityUsage, Q
         .json(&json!({ "project": project }))
         .send()
         .await
-        .map_err(|error| QueryError::Other(format!("请求 Antigravity 额度失败：{error}")))?;
+        .map_err(|error| QueryError::Other(format!("Antigravity allowance request failed: {error}")))?;
     let response = checked_response(response)?;
     let summary: QuotaSummary = response
         .json()
         .await
-        .map_err(|error| QueryError::Other(format!("解析 Antigravity 额度失败：{error}")))?;
+        .map_err(|error| QueryError::Other(format!("Could not parse the Antigravity allowance: {error}")))?;
     usage_from_summary(summary).map_err(QueryError::Other)
 }
 
@@ -135,7 +135,7 @@ fn checked_response(response: reqwest::Response) -> Result<reqwest::Response, Qu
         StatusCode::UNAUTHORIZED => Err(QueryError::Unauthorized),
         status if status.is_success() => Ok(response),
         status => Err(QueryError::Other(format!(
-            "Antigravity 额度接口返回 {status}"
+            "The Antigravity allowance endpoint returned {status}"
         ))),
     }
 }
@@ -158,7 +158,7 @@ fn usage_from_summary(summary: QuotaSummary) -> Result<AntigravityUsage, String>
         })
         .collect::<Vec<_>>();
     if groups.is_empty() {
-        return Err("Antigravity 未返回额度分组".into());
+        return Err("Antigravity did not return any allowance groups".into());
     }
     Ok(AntigravityUsage { groups })
 }
@@ -166,19 +166,19 @@ fn usage_from_summary(summary: QuotaSummary) -> Result<AntigravityUsage, String>
 fn read_saved_credential() -> Result<SavedCredential, String> {
     let entry =
         keyring::Entry::new_with_target(CREDENTIAL_TARGET, CREDENTIAL_SERVICE, CREDENTIAL_USER)
-            .map_err(|error| format!("打开 Antigravity 登录凭据失败：{error}"))?;
+            .map_err(|error| format!("Could not open the Antigravity credentials: {error}"))?;
     let secret = entry.get_secret().map_err(|error| match error {
-        keyring::Error::NoEntry => "未找到 Antigravity 登录凭据，请先在 agy 中登录".to_owned(),
-        other => format!("读取 Antigravity 登录凭据失败：{other}"),
+        keyring::Error::NoEntry => "Antigravity credentials not found. Sign in with agy first".to_owned(),
+        other => format!("Could not read the Antigravity credentials: {other}"),
     })?;
     let raw: Value = serde_json::from_slice(&secret)
-        .map_err(|_| "Antigravity 登录凭据格式无效，请在 agy 中重新登录".to_owned())?;
+        .map_err(|_| "The Antigravity credentials are malformed. Sign in again in agy".to_owned())?;
     let field = |path: &str| {
         raw.pointer(path)
             .and_then(Value::as_str)
             .filter(|value| !value.is_empty())
             .map(str::to_owned)
-            .ok_or_else(|| "Antigravity 登录凭据不完整，请在 agy 中重新登录".to_owned())
+            .ok_or_else(|| "The Antigravity credentials are incomplete. Sign in again in agy".to_owned())
     };
     Ok(SavedCredential {
         access_token: field("/token/access_token")?,
@@ -195,10 +195,10 @@ async fn refresh_access_token(
     let client_id = client_id_from_token(&credential.id_token)?;
     let executable = AntigravityAdapter::new()
         .executable_path()
-        .ok_or_else(|| "Antigravity 登录已过期，未找到 agy 客户端以刷新登录状态".to_owned())?;
+        .ok_or_else(|| "The Antigravity sign-in has expired and the agy client needed to refresh it was not found".to_owned())?;
     let secrets = tauri::async_runtime::spawn_blocking(move || oauth_secrets(&executable))
         .await
-        .map_err(|error| format!("读取 agy 登录配置失败：{error}"))??;
+        .map_err(|error| format!("Could not read the agy sign-in configuration: {error}"))??;
 
     let mut refreshed = None;
     for secret in secrets {
@@ -212,23 +212,23 @@ async fn refresh_access_token(
             ])
             .send()
             .await
-            .map_err(|error| format!("刷新 Antigravity 登录状态失败：{error}"))?;
+            .map_err(|error| format!("Could not refresh the Antigravity sign-in: {error}"))?;
         if response.status().is_success() {
             refreshed = Some(
                 response
                     .json::<RefreshedToken>()
                     .await
-                    .map_err(|error| format!("解析 Antigravity 登录刷新结果失败：{error}"))?,
+                    .map_err(|error| format!("Could not parse the Antigravity sign-in refresh result: {error}"))?,
             );
             break;
         }
     }
     let refreshed =
-        refreshed.ok_or_else(|| "Antigravity 登录已失效，请在 agy 中重新登录".to_owned())?;
+        refreshed.ok_or_else(|| "The Antigravity sign-in is no longer valid. Sign in again in agy".to_owned())?;
     let token = refreshed.access_token.clone();
     tauri::async_runtime::spawn_blocking(move || save_refreshed_credential(credential, refreshed))
         .await
-        .map_err(|error| format!("保存 Antigravity 登录状态失败：{error}"))??;
+        .map_err(|error| format!("Could not save the Antigravity sign-in state: {error}"))??;
     Ok(token)
 }
 
@@ -236,31 +236,31 @@ fn client_id_from_token(id_token: &str) -> Result<String, String> {
     let payload = id_token
         .split('.')
         .nth(1)
-        .ok_or_else(|| "Antigravity 登录凭据缺少客户端信息".to_owned())?;
+        .ok_or_else(|| "The Antigravity credentials are missing client information".to_owned())?;
     let payload = URL_SAFE_NO_PAD
         .decode(payload)
-        .map_err(|_| "Antigravity 登录凭据的客户端信息无效".to_owned())?;
+        .map_err(|_| "The client information in the Antigravity credentials is invalid".to_owned())?;
     let claims: Value = serde_json::from_slice(&payload)
-        .map_err(|_| "Antigravity 登录凭据的客户端信息无效".to_owned())?;
+        .map_err(|_| "The client information in the Antigravity credentials is invalid".to_owned())?;
     claims
         .get("aud")
         .and_then(Value::as_str)
         .filter(|audience| !audience.is_empty())
         .map(str::to_owned)
-        .ok_or_else(|| "Antigravity 登录凭据缺少客户端 ID".to_owned())
+        .ok_or_else(|| "The Antigravity credentials are missing the client ID".to_owned())
 }
 
 /// Read only the OAuth metadata in the user's installed CLI. Desktop OAuth secrets are bundled
 /// with the application; do not copy one into Termexo's source or print it in diagnostics.
 fn oauth_secrets(path: &Path) -> Result<Vec<String>, String> {
-    let mut file = File::open(path).map_err(|error| format!("读取 agy 客户端失败：{error}"))?;
+    let mut file = File::open(path).map_err(|error| format!("Could not read the agy client: {error}"))?;
     let mut chunk = [0u8; 8192];
     let mut carry = Vec::new();
     let mut secrets = Vec::new();
     loop {
         let count = file
             .read(&mut chunk)
-            .map_err(|error| format!("读取 agy 客户端失败：{error}"))?;
+            .map_err(|error| format!("Could not read the agy client: {error}"))?;
         if count == 0 {
             break;
         }
@@ -282,7 +282,7 @@ fn oauth_secrets(path: &Path) -> Result<Vec<String>, String> {
         carry.drain(..carry.len() - keep);
     }
     if secrets.is_empty() {
-        return Err("agy 客户端未提供刷新登录状态所需的信息，请在 agy 中重新登录".into());
+        return Err("The agy client did not provide what is needed to refresh the sign-in. Sign in again in agy".into());
     }
     Ok(secrets)
 }
@@ -302,25 +302,25 @@ fn save_refreshed_credential(
     let token = raw
         .get_mut("token")
         .and_then(Value::as_object_mut)
-        .ok_or_else(|| "Antigravity 登录凭据格式无效".to_owned())?;
+        .ok_or_else(|| "The Antigravity credentials are malformed".to_owned())?;
     token.insert("access_token".into(), Value::String(refreshed.access_token));
     if let Some(refresh_token) = refreshed.refresh_token {
         token.insert("refresh_token".into(), Value::String(refresh_token));
     }
     let expiry = (OffsetDateTime::now_utc() + time::Duration::seconds(refreshed.expires_in))
         .format(&Rfc3339)
-        .map_err(|error| format!("计算 Antigravity 登录到期时间失败：{error}"))?;
+        .map_err(|error| format!("Could not compute the Antigravity sign-in expiry: {error}"))?;
     token.insert("expiry".into(), Value::String(expiry));
     if let Some(id_token) = refreshed.id_token {
         raw.as_object_mut()
-            .ok_or_else(|| "Antigravity 登录凭据格式无效".to_owned())?
+            .ok_or_else(|| "The Antigravity credentials are malformed".to_owned())?
             .insert("id_token".into(), Value::String(id_token));
     }
     let password = serde_json::to_vec(&raw)
-        .map_err(|error| format!("保存 Antigravity 登录状态失败：{error}"))?;
+        .map_err(|error| format!("Could not save the Antigravity sign-in state: {error}"))?;
     keyring::Entry::new_with_target(CREDENTIAL_TARGET, CREDENTIAL_SERVICE, CREDENTIAL_USER)
         .and_then(|entry| entry.set_secret(&password))
-        .map_err(|error| format!("保存 Antigravity 登录状态失败：{error}"))
+        .map_err(|error| format!("Could not save the Antigravity sign-in state: {error}"))
 }
 
 #[cfg(test)]

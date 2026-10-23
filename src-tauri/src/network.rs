@@ -30,11 +30,11 @@ pub struct NetworkTestResult {
 
 pub fn validate_profile(profile: &NetworkProfile) -> Result<(), String> {
     if profile.name.trim().is_empty() {
-        return Err("代理 Profile 名称不能为空".into());
+        return Err("The proxy profile name cannot be empty".into());
     }
     match profile.scope.as_str() {
         "global" if profile.workspace_id.is_some() => {
-            return Err("全局代理不能绑定 Workspace".into());
+            return Err("A global proxy cannot be bound to a workspace".into());
         }
         "workspace"
             if profile
@@ -43,15 +43,15 @@ pub fn validate_profile(profile: &NetworkProfile) -> Result<(), String> {
                 .map(str::trim)
                 .map_or(true, str::is_empty) =>
         {
-            return Err("Workspace 代理必须绑定工作区".into());
+            return Err("A workspace proxy must be bound to a workspace".into());
         }
         "global" | "workspace" => {}
-        _ => return Err("代理作用域必须是 global 或 workspace".into()),
+        _ => return Err("The proxy scope must be global or workspace".into()),
     }
 
     for (label, value) in [
-        ("HTTP 代理", profile.http_proxy.as_deref()),
-        ("HTTPS 代理", profile.https_proxy.as_deref()),
+        ("HTTP proxy", profile.http_proxy.as_deref()),
+        ("HTTPS proxy", profile.https_proxy.as_deref()),
         ("ALL_PROXY", profile.all_proxy.as_deref()),
     ] {
         if let Some(value) = trimmed(value) {
@@ -60,8 +60,8 @@ pub fn validate_profile(profile: &NetworkProfile) -> Result<(), String> {
     }
 
     for (label, value, schemes) in [
-        ("HTTP 代理", profile.http_proxy.as_deref(), PROXY_SCHEMES),
-        ("HTTPS 代理", profile.https_proxy.as_deref(), PROXY_SCHEMES),
+        ("HTTP proxy", profile.http_proxy.as_deref(), PROXY_SCHEMES),
+        ("HTTPS proxy", profile.https_proxy.as_deref(), PROXY_SCHEMES),
         ("ALL_PROXY", profile.all_proxy.as_deref(), PROXY_SCHEMES),
         (
             "npm registry",
@@ -96,7 +96,7 @@ pub fn profile_environment(
             .as_deref()
             .map_or(true, str::is_empty)
     {
-        return Err("代理密码存在时必须填写用户名".into());
+        return Err("A username is required when a proxy password is set".into());
     }
 
     let mut environment = HashMap::new();
@@ -252,7 +252,7 @@ pub fn test_profile(
             profile_id: profile.id.clone(),
             healthy: true,
             target: "disabled".into(),
-            message: "Profile 已禁用，配置格式有效".into(),
+            message: "Profile is disabled; the configuration format is valid".into(),
             latency_ms: 0,
         });
     }
@@ -274,24 +274,24 @@ pub fn test_profile(
             profile_id: profile.id.clone(),
             healthy: true,
             target: "environment-only".into(),
-            message: "环境变量配置有效，没有需要连接测试的代理或 registry".into(),
+            message: "The environment variable configuration is valid; there is no proxy or registry to test the connection to".into(),
             latency_ms: 0,
         });
     };
-    let parsed = Url::parse(target).map_err(|error| format!("测试地址无效：{error}"))?;
+    let parsed = Url::parse(target).map_err(|error| format!("The test address is invalid: {error}"))?;
     let host = parsed
         .host_str()
-        .ok_or_else(|| "测试地址缺少主机名".to_owned())?;
+        .ok_or_else(|| "The test address has no host name".to_owned())?;
     let port = parsed
         .port_or_known_default()
-        .ok_or_else(|| "测试地址缺少端口".to_owned())?;
+        .ok_or_else(|| "The test address has no port".to_owned())?;
     let display_target = format!("{}://{}:{}", parsed.scheme(), host, port);
     let addresses = (host, port)
         .to_socket_addrs()
-        .map_err(|error| format!("DNS 解析失败：{error}"))?
+        .map_err(|error| format!("DNS resolution failed: {error}"))?
         .collect::<Vec<_>>();
     if addresses.is_empty() {
-        return Err("DNS 解析没有返回可连接地址".into());
+        return Err("DNS resolution returned no address to connect to".into());
     }
 
     let started = Instant::now();
@@ -304,7 +304,7 @@ pub fn test_profile(
                 // their request timeout, so the probe has to go one step further.
                 let (healthy, message) = match probe_http_tunnel(stream, &parsed) {
                     Some(result) => result,
-                    None => (true, "TCP 连通性测试通过".to_owned()),
+                    None => (true, "TCP connectivity test passed".to_owned()),
                 };
                 return Ok(NetworkTestResult {
                     profile_id: profile.id.clone(),
@@ -318,11 +318,11 @@ pub fn test_profile(
         }
     }
     Err(format!(
-        "{} 连接失败：{}",
+        "{} connection failed: {}",
         display_target,
         last_error
             .map(|error| error.to_string())
-            .unwrap_or_else(|| "未知错误".into())
+            .unwrap_or_else(|| "unknown error".into())
     ))
 }
 
@@ -341,18 +341,18 @@ fn probe_http_tunnel(mut stream: TcpStream, proxy: &Url) -> Option<(bool, String
         "CONNECT {PROBE_HOST}:{PROBE_PORT} HTTP/1.1\r\nHost: {PROBE_HOST}:{PROBE_PORT}\r\n\r\n"
     );
     if stream.write_all(request.as_bytes()).is_err() {
-        return Some((false, format!("代理未响应 CONNECT {PROBE_HOST} 请求")));
+        return Some((false, format!("The proxy did not respond to the CONNECT {PROBE_HOST} request")));
     }
 
     let mut buffer = [0u8; 256];
     let read = match stream.read(&mut buffer) {
-        Ok(0) => return Some((false, "代理在收到 CONNECT 请求后立即关闭了连接".into())),
+        Ok(0) => return Some((false, "The proxy closed the connection immediately after receiving the CONNECT request".into())),
         Ok(read) => read,
         Err(_) => {
             return Some((
                 false,
                 format!(
-                    "代理在 {} 秒内没有回应 CONNECT 请求",
+                    "The proxy did not answer the CONNECT request within {} seconds",
                     TUNNEL_TIMEOUT.as_secs()
                 ),
             ))
@@ -371,13 +371,13 @@ fn probe_http_tunnel(mut stream: TcpStream, proxy: &Url) -> Option<(bool, String
         return Some(match probe_tunnel_reaches_destination(&mut stream) {
             Ok(()) => (
                 true,
-                format!("代理可访问 {PROBE_HOST}，Agent 请求可以正常发出"),
+                format!("The proxy can reach {PROBE_HOST}; agent requests can go out normally"),
             ),
             Err(reason) => (
                 false,
                 format!(
-                    "代理已建立隧道但无法到达 {PROBE_HOST}：{reason}。\
-                     Agent 发送消息时会一直等待直到超时"
+                    "The proxy opened a tunnel but cannot reach {PROBE_HOST}: {reason}. \
+                     Agents will wait until timeout when sending messages"
                 ),
             ),
         });
@@ -385,12 +385,12 @@ fn probe_http_tunnel(mut stream: TcpStream, proxy: &Url) -> Option<(bool, String
     if status_line.contains(" 407") {
         return Some((
             false,
-            "代理要求身份验证（407），请在 Profile 中填写代理用户名与密码".into(),
+            "The proxy requires authentication (407). Enter the proxy username and password in the profile".into(),
         ));
     }
     Some((
         false,
-        format!("代理拒绝连接 {PROBE_HOST}：{status_line}。Agent 发送消息时会一直等待直到超时"),
+        format!("The proxy refused the connection to {PROBE_HOST}: {status_line}. Agents will wait until timeout when sending messages"),
     ))
 }
 
@@ -402,7 +402,7 @@ fn probe_http_tunnel(mut stream: TcpStream, proxy: &Url) -> Option<(bool, String
 fn probe_tunnel_reaches_destination(stream: &mut TcpStream) -> Result<(), String> {
     stream
         .write_all(&tls_client_hello(PROBE_HOST))
-        .map_err(|error| format!("无法通过隧道发送数据（{error}）"))?;
+        .map_err(|error| format!("Could not send data through the tunnel ({error})"))?;
 
     let mut buffer = [0u8; 8];
     match stream.read(&mut buffer) {
@@ -411,9 +411,9 @@ fn probe_tunnel_reaches_destination(stream: &mut TcpStream) -> Result<(), String
         // cipher suite, so a strict endpoint replying "handshake_failure" still proves the
         // tunnel carries traffic end to end.
         Ok(read) if read > 0 && matches!(buffer[0], 0x16 | 0x15) => Ok(()),
-        Ok(0) => Err("隧道被立即关闭，目标不可达".into()),
-        Ok(_) => Err("目标返回了非 TLS 响应".into()),
-        Err(_) => Err(format!("{} 秒内没有收到目标响应", TUNNEL_TIMEOUT.as_secs())),
+        Ok(0) => Err("The tunnel was closed immediately; the target is unreachable".into()),
+        Ok(_) => Err("The target returned a non-TLS response".into()),
+        Err(_) => Err(format!("No response from the target within {} seconds", TUNNEL_TIMEOUT.as_secs())),
     }
 }
 
@@ -468,27 +468,28 @@ fn reject_tls_proxy_scheme(label: &str, value: &str) -> Result<(), String> {
     }
     let corrected = format!("http://{}", value.trim_start_matches("https://"));
     Err(format!(
-        "{label}不能使用 https:// 开头。代理地址的协议表示「如何连接代理」而不是「代理转发什么流量」，\
-         https:// 会要求先与代理端口完成 TLS 握手，普通代理不支持，Agent 会一直等待直到超时。\
-         请改为 {corrected}——HTTPS 请求仍会通过 CONNECT 正常走该代理。"
+        "{label} cannot start with https://. A proxy address's scheme says how to connect to the \
+         proxy, not what traffic it forwards. https:// would require a TLS handshake with the proxy \
+         port first, which ordinary proxies do not support, so agents would wait until timeout. \
+         Use {corrected} instead: HTTPS requests still go through this proxy via CONNECT."
     ))
 }
 
 fn validate_url(label: &str, value: &str, allowed_schemes: &[&str]) -> Result<(), String> {
-    let parsed = Url::parse(value).map_err(|error| format!("{label}地址无效：{error}"))?;
+    let parsed = Url::parse(value).map_err(|error| format!("The {label} address is invalid: {error}"))?;
     if !allowed_schemes.contains(&parsed.scheme()) {
         return Err(format!(
-            "{label}不支持 {} 协议，可用协议：{}",
+            "{label} does not support the {} scheme; supported schemes: {}",
             parsed.scheme(),
-            allowed_schemes.join("、")
+            allowed_schemes.join(", ")
         ));
     }
     if parsed.host_str().is_none() {
-        return Err(format!("{label}缺少主机名"));
+        return Err(format!("{label} has no host name"));
     }
     if !parsed.username().is_empty() || parsed.password().is_some() {
         return Err(format!(
-            "{label}不能在 URL 中保存账号密码，请使用安全凭据字段"
+            "{label} cannot store a username and password in the URL; use the secure credential fields"
         ));
     }
     Ok(())
@@ -587,7 +588,7 @@ fn proxy_url_with_credentials(
     username: Option<&str>,
     password: Option<&str>,
 ) -> Result<String, String> {
-    let mut parsed = Url::parse(value).map_err(|error| format!("代理地址无效：{error}"))?;
+    let mut parsed = Url::parse(value).map_err(|error| format!("The proxy address is invalid: {error}"))?;
     let Some(username) = username.map(str::trim).filter(|value| !value.is_empty()) else {
         // No credentials to add, so the address is passed through exactly as entered.
         // `Url::to_string` normalises `http://host:8080` into `http://host:8080/`, and that
@@ -597,10 +598,10 @@ fn proxy_url_with_credentials(
     };
     parsed
         .set_username(username)
-        .map_err(|_| "代理用户名无法写入 URL".to_owned())?;
+        .map_err(|_| "The proxy username cannot be written into the URL".to_owned())?;
     parsed
         .set_password(password.filter(|value| !value.is_empty()))
-        .map_err(|_| "代理密码无法写入 URL".to_owned())?;
+        .map_err(|_| "The proxy password cannot be written into the URL".to_owned())?;
     Ok(parsed.to_string())
 }
 
@@ -785,7 +786,7 @@ mod tests {
 
         assert!(validate_profile(&profile)
             .unwrap_err()
-            .contains("不能在 URL 中保存账号密码"));
+            .contains("cannot store a username and password in the URL"));
     }
 
     /// Runs a one-shot proxy answering CONNECT with `response`, then optionally replying to the
@@ -861,7 +862,7 @@ mod tests {
         let result = test_profile(&profile, None).unwrap();
 
         assert!(!result.healthy);
-        assert!(result.message.contains("无法到达"));
+        assert!(result.message.contains("cannot reach"));
         handle.join().unwrap();
     }
 

@@ -32,7 +32,7 @@ pub fn discover() -> Result<SystemProxyDiscovery, String> {
     }
 
     #[cfg(not(windows))]
-    Err("未发现 HTTP_PROXY、HTTPS_PROXY、ALL_PROXY 或 NO_PROXY 环境变量。".into())
+    Err("No HTTP_PROXY, HTTPS_PROXY, ALL_PROXY or NO_PROXY environment variable was found.".into())
 }
 
 fn discover_environment() -> SystemProxyDiscovery {
@@ -46,7 +46,7 @@ fn discover_environment() -> SystemProxyDiscovery {
         https_proxy,
         all_proxy,
         no_proxy,
-        diagnostic: "已读取当前进程继承的标准代理环境变量。".into(),
+        diagnostic: "Read the standard proxy environment variables inherited by this process.".into(),
     }
 }
 
@@ -70,16 +70,16 @@ fn discover_windows_registry() -> Result<SystemProxyDiscovery, String> {
     let enabled = registry_value("ProxyEnable")?
         .is_some_and(|value| value.eq_ignore_ascii_case("0x1") || value == "1");
     if !enabled {
-        return Err("Windows 系统代理未启用，且未发现标准代理环境变量。".into());
+        return Err("The Windows system proxy is not enabled, and no standard proxy environment variables were found.".into());
     }
     let server = registry_value("ProxyServer")?
         .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| "Windows 系统代理已启用，但 ProxyServer 为空。".to_owned())?;
+        .ok_or_else(|| "The Windows system proxy is enabled, but ProxyServer is empty.".to_owned())?;
     let overrides = registry_value("ProxyOverride")?;
     let mut discovery = parse_windows_proxy_server(&server);
     discovery.source = "windows".into();
     discovery.no_proxy = overrides.and_then(|value| normalize_proxy_override(&value));
-    discovery.diagnostic = "已从 Windows 当前用户系统代理导入；代理密码不会被读取。".into();
+    discovery.diagnostic = "Imported from the current user's Windows system proxy; the proxy password is not read.".into();
     Ok(discovery)
 }
 
@@ -100,7 +100,7 @@ fn registry_value(name: &str) -> Result<Option<String>, String> {
     command.creation_flags(0x0800_0000);
     let output = command
         .output()
-        .map_err(|error| format!("无法读取 Windows 系统代理：{error}"))?;
+        .map_err(|error| format!("Could not read the Windows system proxy: {error}"))?;
     if !output.status.success() {
         return Ok(None);
     }

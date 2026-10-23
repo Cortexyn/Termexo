@@ -42,7 +42,7 @@ pub(super) async fn serve(byte_stream: ChannelByteStream, router: Router, device
                 ));
             }
             Some(Err(error)) => {
-                tracing::debug!(%error, "隧道多路复用连接已出错");
+                tracing::debug!(%error, "The tunnel multiplexer connection failed");
                 return;
             }
             None => return,
@@ -54,7 +54,7 @@ async fn serve_stream(stream: yamux::Stream, router: Router, device_id: String) 
     let mut io = stream.compat();
     if let Err(rejection) = accept_stream(&mut io, &device_id).await {
         // Dropping the stream is what tells the relay this end refused it.
-        tracing::warn!(reason = %rejection, "已拒绝一条中继流");
+        tracing::warn!(reason = %rejection, "Rejected a relay stream");
         return;
     }
 
@@ -65,7 +65,7 @@ async fn serve_stream(stream: yamux::Stream, router: Router, device_id: String) 
         .with_upgrades()
         .await
     {
-        tracing::debug!(%error, "隧道内的 HTTP 连接已结束");
+        tracing::debug!(%error, "The HTTP connection inside the tunnel ended");
     }
 }
 
@@ -76,7 +76,7 @@ enum StreamRejection {
     Preface(#[from] PrefaceError),
     /// A relay whose routing table is out of date would otherwise hand another device's browser
     /// this machine's workbench.
-    #[error("流前导指向设备 {target}，与本机设备不符。")]
+    #[error("The stream preface points at device {target}, which is not this device.")]
     WrongTarget { target: String },
 }
 

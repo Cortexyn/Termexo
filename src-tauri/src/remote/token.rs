@@ -19,9 +19,9 @@ pub enum AuthRejection {
 impl AuthRejection {
     pub fn reason(self) -> &'static str {
         match self {
-            Self::NotConfigured => "服务端尚未生成访问令牌。",
-            Self::InvalidToken => "访问令牌不正确。",
-            Self::Locked => "失败次数过多，请稍后再试。",
+            Self::NotConfigured => "The server has not generated an access token yet.",
+            Self::InvalidToken => "The access token is incorrect.",
+            Self::Locked => "Too many failed attempts. Try again later.",
         }
     }
 }

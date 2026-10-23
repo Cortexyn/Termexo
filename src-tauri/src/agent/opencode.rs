@@ -34,15 +34,15 @@ const SESSION_LIST_TIMEOUT: Duration = Duration::from_secs(20);
 
 #[derive(Debug, Error)]
 pub enum OpenCodeError {
-    #[error("未安装 OpenCode")]
+    #[error("OpenCode is not installed")]
     NotInstalled,
-    #[error("无法确认 OpenCode 版本，已停止启动以避免绕过终端代理")]
+    #[error("Could not confirm the OpenCode version; launch was stopped so the terminal proxy is not bypassed")]
     VersionUnavailable,
-    #[error("无法读取 OpenCode 会话：{0}")]
+    #[error("Could not read the OpenCode sessions: {0}")]
     SessionCommand(String),
-    #[error("无法解析 OpenCode 会话：{0}")]
+    #[error("Could not parse the OpenCode sessions: {0}")]
     SessionJson(#[from] serde_json::Error),
-    #[error("无法执行 OpenCode 命令：{0}")]
+    #[error("Could not run the OpenCode command: {0}")]
     CommandFailed(String),
 }
 
@@ -193,7 +193,7 @@ impl AgentAdapter for OpenCodeAdapter {
                 executable_path: None,
                 version: None,
                 healthy: false,
-                diagnostic: "未检测到 OpenCode，请先安装后重试。".into(),
+                diagnostic: "OpenCode was not found. Install it and try again.".into(),
             });
         };
         let version = self.read_version();
@@ -205,9 +205,9 @@ impl AgentAdapter for OpenCodeAdapter {
             version,
             healthy,
             diagnostic: if healthy {
-                "OpenCode 可用".into()
+                "OpenCode is available".into()
             } else {
-                "已找到 OpenCode，但版本检测失败。".into()
+                "OpenCode was found, but its version check failed.".into()
             },
         })
     }

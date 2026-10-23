@@ -279,7 +279,7 @@ impl RelayLink {
             .await
             .is_err()
         {
-            tracing::warn!("中继隧道未在超时前停止");
+            tracing::warn!("The relay tunnel did not stop before the timeout");
         }
     }
 
@@ -327,13 +327,13 @@ async fn supervise(
             %relay,
             connected = outcome.connected,
             elapsed_ms = started.elapsed().as_millis() as u64,
-            "中继隧道会话已结束"
+            "Relay tunnel session ended"
         );
 
         let reason = outcome.end.message().to_string();
         match next_step(&outcome, &mut backoff) {
             SupervisorStep::Revoked => {
-                tracing::warn!(%relay, "中继已撤销本设备的接入，不再重连");
+                tracing::warn!(%relay, "The relay revoked this device's access; not reconnecting");
                 status.set_revoked(reason.clone());
                 if let Some(callback) = &on_revoked {
                     callback(reason);
@@ -341,7 +341,7 @@ async fn supervise(
                 return;
             }
             SupervisorStep::Stop => {
-                tracing::warn!(%relay, %reason, "中继拒绝了本设备，已停止重连");
+                tracing::warn!(%relay, %reason, "The relay refused this device; stopped reconnecting");
                 status.set_error(reason);
                 return;
             }
@@ -393,7 +393,7 @@ mod tests {
     fn addresses() -> Vec<RelayAddress> {
         vec![RelayAddress {
             relay_id: "relay-a".into(),
-            relay_name: "公网中继".into(),
+            relay_name: "Public relay".into(),
             url: "https://relay.example.com/d/abcdefghijklmnopqrstuvwxyz/".into(),
             hops: 0,
         }]
@@ -432,21 +432,21 @@ mod tests {
 
         assert_eq!(
             next_step(
-                &ended(true, SessionEnd::Revoked("接入已被撤销。".into())),
+                &ended(true, SessionEnd::Revoked("Access was revoked.".into())),
                 &mut backoff
             ),
             SupervisorStep::Revoked
         );
         assert_eq!(
             next_step(
-                &ended(true, SessionEnd::Refused("凭据无效。".into())),
+                &ended(true, SessionEnd::Refused("The credentials are invalid.".into())),
                 &mut backoff
             ),
             SupervisorStep::Stop
         );
         assert_eq!(
             next_step(
-                &ended(true, SessionEnd::Interrupted("连接已断开。".into())),
+                &ended(true, SessionEnd::Interrupted("The connection was lost.".into())),
                 &mut backoff
             ),
             SupervisorStep::RetryAfter(INITIAL_RECONNECT_DELAY)
@@ -460,7 +460,7 @@ mod tests {
         for _ in 0..3 {
             assert!(matches!(
                 next_step(
-                    &ended(false, SessionEnd::Interrupted("连接被拒绝。".into())),
+                    &ended(false, SessionEnd::Interrupted("The connection was refused.".into())),
                     &mut backoff
                 ),
                 SupervisorStep::RetryAfter(_)
@@ -469,7 +469,7 @@ mod tests {
 
         assert_eq!(
             next_step(
-                &ended(true, SessionEnd::Revoked("接入已被中继撤销。".into())),
+                &ended(true, SessionEnd::Revoked("Access was revoked by the relay.".into())),
                 &mut backoff
             ),
             SupervisorStep::Revoked
@@ -484,7 +484,7 @@ mod tests {
         let delays: Vec<u64> = (0..4)
             .map(|_| {
                 match next_step(
-                    &ended(false, SessionEnd::Interrupted("连接被拒绝。".into())),
+                    &ended(false, SessionEnd::Interrupted("The connection was refused.".into())),
                     &mut backoff,
                 ) {
                     SupervisorStep::RetryAfter(delay) => delay.as_secs(),
@@ -510,11 +510,11 @@ mod tests {
     #[test]
     fn a_connected_link_publishes_its_identity_and_addresses() {
         let status = LinkStatus::new();
-        status.set_error("上一次失败。".into());
+        status.set_error("The last attempt failed.".into());
 
         status.set_connected(
             "abcdefghijklmnopqrstuvwxyz".into(),
-            "工作室台式机".into(),
+            "Studio desktop".into(),
             addresses(),
         );
 
@@ -536,15 +536,15 @@ mod tests {
         let status = LinkStatus::new();
         status.set_connected(
             "abcdefghijklmnopqrstuvwxyz".into(),
-            "台式机".into(),
+            "Desktop".into(),
             addresses(),
         );
 
-        status.set_revoked("接入已被中继撤销。".into());
+        status.set_revoked("Access was revoked by the relay.".into());
 
         let snapshot = status.snapshot();
         assert_eq!(snapshot.state, RelayLinkState::Revoked);
-        assert_eq!(snapshot.error.as_deref(), Some("接入已被中继撤销。"));
+        assert_eq!(snapshot.error.as_deref(), Some("Access was revoked by the relay."));
         assert!(snapshot.addresses.is_empty());
         assert_eq!(snapshot.connected_since, None);
         assert_eq!(
@@ -558,7 +558,7 @@ mod tests {
         let status = LinkStatus::new();
         status.set_connected(
             "abcdefghijklmnopqrstuvwxyz".into(),
-            "台式机".into(),
+            "Desktop".into(),
             addresses(),
         );
 

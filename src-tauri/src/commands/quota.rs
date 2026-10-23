@@ -191,7 +191,7 @@ pub async fn get_provider_quotas(
         for handle in handles {
             let quota = handle
                 .await
-                .map_err(|error| format!("查询供应商余量失败：{error}"))?;
+                .map_err(|error| format!("Allowance query failed: {error}"))?;
             cache.store(&quota);
             resolved.push(quota);
         }
@@ -200,7 +200,7 @@ pub async fn get_provider_quotas(
     if let Some(task) = antigravity_task {
         let quota = task
             .await
-            .map_err(|error| format!("查询 Antigravity 余量状态失败：{error}"))?;
+            .map_err(|error| format!("Antigravity allowance query failed: {error}"))?;
         cache.store(&quota);
         resolved.push(quota);
     }
@@ -219,14 +219,14 @@ fn resolve(
         ProviderQuota::unavailable(&profile.id, &profile.name, &profile.provider, now, reason)
     };
     if !quota::supports_quota(&profile.provider) {
-        return Err(unavailable("该供应商未提供余量查询接口"));
+        return Err(unavailable("This provider offers no allowance endpoint"));
     }
     let Some(target) = profile.credential_target.as_deref() else {
-        return Err(unavailable("尚未配置 API 密钥，无法查询余量"));
+        return Err(unavailable("No API key is configured, so the allowance cannot be queried"));
     };
     let api_key = match credentials.get(target) {
         Ok(key) => key,
-        Err(error) => return Err(unavailable(&format!("读取 API 密钥失败：{error}"))),
+        Err(error) => return Err(unavailable(&format!("Could not read the API key: {error}"))),
     };
     // Either endpoint identifies the provider's host; the key is shared between the two protocols.
     let base_url = profile
@@ -234,7 +234,7 @@ fn resolve(
         .as_deref()
         .or(profile.codex_base_url.as_deref());
     let request = quota::build_request(&profile.provider, base_url, &api_key)
-        .ok_or_else(|| unavailable("该供应商未提供余量查询接口"))?;
+        .ok_or_else(|| unavailable("This provider offers no allowance endpoint"))?;
     Ok(PendingQuery {
         profile_id: profile.id.clone(),
         profile_name: profile.name.clone(),
@@ -355,7 +355,7 @@ fn resolve_opencode(
             let credential = credentials
                 .codex
                 .as_ref()
-                .ok_or_else(|| unavailable("OpenCode 尚未连接 ChatGPT Plus/Pro".to_owned()))?;
+                .ok_or_else(|| unavailable("OpenCode is not connected to ChatGPT Plus/Pro".to_owned()))?;
             (
                 QuotaParser::OpenCodeCodex,
                 quota::build_opencode_codex_request(credential),
@@ -365,7 +365,7 @@ fn resolve_opencode(
             let api_key = credentials
                 .go_api_key
                 .as_deref()
-                .ok_or_else(|| unavailable("OpenCode 尚未连接 OpenCode Go".to_owned()))?;
+                .ok_or_else(|| unavailable("OpenCode is not connected to OpenCode Go".to_owned()))?;
             (
                 QuotaParser::OpenCodeGo,
                 quota::build_opencode_go_request(api_key),
@@ -395,7 +395,7 @@ fn resolve_grok(now: i64) -> Result<PendingQuery, ProviderQuota> {
         .detect()
         .map_err(|error| unavailable(error.to_string()))?;
     if !installation.installed {
-        return Err(unavailable("未检测到 Grok Build CLI".into()));
+        return Err(unavailable("Grok Build CLI was not found".into()));
     }
     let credential = quota::read_grok_credential().map_err(unavailable)?;
     let proxy_base_url = std::env::var("GROK_CLI_CHAT_PROXY_BASE_URL").ok();
@@ -445,7 +445,7 @@ async fn resolve_antigravity(now: i64, proxy: Option<String>) -> ProviderQuota {
             quota::AGENT_ANTIGRAVITY_LABEL,
             quota::AGENT_ANTIGRAVITY_LABEL,
             now,
-            "Antigravity 未报告任何额度窗口",
+            "Antigravity reported no allowance windows",
         );
     }
     ProviderQuota {
@@ -508,20 +508,20 @@ async fn execute(client: reqwest::Client, query: PendingQuery) -> ProviderQuota 
     }
     let response = match builder.send().await {
         Ok(response) => response,
-        Err(error) => return unavailable(format!("请求余量接口失败：{error}")),
+        Err(error) => return unavailable(format!("Allowance request failed: {error}")),
     };
     if matches!(&query.parser, QuotaParser::Grok)
         && (response.status() == reqwest::StatusCode::UNAUTHORIZED
             || response.status() == reqwest::StatusCode::FORBIDDEN)
     {
-        return unavailable("Grok Build 登录状态已失效，请运行 grok login".into());
+        return unavailable("The Grok Build sign-in is no longer valid. Run grok login".into());
     }
     if !response.status().is_success() {
-        return unavailable(format!("余量接口返回 {}", response.status()));
+        return unavailable(format!("The allowance endpoint returned {}", response.status()));
     }
     let body = match response.json::<serde_json::Value>().await {
         Ok(body) => body,
-        Err(error) => return unavailable(format!("解析余量响应失败：{error}")),
+        Err(error) => return unavailable(format!("Could not parse the allowance response: {error}")),
     };
 
     let parsed = match &query.parser {
@@ -560,12 +560,12 @@ fn build_client(proxy: Option<&str>) -> Result<reqwest::Client, String> {
         .timeout(REQUEST_TIMEOUT);
     if let Some(proxy) = proxy {
         let proxy = reqwest::Proxy::all(proxy)
-            .map_err(|error| format!("代理配置无效，无法查询余量：{error}"))?;
+            .map_err(|error| format!("The proxy configuration is invalid, so the allowance cannot be queried: {error}"))?;
         builder = builder.proxy(proxy);
     }
     builder
         .build()
-        .map_err(|error| format!("无法创建余量查询请求：{error}"))
+        .map_err(|error| format!("Could not create the allowance request: {error}"))
 }
 
 /// Reuses the agents' own proxy resolution so the balance follows the model traffic.

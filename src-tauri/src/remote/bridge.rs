@@ -197,10 +197,10 @@ pub fn is_remote_command_allowed(command: &str) -> bool {
 /// deserialization and its validation, instead of a second dispatcher that would drift.
 pub async fn dispatch(app: &AppHandle, command: String, args: Value) -> Result<Value, Value> {
     if !is_remote_command_allowed(&command) {
-        return Err(Value::String("该命令不支持远程调用。".into()));
+        return Err(Value::String("This command cannot be called remotely.".into()));
     }
     let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
-        return Err(Value::String("桌面窗口不可用。".into()));
+        return Err(Value::String("The desktop window is unavailable.".into()));
     };
 
     let request = InvokeRequest {
@@ -228,7 +228,7 @@ pub async fn dispatch(app: &AppHandle, command: String, args: Value) -> Result<V
     })
     .await;
     if let Err(error) = dispatched {
-        return Err(Value::String(format!("命令分发失败：{error}")));
+        return Err(Value::String(format!("Could not dispatch the command: {error}")));
     }
 
     match receiver.await {
@@ -236,7 +236,7 @@ pub async fn dispatch(app: &AppHandle, command: String, args: Value) -> Result<V
         Ok(InvokeResponse::Err(error)) => Err(error.0),
         // `on_message` returns without answering when the invoke key does not match, which drops
         // the responder and with it the sender half.
-        Err(_) => Err(Value::String("桌面窗口未响应该命令。".into())),
+        Err(_) => Err(Value::String("The desktop window did not respond to the command.".into())),
     }
 }
 
@@ -299,7 +299,7 @@ impl RemoteEventHub {
 
     pub fn publish<T: Serialize>(&self, name: &str, payload: &T) {
         if !REMOTE_EVENTS.contains(&name) {
-            tracing::warn!(%name, "事件不在远程白名单内，已忽略");
+            tracing::warn!(%name, "Event is not on the remote allowlist; ignored");
             return;
         }
         // Serializing a PTY chunk for nobody is pure overhead on the reader thread.
@@ -315,7 +315,7 @@ impl RemoteEventHub {
             Ok(encoded) => {
                 let _ = self.sender.send(Arc::from(encoded.as_str()));
             }
-            Err(error) => tracing::warn!(%name, %error, "无法序列化远程事件"),
+            Err(error) => tracing::warn!(%name, %error, "Could not serialize the remote event"),
         }
     }
 }
@@ -347,7 +347,7 @@ pub fn broadcast_event<T: Serialize + Clone>(
 ) {
     hub.publish(name, payload);
     if let Err(error) = app.emit(name, payload) {
-        tracing::warn!(%name, %error, "无法向桌面窗口派发事件");
+        tracing::warn!(%name, %error, "Could not dispatch the event to the desktop window");
     }
 }
 

@@ -36,12 +36,12 @@ use super::{mux, LinkStatus};
 /// are what actually bound how much a single viewer may queue.
 const FRAME_CAPACITY: usize = 256;
 
-const SOCKET_CLOSED: &str = "与中继的连接已断开。";
-const IDLE_MESSAGE: &str = "隧道空闲超时，已断开重连。";
-const MULTIPLEXER_CLOSED: &str = "隧道多路复用已结束。";
-const WELCOME_TIMEOUT: &str = "中继未在规定时间内完成握手。";
-const UNEXPECTED_HANDSHAKE: &str = "中继在握手阶段发送了意外的帧。";
-const CREDENTIAL_NOT_A_HEADER: &str = "设备凭据无法放入请求头。";
+const SOCKET_CLOSED: &str = "The connection to the relay was lost.";
+const IDLE_MESSAGE: &str = "The tunnel idled out and was dropped to reconnect.";
+const MULTIPLEXER_CLOSED: &str = "The tunnel multiplexer has ended.";
+const WELCOME_TIMEOUT: &str = "The relay did not complete the handshake in time.";
+const UNEXPECTED_HANDSHAKE: &str = "The relay sent an unexpected frame during the handshake.";
+const CREDENTIAL_NOT_A_HEADER: &str = "The device credential cannot be put into a request header.";
 
 type TunnelSocket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 type TunnelSink = SplitSink<TunnelSocket, Message>;
@@ -112,7 +112,7 @@ pub(super) async fn run_session(config: &SessionConfig, status: &LinkStatus) -> 
     tracing::info!(
         relay = %config.endpoint.authority(),
         addresses = welcome.addresses.len(),
-        "中继隧道已建立"
+        "Relay tunnel established"
     );
     status.set_connected(
         welcome.device_id.clone(),
@@ -154,7 +154,7 @@ fn connect_failure(error: TungsteniteError) -> SessionEnd {
     match &error {
         TungsteniteError::Http(response) if response.status().is_client_error() => {
             SessionEnd::Refused(format!(
-                "中继拒绝了本设备的接入（HTTP {}）。",
+                "The relay refused this device (HTTP {}).",
                 response.status().as_u16()
             ))
         }
@@ -167,7 +167,7 @@ fn tunnel_request(config: &SessionConfig) -> Result<Request, String> {
         .endpoint
         .tunnel_url()
         .into_client_request()
-        .map_err(|error| format!("中继地址无法用于隧道：{error}"))?;
+        .map_err(|error| format!("The relay address cannot be used for the tunnel: {error}"))?;
     // The message deliberately carries no part of the credential, because it reaches a log line.
     let mut credential = HeaderValue::from_str(&format!("Bearer {}", config.credential))
         .map_err(|_| CREDENTIAL_NOT_A_HEADER.to_string())?;
@@ -223,11 +223,11 @@ async fn next_control_frame(stream: &mut TunnelStream) -> Result<ControlFrame, S
 
 fn decode_control(text: &str) -> Result<ControlFrame, SessionEnd> {
     ControlFrame::decode(text)
-        .map_err(|error| SessionEnd::Interrupted(format!("中继控制帧无法解析：{error}")))
+        .map_err(|error| SessionEnd::Interrupted(format!("Could not parse the relay control frame: {error}")))
 }
 
 fn read_failure(error: &TungsteniteError) -> SessionEnd {
-    SessionEnd::Interrupted(format!("隧道读取失败：{error}"))
+    SessionEnd::Interrupted(format!("Tunnel read failed: {error}"))
 }
 
 /// Serves the tunnel until either side ends it.
@@ -267,7 +267,7 @@ async fn pump(
                     break SessionEnd::Interrupted(MULTIPLEXER_CLOSED.to_string());
                 };
                 if let Err(error) = sink.send(Message::Binary(payload)).await {
-                    break SessionEnd::Interrupted(format!("无法向中继发送数据：{error}"));
+                    break SessionEnd::Interrupted(format!("Could not send data to the relay: {error}"));
                 }
             }
             incoming = stream.next() => {
@@ -322,7 +322,7 @@ async fn handle_control(
     let frame = match ControlFrame::decode(text) {
         Ok(frame) => frame,
         Err(error) => {
-            tracing::warn!(%error, "中继发送了无法解析的控制帧");
+            tracing::warn!(%error, "The relay sent a control frame that could not be parsed");
             return None;
         }
     };
@@ -352,14 +352,14 @@ fn close_reason(frame: Option<CloseFrame>) -> SessionEnd {
     match u16::from(frame.code) {
         CLOSE_REVOKED => SessionEnd::Revoked(reason),
         CLOSE_UNAUTHORIZED => SessionEnd::Refused(reason),
-        _ => SessionEnd::Interrupted(format!("中继关闭了隧道：{reason}")),
+        _ => SessionEnd::Interrupted(format!("The relay closed the tunnel: {reason}")),
     }
 }
 
 async fn send_control(sink: &mut TunnelSink, frame: ControlFrame) -> Result<(), SessionEnd> {
     sink.send(Message::Text(frame.encode().into()))
         .await
-        .map_err(|error| SessionEnd::Interrupted(format!("无法向中继发送控制帧：{error}")))
+        .map_err(|error| SessionEnd::Interrupted(format!("Could not send a control frame to the relay: {error}")))
 }
 
 #[cfg(test)]
@@ -381,11 +381,11 @@ mod tests {
     #[test]
     fn the_close_code_decides_whether_the_link_ever_comes_back() {
         assert!(matches!(
-            close_reason(close_frame(CLOSE_REVOKED, "接入已被撤销。")),
-            SessionEnd::Revoked(reason) if reason == "接入已被撤销。"
+            close_reason(close_frame(CLOSE_REVOKED, "Access was revoked.")),
+            SessionEnd::Revoked(reason) if reason == "Access was revoked."
         ));
         assert!(matches!(
-            close_reason(close_frame(CLOSE_UNAUTHORIZED, "凭据无效。")),
+            close_reason(close_frame(CLOSE_UNAUTHORIZED, "The credentials are invalid.")),
             SessionEnd::Refused(_)
         ));
         assert!(matches!(
@@ -408,7 +408,7 @@ mod tests {
                 .expect("the test address should be valid"),
             ),
             credential: "tdc1.abcdefghijklmnopqrstuvwxyz.secret".into(),
-            device_name: "工作室台式机".into(),
+            device_name: "Studio desktop".into(),
             version: "0.9.0".into(),
             router: Router::new(),
         };
@@ -418,7 +418,7 @@ mod tests {
         assert!(encoded.contains("\"type\":\"hello\""));
         assert!(encoded.contains("\"kind\":\"desktop\""));
         assert!(encoded.contains(&format!("\"protocol\":{PROTOCOL_VERSION}")));
-        assert!(encoded.contains("工作室台式机"));
+        assert!(encoded.contains("Studio desktop"));
 
         // The credential travels in the header, never in a frame.
         assert!(!encoded.contains("tdc1."));

@@ -33,13 +33,13 @@ const DESCRIBED_FILES: &[&str] = &[
 
 #[derive(Debug, Error)]
 pub enum StorageError {
-    #[error("数据目录路径无效：{0}")]
+    #[error("The data directory path is invalid: {0}")]
     InvalidTarget(String),
-    #[error("目标目录不是空的，请选择一个空目录或新建一个：{0}")]
+    #[error("The target directory is not empty. Choose an empty directory or create a new one: {0}")]
     TargetNotEmpty(String),
-    #[error("无法写入目标目录：{0}")]
+    #[error("Could not write to the target directory: {0}")]
     TargetNotWritable(String),
-    #[error("数据目录操作失败：{0}")]
+    #[error("The data directory operation failed: {0}")]
     Io(#[from] io::Error),
 }
 
@@ -92,7 +92,7 @@ pub fn resolve_data_directory(default: &Path) -> PathBuf {
     }
     tracing::warn!(
         target = %target.display(),
-        "配置的数据目录不可用，已回退到默认目录"
+        "The configured data directory is unavailable; fell back to the default directory"
     );
     default.to_path_buf()
 }

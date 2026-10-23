@@ -40,7 +40,7 @@ pub fn relocate_application_data(
     // leaves the target empty rather than half filled.
     database
         .copy_to(&target.join("agentdock.db"))
-        .map_err(|error| format!("复制数据库失败：{error}"))?;
+        .map_err(|error| format!("Could not copy the database: {error}"))?;
     storage::copy_supporting_files(&directories.active, &target)
         .map_err(|error| error.to_string())?;
     storage::write_location_pointer(&directories.default, &target)

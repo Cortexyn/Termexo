@@ -83,23 +83,23 @@ impl RelaySettings {
 /// Rejects anything that is not a bare `http(s)://host[:port]`, and drops the optional trailing
 /// slash so the tunnel and enrollment paths can be appended without producing a double slash.
 fn normalized_relay_url(raw: &str) -> Result<String, String> {
-    let parsed = Url::parse(raw).map_err(|_| format!("中继地址「{raw}」不是有效的 URL。"))?;
+    let parsed = Url::parse(raw).map_err(|_| format!("The relay address '{raw}' is not a valid URL."))?;
     if !RELAY_SCHEMES.contains(&parsed.scheme()) {
-        return Err("中继地址必须以 http:// 或 https:// 开头。".into());
+        return Err("The relay address must start with http:// or https://.".into());
     }
     if !parsed.username().is_empty() || parsed.password().is_some() {
-        return Err("中继地址不能包含用户名或密码。".into());
+        return Err("The relay address cannot contain a username or password.".into());
     }
     if parsed.query().is_some() || parsed.fragment().is_some() {
-        return Err("中继地址不能包含查询参数或片段。".into());
+        return Err("The relay address cannot contain query parameters or a fragment.".into());
     }
     // `Url` turns an authority-only address into the path `/`, so anything longer is a real path.
     if parsed.path() != "/" {
-        return Err("中继地址只能是主机和端口，不能包含路径。".into());
+        return Err("The relay address may only be a host and port, without a path.".into());
     }
     let host = parsed
         .host_str()
-        .ok_or_else(|| "中继地址缺少主机名。".to_string())?;
+        .ok_or_else(|| "The relay address has no host name.".to_string())?;
     // `Url::port` is `None` for the scheme's default port, which is exactly the form to store.
     Ok(match parsed.port() {
         Some(port) => format!("{}://{host}:{port}", parsed.scheme()),
@@ -120,7 +120,7 @@ fn normalized_fingerprint(raw: &str) -> Result<String, String> {
             .all(|character| character.is_ascii_hexdigit())
     {
         return Err(format!(
-            "证书指纹必须是 {CERTIFICATE_FINGERPRINT_LENGTH} 位十六进制的 SHA-256 值。"
+            "The certificate fingerprint must be a SHA-256 value of {CERTIFICATE_FINGERPRINT_LENGTH} hexadecimal digits."
         ));
     }
     Ok(compact)
@@ -162,7 +162,7 @@ impl RemoteAccessSettings {
     pub fn normalized(&self) -> Result<Self, String> {
         self.parse_bind_address()?;
         if self.port < MIN_PORT {
-            return Err(format!("端口必须在 {MIN_PORT}-65535 之间。"));
+            return Err(format!("The port must be between {MIN_PORT} and 65535."));
         }
         Ok(Self {
             enabled: self.enabled,
@@ -184,7 +184,7 @@ impl RemoteAccessSettings {
         self.bind_address
             .trim()
             .parse::<Ipv4Addr>()
-            .map_err(|_| format!("绑定地址「{}」不是有效的 IPv4 地址。", self.bind_address))
+            .map_err(|_| format!("The bind address '{}' is not a valid IPv4 address.", self.bind_address))
     }
 }
 
@@ -196,7 +196,7 @@ pub fn load(database: &WorkspaceDatabase) -> RemoteAccessSettings {
     let stored = match database.read_app_setting(REMOTE_ACCESS_SETTING_KEY) {
         Ok(value) => value,
         Err(error) => {
-            tracing::warn!(%error, "无法读取远程访问设置，使用默认值");
+            tracing::warn!(%error, "Could not read the remote access settings; using defaults");
             return RemoteAccessSettings::default();
         }
     };
@@ -204,7 +204,7 @@ pub fn load(database: &WorkspaceDatabase) -> RemoteAccessSettings {
         .and_then(|value| match serde_json::from_str(&value) {
             Ok(settings) => Some(settings),
             Err(error) => {
-                tracing::warn!(%error, "远程访问设置无法解析，使用默认值");
+                tracing::warn!(%error, "The remote access settings could not be parsed; using defaults");
                 None
             }
         })
@@ -213,10 +213,10 @@ pub fn load(database: &WorkspaceDatabase) -> RemoteAccessSettings {
 
 pub fn store(database: &WorkspaceDatabase, settings: &RemoteAccessSettings) -> Result<(), String> {
     let value = serde_json::to_string(settings)
-        .map_err(|error| format!("无法序列化远程访问设置：{error}"))?;
+        .map_err(|error| format!("Could not serialize the remote access settings: {error}"))?;
     database
         .write_app_setting(REMOTE_ACCESS_SETTING_KEY, &value)
-        .map_err(|error| format!("无法保存远程访问设置：{error}"))
+        .map_err(|error| format!("Could not save the remote access settings: {error}"))
 }
 
 /// The name this device announced to the relay, if it has ever enrolled.
@@ -224,7 +224,7 @@ pub fn load_relay_device_name(database: &WorkspaceDatabase) -> Option<String> {
     database
         .read_app_setting(RELAY_DEVICE_NAME_KEY)
         .unwrap_or_else(|error| {
-            tracing::warn!(%error, "无法读取中继设备名");
+            tracing::warn!(%error, "Could not read the relay device name");
             None
         })
         .map(|name| name.trim().to_string())
@@ -234,7 +234,7 @@ pub fn load_relay_device_name(database: &WorkspaceDatabase) -> Option<String> {
 pub fn store_relay_device_name(database: &WorkspaceDatabase, name: &str) -> Result<(), String> {
     database
         .write_app_setting(RELAY_DEVICE_NAME_KEY, name)
-        .map_err(|error| format!("无法保存中继设备名：{error}"))
+        .map_err(|error| format!("Could not save the relay device name: {error}"))
 }
 
 #[cfg(test)]

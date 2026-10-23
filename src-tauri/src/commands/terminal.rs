@@ -115,7 +115,7 @@ pub fn create_terminal(
             }
         }
         Err(error) => {
-            tracing::warn!(terminal_id = %request.terminal_id, "无法应用默认网络配置：{error}");
+            tracing::warn!(terminal_id = %request.terminal_id, "Could not apply the default network configuration: {error}");
         }
     }
     if request.agent_type.as_deref() == Some("opencode") {
@@ -131,7 +131,7 @@ pub fn create_terminal(
         request.runtime_revision,
         &request.working_directory,
     ) {
-        tracing::warn!(terminal_id = %request.terminal_id, "无法记录 Git 会话基线：{error}");
+        tracing::warn!(terminal_id = %request.terminal_id, "Could not record the Git session baseline: {error}");
     }
     let cols = request.cols;
     let rows = request.rows;

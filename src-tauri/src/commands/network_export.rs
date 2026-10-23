@@ -97,7 +97,7 @@ pub fn export_network_profiles(
         None => profiles.iter().collect(),
     };
     if selected.is_empty() {
-        return Err("没有可导出的代理 Profile".into());
+        return Err("There are no proxy profiles to export".into());
     }
 
     let document = NetworkProfileExport {
@@ -108,7 +108,7 @@ pub fn export_network_profiles(
             .map(ExportedNetworkProfile::from)
             .collect(),
     };
-    serde_json::to_string_pretty(&document).map_err(|error| format!("生成导出内容失败：{error}"))
+    serde_json::to_string_pretty(&document).map_err(|error| format!("Could not generate the export: {error}"))
 }
 
 /// Writes the export to `path`.
@@ -116,7 +116,7 @@ pub fn export_network_profiles(
 /// The frontend picks the path through the save dialog, so this only has to persist the bytes.
 #[tauri::command(async)]
 pub fn write_network_profile_export(path: String, contents: String) -> Result<(), String> {
-    std::fs::write(&path, contents).map_err(|error| format!("写入导出文件失败：{error}"))
+    std::fs::write(&path, contents).map_err(|error| format!("Could not write the export file: {error}"))
 }
 
 /// Document as read back from disk. Every field is optional so a hand-edited file with a
@@ -169,20 +169,20 @@ pub fn import_network_profiles(
     database: State<'_, WorkspaceDatabase>,
 ) -> Result<ImportSummary, String> {
     let contents =
-        std::fs::read_to_string(&path).map_err(|error| format!("无法读取导入文件：{error}"))?;
+        std::fs::read_to_string(&path).map_err(|error| format!("Could not read the import file: {error}"))?;
     let document = serde_json::from_str::<NetworkProfileImport>(&contents)
-        .map_err(|error| format!("导入文件不是有效的 JSON：{error}"))?;
+        .map_err(|error| format!("The import file is not valid JSON: {error}"))?;
     if let Some(version) = document.version {
         if version > EXPORT_VERSION {
             return Err(format!(
-                "导入文件的版本（{version}）高于当前支持的版本（{EXPORT_VERSION}），请升级 Termexo"
+                "The import file version ({version}) is newer than the supported version ({EXPORT_VERSION}). Upgrade Termexo"
             ));
         }
     }
     let entries = document
         .profiles
         .filter(|profiles| !profiles.is_empty())
-        .ok_or_else(|| "导入文件中没有代理 Profile".to_owned())?;
+        .ok_or_else(|| "The import file contains no proxy profiles".to_owned())?;
 
     let mut summary = ImportSummary {
         imported: 0,
@@ -195,7 +195,7 @@ pub fn import_network_profiles(
             .as_deref()
             .map(str::trim)
             .filter(|value| !value.is_empty())
-            .unwrap_or("未命名")
+            .unwrap_or("Unnamed")
             .to_owned();
         match build_imported_profile(&name, entry) {
             Ok(profile) => {
@@ -207,17 +207,17 @@ pub fn import_network_profiles(
                             summary.needs_password.push(name);
                         }
                     }
-                    Err(error) => summary.skipped.push(format!("{name}：{error}")),
+                    Err(error) => summary.skipped.push(format!("{name}: {error}")),
                 }
             }
-            Err(reason) => summary.skipped.push(format!("{name}：{reason}")),
+            Err(reason) => summary.skipped.push(format!("{name}: {reason}")),
         }
     }
 
     if summary.imported == 0 {
         return Err(format!(
-            "没有导入任何 Profile。{}",
-            summary.skipped.join("；")
+            "No profiles were imported. {}",
+            summary.skipped.join("; ")
         ));
     }
     Ok(summary)
@@ -397,7 +397,7 @@ mod tests {
 
     fn import_entry(json: &str) -> Result<NetworkProfile, String> {
         let entry = serde_json::from_str::<ImportedNetworkProfile>(json).unwrap();
-        let name = entry.name.clone().unwrap_or_else(|| "未命名".into());
+        let name = entry.name.clone().unwrap_or_else(|| "Unnamed".into());
         build_imported_profile(&name, entry)
     }
 

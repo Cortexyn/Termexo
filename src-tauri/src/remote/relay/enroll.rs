@@ -18,7 +18,7 @@ use crate::remote::settings::RelaySettings;
 const ENROLL_TIMEOUT: Duration = Duration::from_secs(20);
 
 const ENROLL_TIMED_OUT: &str =
-    "连接中继超时：请确认地址和端口正确，且服务器的防火墙或安全组放行了这个端口。";
+    "Timed out connecting to the relay. Check that the address and port are correct and that the server's firewall or security group allows this port.";
 
 /// The body a relay answers a refusal with. Its wording is the relay's, and the panel shows it
 /// unchanged: only the relay knows whether the code expired, was used, or never existed.
@@ -95,11 +95,11 @@ pub async fn enroll(
     let body = response
         .text()
         .await
-        .map_err(|error| format!("无法读取中继的响应：{error}"))?;
+        .map_err(|error| format!("Could not read the relay's response: {error}"))?;
     if !status.is_success() {
         return Err(enrollment_failure(status, &body));
     }
-    serde_json::from_str(&body).map_err(|error| format!("中继返回了无法解析的接入响应：{error}"))
+    serde_json::from_str(&body).map_err(|error| format!("The relay returned an enrollment response that could not be parsed: {error}"))
 }
 
 /// The same trust decision the tunnel makes: a pinned certificate when the panel stored one, the
@@ -112,7 +112,7 @@ fn build_client(endpoint: &RelayEndpoint) -> Result<Client, String> {
     };
     builder
         .build()
-        .map_err(|error| format!("无法创建中继请求客户端：{error}"))
+        .map_err(|error| format!("Could not create the relay request client: {error}"))
 }
 
 /// A request that never got an HTTP answer. A timeout is told apart because reqwest reports its
@@ -127,7 +127,7 @@ fn connect_failure(error: &reqwest::Error) -> String {
 fn enrollment_failure(status: StatusCode, body: &str) -> String {
     serde_json::from_str::<RelayFailure>(body)
         .map(|failure| failure.error)
-        .unwrap_or_else(|_| format!("中继拒绝了接入请求（HTTP {}）。", status.as_u16()))
+        .unwrap_or_else(|_| format!("The relay refused the enrollment request (HTTP {}).", status.as_u16()))
 }
 
 #[cfg(test)]
@@ -141,9 +141,9 @@ mod tests {
         assert_eq!(
             enrollment_failure(
                 StatusCode::FORBIDDEN,
-                "{\"error\":\"接入码无效或已过期。\"}"
+                "{\"error\":\"The enrollment code is invalid or has expired.\"}"
             ),
-            "接入码无效或已过期。"
+            "The enrollment code is invalid or has expired."
         );
     }
 
@@ -151,7 +151,7 @@ mod tests {
     fn a_response_that_is_not_a_relay_failure_falls_back_to_the_status() {
         assert_eq!(
             enrollment_failure(StatusCode::BAD_GATEWAY, "<html>502 Bad Gateway</html>"),
-            "中继拒绝了接入请求（HTTP 502）。"
+            "The relay refused the enrollment request (HTTP 502)."
         );
     }
 
@@ -163,19 +163,19 @@ mod tests {
     #[test]
     fn an_enrollment_with_a_code_carries_the_code_and_the_name() {
         let request = parsed(
-            r#"{"url":"https://relay.example.com","name":"工作室台式机","method":{"method":"code","code":"AAAA-BBBB","name":"忽略"}}"#,
+            r#"{"url":"https://relay.example.com","name":"Studio desktop","method":{"method":"code","code":"AAAA-BBBB","name":"ignored"}}"#,
         );
 
         assert_eq!(request.relay_settings().url, "https://relay.example.com");
         assert_eq!(request.relay_settings().certificate_fingerprint, None);
         let name = request.device_name("DESKTOP-FALLBACK");
-        assert_eq!(name, "工作室台式机");
+        assert_eq!(name, "Studio desktop");
 
         // The outer name wins, so the relay console shows what the panel's field said.
         assert!(matches!(
             request.into_body(name),
             EnrollRequest::Code { code, name }
-                if code == "AAAA-BBBB" && name == "工作室台式机"
+                if code == "AAAA-BBBB" && name == "Studio desktop"
         ));
     }
 
@@ -199,7 +199,7 @@ mod tests {
     #[test]
     fn a_payload_without_a_fingerprint_still_deserializes() {
         let request = parsed(
-            r#"{"url":"https://relay.example.com","name":"台式机","method":{"method":"code","code":"AAAA","name":"台式机"}}"#,
+            r#"{"url":"https://relay.example.com","name":"Desktop","method":{"method":"code","code":"AAAA","name":"Desktop"}}"#,
         );
 
         assert_eq!(request.certificate_fingerprint, None);
@@ -223,7 +223,7 @@ mod tests {
         use crate::remote::relay::endpoint::certificate_fingerprint;
 
         const LOOPBACK: &str = "127.0.0.1";
-        const REFUSAL: &str = "接入码无效或已过期。";
+        const REFUSAL: &str = "The enrollment code is invalid or has expired.";
         const OTHER_FINGERPRINT: &str =
             "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90";
 
@@ -304,7 +304,7 @@ mod tests {
             .expect("the loopback address is a valid relay address");
             let request = EnrollRequest::Code {
                 code: "AAAA-BBBB".into(),
-                name: "台式机".into(),
+                name: "Desktop".into(),
             };
             enroll(&RelayEndpoint::new(&settings), &request)
                 .await

@@ -66,13 +66,13 @@ mod platform {
         // back, and each pointer passed in is a live local.
         unsafe {
             let factory: IDWriteFactory = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED)
-                .map_err(|error| format!("无法初始化系统字体服务：{error}"))?;
+                .map_err(|error| format!("Could not initialize the system font service: {error}"))?;
 
             let mut collection: Option<IDWriteFontCollection> = None;
             factory
                 .GetSystemFontCollection(&mut collection, false)
-                .map_err(|error| format!("无法读取系统字体列表：{error}"))?;
-            let collection = collection.ok_or_else(|| "系统未返回任何字体。".to_string())?;
+                .map_err(|error| format!("Could not read the system font list: {error}"))?;
+            let collection = collection.ok_or_else(|| "The system returned no fonts.".to_string())?;
 
             let count = collection.GetFontFamilyCount();
             let mut fonts = Vec::with_capacity(count as usize);

@@ -886,7 +886,7 @@ fn normalize_kill_result(result: std::io::Result<()>) -> Result<(), PtyError> {
     #[cfg(windows)]
     {
         if let Err(error) = result {
-            tracing::debug!(%error, "终端进程已终止（portable-pty 以错误形式报告成功）");
+            tracing::debug!(%error, "The terminal process was terminated (portable-pty reports success as an error)");
         }
         Ok(())
     }

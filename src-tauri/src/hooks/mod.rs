@@ -30,9 +30,9 @@ pub enum HookError {
     InvalidArguments,
     #[error("Codex runtime command contains an unsupported TOML delimiter")]
     InvalidCodexConfigValue,
-    #[error("无法生成 OpenCode 运行时插件路径")]
+    #[error("Could not build the OpenCode runtime plugin path")]
     InvalidOpenCodePluginPath,
-    #[error("无法合并 OPENCODE_CONFIG_CONTENT：{0}")]
+    #[error("Could not merge OPENCODE_CONFIG_CONTENT: {0}")]
     InvalidOpenCodeConfig(String),
     #[error("Grok hook path is already used by another file: {0}")]
     GrokHookPathOccupied(String),
@@ -292,7 +292,7 @@ impl HookEventStore {
             tracing::warn!(
                 target: "termexo::hooks",
                 terminal_id,
-                "Codex notify 程序包含无法写入覆盖配置的字符，Termexo 终端内将不会转发给它"
+                "The Codex notify program contains characters that cannot be written into the override configuration; Termexo terminals will not forward to it"
             );
         }
         // Literal TOML strings survive the Windows npm `.cmd` shim; JSON-style
@@ -932,7 +932,7 @@ fn forward_codex_notification(forward_to: &[String], payload: &str) -> Option<st
     match spawned {
         Ok(child) => Some(child),
         Err(error) => {
-            eprintln!("无法转发 Codex 通知到 {program}：{error}");
+            eprintln!("Could not forward the Codex notification to {program}: {error}");
             None
         }
     }
@@ -1133,12 +1133,12 @@ fn merge_opencode_plugin_config(
     };
     let object = config
         .as_object_mut()
-        .ok_or_else(|| HookError::InvalidOpenCodeConfig("配置内容必须是 JSON 对象".into()))?;
+        .ok_or_else(|| HookError::InvalidOpenCodeConfig("The configuration must be a JSON object".into()))?;
     let field = if v2 { "plugins" } else { "plugin" };
     let plugins = object.entry(field).or_insert_with(|| json!([]));
     let plugins = plugins
         .as_array_mut()
-        .ok_or_else(|| HookError::InvalidOpenCodeConfig(format!("{field} 字段必须是数组")))?;
+        .ok_or_else(|| HookError::InvalidOpenCodeConfig(format!("The {field} field must be an array")))?;
     if !plugins.iter().any(|plugin| {
         plugin.as_str() == Some(plugin_url)
             || plugin
@@ -1514,7 +1514,7 @@ mod tests {
     #[test]
     fn the_opencode_plugin_reads_a_session_the_way_the_terminal_shows_it() {
         let Some(node) = pinned_node() else {
-            eprintln!("跳过 OpenCode 插件回放：未找到仓库固定的 Node，请先安装前端依赖。");
+            eprintln!("Skipping the OpenCode plugin replay: the repository's pinned Node was not found. Install the frontend dependencies first.");
             return;
         };
         let hooks = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -1524,7 +1524,7 @@ mod tests {
             .arg(hooks.join("opencode-plugin.replay.mjs"))
             .arg(hooks.join("opencode-plugin.mjs"))
             .output()
-            .expect("无法运行 Node 回放脚本");
+            .expect("Could not run the Node replay script");
         assert!(
             output.status.success(),
             "{}",
@@ -1914,7 +1914,7 @@ mod tests {
     #[test]
     fn forwards_a_codex_notification_to_the_users_program() {
         let Some(node) = pinned_node() else {
-            eprintln!("跳过 Codex notify 转发测试：未找到仓库固定的 Node，请先安装前端依赖。");
+            eprintln!("Skipping the Codex notify forwarding test: the repository's pinned Node was not found. Install the frontend dependencies first.");
             return;
         };
         let directory = test_directory("codex notify forward");

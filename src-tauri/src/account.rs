@@ -49,7 +49,7 @@ pub fn validate_agent_type(agent_type: &str) -> Result<&str, String> {
     match agent_type.trim() {
         "claude" => Ok("claude"),
         "codex" => Ok("codex"),
-        _ => Err("账号类型必须是 Claude 或 ChatGPT/Codex。".into()),
+        _ => Err("The account type must be Claude or ChatGPT/Codex.".into()),
     }
 }
 
@@ -60,7 +60,7 @@ pub fn validate_profile_id(profile_id: &str) -> Result<&str, String> {
             .chars()
             .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
     {
-        return Err("账号 Profile ID 只能包含字母、数字、连字符和下划线。".into());
+        return Err("The account profile ID may only contain letters, digits, hyphens and underscores.".into());
     }
     Ok(profile_id)
 }
@@ -84,7 +84,7 @@ pub fn prepare_managed_directory(profile: &AccountProfile) -> Result<(), String>
     };
     let directory = Path::new(config_dir);
     fs::create_dir_all(directory)
-        .map_err(|error| format!("无法创建账号目录 {}：{error}", directory.to_string_lossy()))?;
+        .map_err(|error| format!("Could not create the account directory {}: {error}", directory.to_string_lossy()))?;
     match profile.agent_type.as_str() {
         "codex" => ensure_codex_file_credentials(directory)?,
         "claude" => {
@@ -125,7 +125,7 @@ fn read_claude_global_config(config_path: &Path) -> Result<Map<String, Value>, S
         Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Map::new()),
         Err(error) => {
             return Err(format!(
-                "无法读取账号配置 {}：{error}",
+                "Could not read the account configuration {}: {error}",
                 config_path.to_string_lossy()
             ))
         }
@@ -135,7 +135,7 @@ fn read_claude_global_config(config_path: &Path) -> Result<Map<String, Value>, S
         // Claude repairs a damaged config from its own backups; rewriting it here would destroy
         // what it repairs from.
         _ => Err(format!(
-            "账号配置 {} 不是有效的 JSON 对象，已跳过首次向导标记。",
+            "The account configuration {} is not a valid JSON object; the first-run wizard marker was skipped.",
             config_path.to_string_lossy()
         )),
     }
@@ -145,17 +145,17 @@ fn read_claude_global_config(config_path: &Path) -> Result<Map<String, Value>, S
 /// config at the same moment sees either the old file or the new one, never a partial write.
 fn write_json_atomically(path: &Path, value: &Value) -> Result<(), String> {
     let describe = |action: &str, error: std::io::Error| {
-        format!("无法{action} {}：{error}", path.to_string_lossy())
+        format!("Could not {action} {}: {error}", path.to_string_lossy())
     };
     let serialized = serde_json::to_vec_pretty(value)
-        .map_err(|error| format!("无法序列化 {}：{error}", path.to_string_lossy()))?;
+        .map_err(|error| format!("Could not serialize {}: {error}", path.to_string_lossy()))?;
     let mut temporary = path.as_os_str().to_owned();
     temporary.push(ATOMIC_WRITE_SUFFIX);
     let temporary = PathBuf::from(temporary);
-    fs::write(&temporary, serialized).map_err(|error| describe("写入", error))?;
+    fs::write(&temporary, serialized).map_err(|error| describe("write", error))?;
     fs::rename(&temporary, path).map_err(|error| {
         fs::remove_file(&temporary).ok();
-        describe("替换", error)
+        describe("replace", error)
     })
 }
 
@@ -174,7 +174,7 @@ fn ensure_codex_file_credentials(directory: &Path) -> Result<(), String> {
         separator.unwrap_or_default()
     );
     fs::write(&config_path, updated)
-        .map_err(|error| format!("无法写入 Codex 账号隔离配置：{error}"))
+        .map_err(|error| format!("Could not write the isolated Codex account configuration: {error}"))
 }
 
 pub fn environment(profile: &AccountProfile) -> HashMap<String, String> {
@@ -222,23 +222,23 @@ pub fn refresh_status(mut profile: AccountProfile) -> AccountProfile {
                 .get("authMethod")
                 .and_then(Value::as_str)
                 .filter(|method| !method.is_empty() && *method != "none")
-                .map(|method| format!("已登录 · {method}"))
-                .unwrap_or_else(|| "尚未登录".into());
+                .map(|method| format!("Signed in · {method}"))
+                .unwrap_or_else(|| "Not signed in".into());
         }
         Ok(output) => {
             profile.authenticated = output.status.success();
             let detail = output_text(&output);
             profile.diagnostic = if profile.authenticated {
                 if detail.is_empty() {
-                    "已登录 ChatGPT".into()
+                    "Signed in to ChatGPT".into()
                 } else {
                     detail
                 }
             } else {
-                "尚未登录".into()
+                "Not signed in".into()
             };
         }
-        Err(error) => profile.diagnostic = format!("登录状态检测失败：{error}"),
+        Err(error) => profile.diagnostic = format!("Sign-in check failed: {error}"),
     }
     profile
 }
@@ -251,7 +251,7 @@ pub fn resolve_config_dir(profile: &AccountProfile) -> Result<PathBuf, String> {
     }
     let home = std::env::var_os("USERPROFILE")
         .or_else(|| std::env::var_os("HOME"))
-        .ok_or_else(|| "无法定位用户主目录，系统账号的配置位置未知。".to_owned())?;
+        .ok_or_else(|| "Could not locate the home directory, so the system account's configuration location is unknown.".to_owned())?;
     let default_dir = if profile.agent_type == "claude" {
         PathBuf::from(home).join(".claude")
     } else {
@@ -272,21 +272,21 @@ pub fn copy_configuration(
     target: &AccountProfile,
 ) -> Result<Vec<String>, String> {
     if source.id == target.id {
-        return Err("源账号与目标账号相同。".into());
+        return Err("The source and target accounts are the same.".into());
     }
     if source.agent_type != target.agent_type {
-        return Err("只能在同一类型的账号之间复制配置。".into());
+        return Err("Configuration can only be copied between accounts of the same type.".into());
     }
     let source_dir = resolve_config_dir(source)?;
     if !source_dir.is_dir() {
         return Err(format!(
-            "源账号还没有配置目录：{}",
+            "The source account has no configuration directory yet: {}",
             source_dir.to_string_lossy()
         ));
     }
     prepare_managed_directory(target)?;
     let target_dir = resolve_config_dir(target)?;
-    fs::create_dir_all(&target_dir).map_err(|error| format!("无法创建目标账号目录：{error}"))?;
+    fs::create_dir_all(&target_dir).map_err(|error| format!("Could not create the target account directory: {error}"))?;
 
     let entries = if source.agent_type == "claude" {
         CLAUDE_PORTABLE_ENTRIES
@@ -305,9 +305,9 @@ pub fn copy_configuration(
         } else {
             if let Some(parent) = to.parent() {
                 fs::create_dir_all(parent)
-                    .map_err(|error| format!("无法创建 {}：{error}", parent.to_string_lossy()))?;
+                    .map_err(|error| format!("Could not create {}: {error}", parent.to_string_lossy()))?;
             }
-            fs::copy(&from, &to).map_err(|error| format!("无法复制 {entry}：{error}"))?;
+            fs::copy(&from, &to).map_err(|error| format!("Could not copy {entry}: {error}"))?;
         }
         copied.push((*entry).to_owned());
     }
@@ -322,11 +322,11 @@ pub fn copy_configuration(
 
 fn copy_directory(from: &Path, to: &Path) -> Result<(), String> {
     fs::create_dir_all(to)
-        .map_err(|error| format!("无法创建 {}：{error}", to.to_string_lossy()))?;
+        .map_err(|error| format!("Could not create {}: {error}", to.to_string_lossy()))?;
     let listing = fs::read_dir(from)
-        .map_err(|error| format!("无法读取 {}：{error}", from.to_string_lossy()))?;
+        .map_err(|error| format!("Could not read {}: {error}", from.to_string_lossy()))?;
     for entry in listing {
-        let entry = entry.map_err(|error| format!("无法读取目录项：{error}"))?;
+        let entry = entry.map_err(|error| format!("Could not read the directory entry: {error}"))?;
         let name = entry.file_name();
         if NEVER_COPY.contains(&name.to_string_lossy().as_ref()) {
             continue;
@@ -337,7 +337,7 @@ fn copy_directory(from: &Path, to: &Path) -> Result<(), String> {
             copy_directory(&source_path, &target_path)?;
         } else {
             fs::copy(&source_path, &target_path)
-                .map_err(|error| format!("无法复制 {}：{error}", source_path.to_string_lossy()))?;
+                .map_err(|error| format!("Could not copy {}: {error}", source_path.to_string_lossy()))?;
         }
     }
     Ok(())
@@ -367,7 +367,7 @@ fn login_arguments(agent_type: &str, method: AccountLoginMethod) -> Result<&'sta
         ("codex", AccountLoginMethod::Browser) => Ok("login"),
         ("codex", AccountLoginMethod::DeviceCode) => Ok("login --device-auth"),
         _ => Err(format!(
-            "{agent_type} 不支持 {} 登录方式。",
+            "{agent_type} does not support the {} sign-in method.",
             method.as_str()
         )),
     }

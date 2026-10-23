@@ -60,10 +60,10 @@ pub enum SessionError {
 impl SessionError {
     pub const fn reason(self) -> &'static str {
         match self {
-            Self::ReplayedCounter => "封装帧的计数器没有递增。",
-            Self::MalformedPayload => "封装帧的载荷格式不正确。",
-            Self::ForgedFrame => "封装帧无法解密。",
-            Self::SealFailed => "无法加密返回帧。",
+            Self::ReplayedCounter => "The sealed frame counter did not increase.",
+            Self::MalformedPayload => "The sealed frame payload is malformed.",
+            Self::ForgedFrame => "The sealed frame could not be decrypted.",
+            Self::SealFailed => "The reply frame could not be encrypted.",
         }
     }
 }
@@ -78,7 +78,7 @@ pub struct HandshakeNonce {
 impl HandshakeNonce {
     pub fn generate() -> Result<Self, String> {
         let encoded = random_base64url(NONCE_BYTES)?;
-        let bytes = decode_nonce(&encoded).ok_or_else(|| "握手随机数编码异常。".to_string())?;
+        let bytes = decode_nonce(&encoded).ok_or_else(|| "The handshake nonce is badly encoded.".to_string())?;
         Ok(Self { bytes, encoded })
     }
 }

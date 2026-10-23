@@ -40,7 +40,7 @@ pub fn open_terminal_url(url: String) -> Result<(), String> {
         .iter()
         .any(|scheme| url.len() > scheme.len() && url.to_ascii_lowercase().starts_with(scheme))
     {
-        return Err("只能打开 http 或 https 链接。".into());
+        return Err("Only http or https links can be opened.".into());
     }
     super::update::open_url(url)
 }
@@ -70,7 +70,7 @@ pub fn open_directory(path: String) -> Result<(), String> {
 fn resolve_directory(path: &str) -> Result<PathBuf, String> {
     let resolved = resolve(path, None)?;
     if !resolved.is_dir() {
-        return Err(format!("不是文件夹：{}。", resolved.to_string_lossy()));
+        return Err(format!("Not a folder: {}.", resolved.to_string_lossy()));
     }
     Ok(resolved)
 }
@@ -79,7 +79,7 @@ fn resolve_directory(path: &str) -> Result<PathBuf, String> {
 fn resolve(path: &str, working_directory: Option<&str>) -> Result<PathBuf, String> {
     let trimmed = path.trim().trim_matches('"');
     if trimmed.is_empty() {
-        return Err("路径为空。".into());
+        return Err("The path is empty.".into());
     }
     let candidate = Path::new(trimmed);
     let resolved = if candidate.is_absolute() {
@@ -87,14 +87,14 @@ fn resolve(path: &str, working_directory: Option<&str>) -> Result<PathBuf, Strin
     } else {
         let base = working_directory
             .map(PathBuf::from)
-            .ok_or_else(|| format!("找不到 {trimmed}：这个终端没有工作目录可供解析相对路径。"))?;
+            .ok_or_else(|| format!("Could not find {trimmed}: this terminal has no working directory to resolve relative paths against."))?;
         base.join(candidate)
     };
     // Canonicalising also proves the path exists, and collapses the `..` an agent may have
     // printed, so what is opened is what the explorer is later asked to select.
     resolved
         .canonicalize()
-        .map_err(|_| format!("找不到 {}。", resolved.to_string_lossy()))
+        .map_err(|_| format!("Could not find {}.", resolved.to_string_lossy()))
 }
 
 #[cfg(windows)]
@@ -107,7 +107,7 @@ fn reveal(path: &Path) -> Result<(), String> {
         .arg(argument)
         .spawn()
         .map(|_| ())
-        .map_err(|error| format!("无法在资源管理器中定位该文件：{error}"))
+        .map_err(|error| format!("Could not reveal the file in Explorer: {error}"))
 }
 
 #[cfg(windows)]
@@ -118,7 +118,7 @@ fn open_with_default_program(path: &Path) -> Result<(), String> {
         .arg(strip_extended_prefix(path))
         .spawn()
         .map(|_| ())
-        .map_err(|error| format!("无法打开该文件：{error}"))
+        .map_err(|error| format!("Could not open the file: {error}"))
 }
 
 /// Drops the `\\?\` that `canonicalize` adds, which the shell APIs below do not accept.
@@ -138,7 +138,7 @@ fn reveal(path: &Path) -> Result<(), String> {
         .arg(path)
         .spawn()
         .map(|_| ())
-        .map_err(|error| format!("无法在 Finder 中定位该文件：{error}"))
+        .map_err(|error| format!("Could not reveal the file in Finder: {error}"))
 }
 
 #[cfg(target_os = "macos")]
@@ -147,17 +147,17 @@ fn open_with_default_program(path: &Path) -> Result<(), String> {
         .arg(path)
         .spawn()
         .map(|_| ())
-        .map_err(|error| format!("无法打开该文件：{error}"))
+        .map_err(|error| format!("Could not open the file: {error}"))
 }
 
 #[cfg(not(any(windows, target_os = "macos")))]
 fn reveal(_path: &Path) -> Result<(), String> {
-    Err("当前平台不支持在文件管理器中定位。".into())
+    Err("Revealing files in a file manager is not supported on this platform.".into())
 }
 
 #[cfg(not(any(windows, target_os = "macos")))]
 fn open_with_default_program(_path: &Path) -> Result<(), String> {
-    Err("当前平台不支持打开文件。".into())
+    Err("Opening files is not supported on this platform.".into())
 }
 
 #[cfg(test)]

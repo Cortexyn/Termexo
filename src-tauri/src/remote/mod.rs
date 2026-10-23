@@ -39,9 +39,9 @@ const SHUTDOWN_WAIT: Duration = Duration::from_secs(5);
 /// Always in a certificate's SAN list, and never a useful name for a device on a relay.
 pub(crate) const LOCALHOST_NAME: &str = "localhost";
 /// What a device is called on the relay when this machine does not report a name of its own.
-const FALLBACK_DEVICE_NAME: &str = "Termexo 桌面端";
+const FALLBACK_DEVICE_NAME: &str = "Termexo Desktop";
 
-const RELAY_NOT_ENROLLED: &str = "尚未接入中继，请先使用接入码或账号密码接入。";
+const RELAY_NOT_ENROLLED: &str = "Not connected to a relay. Connect with an enrollment code or an account password first.";
 
 /// One local IPv4 address the workbench can be reached at.
 #[derive(Debug, Clone, Serialize)]
@@ -72,7 +72,7 @@ pub fn local_addresses() -> Vec<RemoteAccessAddress> {
     let interfaces = match if_addrs::get_if_addrs() {
         Ok(interfaces) => interfaces,
         Err(error) => {
-            tracing::warn!(%error, "无法枚举本机网络地址");
+            tracing::warn!(%error, "Could not enumerate the local network addresses");
             return Vec::new();
         }
     };
@@ -140,7 +140,7 @@ impl RemoteAccessManager {
             .state::<CredentialStore>()
             .get_optional(REMOTE_ACCESS_CREDENTIAL_TARGET)
             .unwrap_or_else(|error| {
-                tracing::warn!(%error, "无法读取远程访问令牌");
+                tracing::warn!(%error, "Could not read the remote access token");
                 None
             })
             .unwrap_or_default();
@@ -173,7 +173,7 @@ impl RemoteAccessManager {
         let mut state = self.state.lock().await;
         if state.settings.enabled {
             if let Err(error) = self.ensure_running(&mut state).await {
-                tracing::warn!(%error, "远程访问服务启动失败");
+                tracing::warn!(%error, "The remote access service failed to start");
             }
         }
         self.apply_relay(&state).await;
@@ -209,7 +209,7 @@ impl RemoteAccessManager {
         // A failed start is reported through the status snapshot rather than as a command error,
         // because the settings themselves were saved and the panel has to show both facts.
         if let Err(error) = start_result {
-            tracing::warn!(%error, "远程访问服务启动失败");
+            tracing::warn!(%error, "The remote access service failed to start");
         }
         self.apply_relay(&state).await;
         Ok(self.snapshot(&state))
@@ -246,7 +246,7 @@ impl RemoteAccessManager {
         self.app
             .state::<CredentialStore>()
             .set(RELAY_CREDENTIAL_TARGET, &response.credential)
-            .map_err(|error| format!("无法保存中继设备凭据：{error}"))?;
+            .map_err(|error| format!("Could not save the relay device credentials: {error}"))?;
 
         let mut state = self.state.lock().await;
         let settings = RemoteAccessSettings {
@@ -260,7 +260,7 @@ impl RemoteAccessManager {
         tracing::info!(
             relay = %endpoint.authority(),
             device_id = %response.device_id,
-            "已接入中继"
+            "Connected to the relay"
         );
         // A re-enrollment after a revocation targets the very same relay, so the previous link has
         // to go before the new credential can be presented.
@@ -288,7 +288,7 @@ impl RemoteAccessManager {
     /// the link back on the next start. The address is kept so the panel can still say which relay
     /// withdrew the access.
     async fn forget_relay_device(&self, reason: &str) {
-        tracing::warn!(%reason, "中继已撤销本设备，正在清除设备凭据");
+        tracing::warn!(%reason, "The relay revoked this device; clearing the device credentials");
         self.app
             .state::<CredentialStore>()
             .delete(RELAY_CREDENTIAL_TARGET);
@@ -299,7 +299,7 @@ impl RemoteAccessManager {
         }
         state.settings.relay.enabled = false;
         if let Err(error) = self.persist_settings(&state.settings) {
-            tracing::warn!(%error, "无法保存中继撤销后的设置");
+            tracing::warn!(%error, "Could not save the settings after the relay revocation");
         }
     }
 
@@ -310,7 +310,7 @@ impl RemoteAccessManager {
             return;
         }
         if let Err(error) = self.start_relay(&state.settings).await {
-            tracing::warn!(%error, "中继隧道无法启动");
+            tracing::warn!(%error, "The relay tunnel could not start");
             self.relay.report_unavailable(error).await;
         }
     }
@@ -321,7 +321,7 @@ impl RemoteAccessManager {
             .app
             .state::<CredentialStore>()
             .get_optional(RELAY_CREDENTIAL_TARGET)
-            .map_err(|error| format!("无法读取中继设备凭据：{error}"))?
+            .map_err(|error| format!("Could not read the relay device credentials: {error}"))?
             .ok_or_else(|| RELAY_NOT_ENROLLED.to_string())?;
 
         let context = self.build_context(settings, self.relay.commands(), true);
@@ -368,10 +368,10 @@ impl RemoteAccessManager {
         // Binding synchronously first turns "port already in use" into an immediate, reportable
         // error instead of a task that dies in the background.
         let listener = std::net::TcpListener::bind(address)
-            .map_err(|error| format!("无法监听 {address}：{error}"))?;
+            .map_err(|error| format!("Could not listen on {address}: {error}"))?;
         listener
             .set_nonblocking(true)
-            .map_err(|error| format!("无法配置监听套接字：{error}"))?;
+            .map_err(|error| format!("Could not configure the listening socket: {error}"))?;
 
         let (commands, command_receiver) = watch::channel(ConnectionCommand::Run);
         let context = self.build_context(settings, command_receiver, false);
@@ -380,28 +380,28 @@ impl RemoteAccessManager {
 
         let task = if settings.tls {
             let app_data_dir = crate::platform::app_data_dir(&self.app)
-                .map_err(|error| format!("无法定位应用数据目录：{error}"))?;
+                .map_err(|error| format!("Could not locate the application data directory: {error}"))?;
             let host_addresses: Vec<String> = local_addresses()
                 .into_iter()
                 .map(|entry| entry.address)
                 .collect();
             let tls_config = tls::load_or_create_config(&app_data_dir, &host_addresses).await?;
             let server = axum_server::tls_rustls::from_tcp_rustls(listener, tls_config)
-                .map_err(|error| format!("无法启动 HTTPS 服务：{error}"))?
+                .map_err(|error| format!("Could not start the HTTPS service: {error}"))?
                 .handle(handle.clone());
             tauri::async_runtime::spawn(
                 async move { report_serve_result(server.serve(service).await) },
             )
         } else {
             let server = axum_server::from_tcp(listener)
-                .map_err(|error| format!("无法启动 HTTP 服务：{error}"))?
+                .map_err(|error| format!("Could not start the HTTP service: {error}"))?
                 .handle(handle.clone());
             tauri::async_runtime::spawn(
                 async move { report_serve_result(server.serve(service).await) },
             )
         };
 
-        tracing::info!(%address, tls = settings.tls, "远程访问服务已启动");
+        tracing::info!(%address, tls = settings.tls, "Remote access service started");
         Ok(RunningServer {
             handle,
             commands,
@@ -447,7 +447,7 @@ impl RemoteAccessManager {
             .await
             .is_err()
         {
-            tracing::warn!("远程访问服务未在超时前停止");
+            tracing::warn!("The remote access service did not stop before the timeout");
         }
     }
 
@@ -466,7 +466,7 @@ impl RemoteAccessManager {
         self.app
             .state::<CredentialStore>()
             .set(REMOTE_ACCESS_CREDENTIAL_TARGET, token)
-            .map_err(|error| format!("无法保存访问令牌：{error}"))
+            .map_err(|error| format!("Could not save the access token: {error}"))
     }
 
     fn persist_settings(&self, settings: &RemoteAccessSettings) -> Result<(), String> {
@@ -503,7 +503,7 @@ fn default_device_name() -> String {
 
 fn report_serve_result(result: std::io::Result<()>) {
     if let Err(error) = result {
-        tracing::warn!(%error, "远程访问服务已异常退出");
+        tracing::warn!(%error, "The remote access service exited unexpectedly");
     }
 }
 
@@ -583,7 +583,7 @@ mod tests {
             error: None,
             addresses: vec![RemoteAccessAddress {
                 address: "192.168.1.20".into(),
-                interface_name: "以太网".into(),
+                interface_name: "Ethernet".into(),
                 loopback: false,
             }],
             token: "token".into(),

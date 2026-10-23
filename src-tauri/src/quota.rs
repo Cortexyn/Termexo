@@ -256,7 +256,7 @@ pub fn parse_response(provider: &str, body: &Value) -> Result<Vec<QuotaEntry>, S
         Some(PROVIDER_KIMI) => parse_kimi(body),
         Some(PROVIDER_MINIMAX) => parse_minimax(body),
         Some(PROVIDER_GLM) => parse_glm(body),
-        _ => Err("该供应商未提供余量接口".to_owned()),
+        _ => Err("This provider offers no allowance endpoint".to_owned()),
     }
 }
 
@@ -265,12 +265,12 @@ fn parse_deepseek(body: &Value) -> Result<Vec<QuotaEntry>, String> {
     let infos = body
         .get("balance_infos")
         .and_then(Value::as_array)
-        .ok_or_else(|| "DeepSeek 返回的余额结构无法识别".to_owned())?;
+        .ok_or_else(|| "DeepSeek returned an unrecognized balance structure".to_owned())?;
     let entries = infos
         .iter()
         .filter_map(|info| {
             let currency = info.get("currency").and_then(Value::as_str)?;
-            let mut entry = QuotaEntry::new("可用余额", QuotaUnit::Currency);
+            let mut entry = QuotaEntry::new("Available balance", QuotaUnit::Currency);
             entry.currency = Some(currency.to_owned());
             entry.remaining = loose_number(info, "total_balance");
             entry.total = entry.remaining;
@@ -278,7 +278,7 @@ fn parse_deepseek(body: &Value) -> Result<Vec<QuotaEntry>, String> {
         })
         .collect::<Vec<_>>();
     if entries.is_empty() {
-        return Err("DeepSeek 未返回任何余额条目".to_owned());
+        return Err("DeepSeek returned no balance entries".to_owned());
     }
     Ok(entries)
 }
@@ -288,10 +288,10 @@ fn parse_kimi(body: &Value) -> Result<Vec<QuotaEntry>, String> {
     let data = body
         .get("data")
         .filter(|data| data.is_object())
-        .ok_or_else(|| "Kimi 返回的余额结构无法识别".to_owned())?;
+        .ok_or_else(|| "Kimi returned an unrecognized balance structure".to_owned())?;
     let available =
-        loose_number(data, "available_balance").ok_or_else(|| "Kimi 未返回可用余额".to_owned())?;
-    let mut entry = QuotaEntry::new("可用余额", QuotaUnit::Currency);
+        loose_number(data, "available_balance").ok_or_else(|| "Kimi returned no available balance".to_owned())?;
+    let mut entry = QuotaEntry::new("Available balance", QuotaUnit::Currency);
     entry.currency = Some("USD".to_owned());
     entry.remaining = Some(available);
     entry.total = Some(available);
@@ -307,7 +307,7 @@ fn parse_glm(body: &Value) -> Result<Vec<QuotaEntry>, String> {
         .get("data")
         .and_then(|data| data.get("limits"))
         .and_then(Value::as_array)
-        .ok_or_else(|| "GLM 返回的配额结构无法识别".to_owned())?;
+        .ok_or_else(|| "GLM returned an unrecognized quota structure".to_owned())?;
     let mut token_windows = 0;
     let entries = limits
         .iter()
@@ -338,7 +338,7 @@ fn parse_glm(body: &Value) -> Result<Vec<QuotaEntry>, String> {
         })
         .collect::<Vec<_>>();
     if entries.is_empty() {
-        return Err("GLM 未返回任何配额条目".to_owned());
+        return Err("GLM returned no quota entries".to_owned());
     }
     Ok(entries)
 }
@@ -346,11 +346,11 @@ fn parse_glm(body: &Value) -> Result<Vec<QuotaEntry>, String> {
 /// GLM sends the rolling windows in order without naming them, so they are numbered.
 fn glm_label(kind: &str, token_window: usize) -> String {
     if kind.eq_ignore_ascii_case("TIME_LIMIT") {
-        return "请求次数".to_owned();
+        return "Request count".to_owned();
     }
     match token_window {
-        1 => "Token 额度（较短窗口）".to_owned(),
-        _ => format!("Token 额度（窗口 {token_window}）"),
+        1 => "Token allowance (shorter window)".to_owned(),
+        _ => format!("Token allowance (window {token_window})"),
     }
 }
 
@@ -368,13 +368,13 @@ fn parse_minimax(body: &Value) -> Result<Vec<QuotaEntry>, String> {
             .get("base_resp")
             .and_then(|resp| resp.get("status_msg"))
             .and_then(Value::as_str)
-            .unwrap_or("未提供说明");
-        return Err(format!("MiniMax 余量接口返回错误 {code}：{message}"));
+            .unwrap_or("no description provided");
+        return Err(format!("The MiniMax allowance endpoint returned error {code}: {message}"));
     }
 
     let models = body
         .get("model_remains")
-        .ok_or_else(|| format!("MiniMax 返回了未识别的结构（字段：{}）", key_outline(body)))?;
+        .ok_or_else(|| format!("MiniMax returned an unrecognized structure (fields: {})", key_outline(body)))?;
     // A single-model plan may arrive as one object rather than a list.
     let models: Vec<&Value> = match models {
         Value::Array(items) => items.iter().collect(),
@@ -400,7 +400,7 @@ fn parse_minimax(body: &Value) -> Result<Vec<QuotaEntry>, String> {
         };
         entries.extend(minimax_window(
             model,
-            label("当前区间"),
+            label("Current period"),
             "current_interval_total_count",
             "current_interval_usage_count",
             "current_interval_remaining_percent",
@@ -408,7 +408,7 @@ fn parse_minimax(body: &Value) -> Result<Vec<QuotaEntry>, String> {
         ));
         entries.extend(minimax_window(
             model,
-            label("本周"),
+            label("This week"),
             "current_weekly_total_count",
             "current_weekly_usage_count",
             "current_weekly_remaining_percent",
@@ -417,7 +417,7 @@ fn parse_minimax(body: &Value) -> Result<Vec<QuotaEntry>, String> {
     }
     if entries.is_empty() {
         return Err(format!(
-            "MiniMax 返回了未识别的结构（字段：{}）",
+            "MiniMax returned an unrecognized structure (fields: {})",
             key_outline(body)
         ));
     }
@@ -525,9 +525,9 @@ pub fn read_opencode_credentials() -> Result<OpenCodeCredentials, String> {
             let path = opencode_auth_path();
             match fs::read_to_string(&path) {
                 Ok(content) => serde_json::from_str::<Value>(&content)
-                    .map_err(|error| format!("OpenCode 登录凭据解析失败：{error}"))?,
+                    .map_err(|error| format!("Could not parse the OpenCode credentials: {error}"))?,
                 Err(error) if error.kind() == ErrorKind::NotFound => Value::Object(Map::new()),
-                Err(error) => return Err(format!("无法读取 OpenCode 登录凭据：{error}")),
+                Err(error) => return Err(format!("Could not read the OpenCode credentials: {error}")),
             }
         }
     };
@@ -555,7 +555,7 @@ fn parse_opencode_credentials(
 ) -> Result<OpenCodeCredentials, String> {
     let auth = auth
         .as_object()
-        .ok_or_else(|| "OpenCode 登录凭据必须是 JSON 对象".to_owned())?;
+        .ok_or_else(|| "The OpenCode credentials must be a JSON object".to_owned())?;
     let codex = auth
         .get("openai")
         .and_then(Value::as_object)
@@ -662,7 +662,7 @@ pub fn read_agent_token(agent_type: &str, config_dir: Option<&str>) -> Result<St
         .map(str::to_owned)
         .ok_or_else(|| {
             format!(
-                "{} 尚未登录，无法查询订阅额度",
+                "{} is not signed in, so the subscription allowance cannot be queried",
                 agent_display_name(agent_type)
             )
         })
@@ -676,7 +676,7 @@ pub struct GrokCredential {
 
 /// Reuses the Grok CLI's signed-in account without copying its refresh token.
 pub fn read_grok_credential() -> Result<GrokCredential, String> {
-    let home = grok_home().ok_or_else(|| "无法找到 Grok Build 配置目录".to_owned())?;
+    let home = grok_home().ok_or_else(|| "Could not find the Grok Build configuration directory".to_owned())?;
     let auth = read_json(&home.join("auth.json"))?;
     parse_grok_credential(&auth)
 }
@@ -717,7 +717,7 @@ fn latest_grok_free_usage_exhaustion_in(path: &Path) -> Option<i64> {
 fn parse_grok_credential(auth: &Value) -> Result<GrokCredential, String> {
     let entries = auth
         .as_object()
-        .ok_or_else(|| "Grok Build 登录凭据格式无效".to_owned())?;
+        .ok_or_else(|| "The Grok Build credentials are malformed".to_owned())?;
     let candidate = entries
         .iter()
         .filter_map(|(scope, value)| {
@@ -738,7 +738,7 @@ fn parse_grok_credential(auth: &Value) -> Result<GrokCredential, String> {
             })
         })
         .next();
-    candidate.ok_or_else(|| "Grok Build 尚未通过 grok.com 登录，请先运行 grok login".to_owned())
+    candidate.ok_or_else(|| "Grok Build is not signed in through grok.com. Run grok login first".to_owned())
 }
 
 pub fn build_grok_request(
@@ -777,18 +777,18 @@ pub fn parse_grok_response_with_exhaustion(
 ) -> Result<Vec<QuotaEntry>, String> {
     let config = body
         .get("config")
-        .ok_or_else(|| "Grok Build 未返回额度配置".to_owned())?;
+        .ok_or_else(|| "Grok Build returned no allowance configuration".to_owned())?;
     let period = config.get("currentPeriod");
     let period_type = period
         .and_then(|value| value.get("type"))
         .and_then(Value::as_str)
         .unwrap_or_default();
     let label = if period_type.contains("WEEKLY") {
-        "每周共享额度"
+        "Weekly shared allowance"
     } else if period_type.contains("MONTHLY") {
-        "每月共享额度"
+        "Monthly shared allowance"
     } else {
-        "订阅共享额度"
+        "Subscription shared allowance"
     };
     let legacy_limit = config
         .get("monthlyLimit")
@@ -821,9 +821,9 @@ pub fn parse_grok_response_with_exhaustion(
             });
         let mut entry = QuotaEntry::new(
             if exhausted {
-                "免费额度已用尽（依据 Grok 限额错误）"
+                "Free allowance exhausted (based on Grok's limit error)"
             } else if used_percent.is_none() {
-                "本期额度（服务端未提供用量百分比）"
+                "This period's allowance (the server gave no usage percentage)"
             } else {
                 label
             },
@@ -844,14 +844,14 @@ pub fn parse_grok_response_with_exhaustion(
         .and_then(|value| loose_number(value, "val"))
         .filter(|balance| balance.is_finite() && *balance > 0.0)
     {
-        let mut entry = QuotaEntry::new("额外点数余额", QuotaUnit::Currency);
+        let mut entry = QuotaEntry::new("Extra credit balance", QuotaUnit::Currency);
         entry.currency = Some("USD".into());
         entry.remaining = Some(balance / 100.0);
         entries.push(entry);
     }
     if entries.is_empty() {
         return Err(format!(
-            "Grok Build 返回了未识别的额度结构（字段：{}）",
+            "Grok Build returned an unrecognized allowance structure (fields: {})",
             key_outline(body)
         ));
     }
@@ -859,8 +859,8 @@ pub fn parse_grok_response_with_exhaustion(
 }
 
 fn read_json(path: &Path) -> Result<Value, String> {
-    let text = fs::read_to_string(path).map_err(|_| "尚未登录，未找到登录凭据".to_owned())?;
-    serde_json::from_str(&text).map_err(|error| format!("登录凭据解析失败：{error}"))
+    let text = fs::read_to_string(path).map_err(|_| "Not signed in; no credentials found".to_owned())?;
+    serde_json::from_str(&text).map_err(|error| format!("Could not parse the credentials: {error}"))
 }
 
 pub fn build_agent_request(agent_type: &str, token: &str) -> QuotaRequest {
@@ -902,17 +902,17 @@ pub fn build_opencode_go_request(api_key: &str) -> QuotaRequest {
 pub fn parse_opencode_codex_response(body: &Value) -> Result<Vec<QuotaEntry>, String> {
     let rate_limit = body
         .get("rate_limit")
-        .ok_or_else(|| "OpenCode Codex 未返回订阅额度".to_owned())?;
+        .ok_or_else(|| "OpenCode Codex returned no subscription allowance".to_owned())?;
     Ok(vec![
         parse_used_window(
             rate_limit.get("primary_window"),
-            "5 小时窗口",
+            "5-hour window",
             "used_percent",
             "reset_at",
         )?,
         parse_used_window(
             rate_limit.get("secondary_window"),
-            "每周额度",
+            "Weekly allowance",
             "used_percent",
             "reset_at",
         )?,
@@ -922,11 +922,11 @@ pub fn parse_opencode_codex_response(body: &Value) -> Result<Vec<QuotaEntry>, St
 pub fn parse_opencode_go_response(body: &Value) -> Result<Vec<QuotaEntry>, String> {
     let usage = body
         .get("usage")
-        .ok_or_else(|| "OpenCode Go 未返回订阅额度".to_owned())?;
+        .ok_or_else(|| "OpenCode Go returned no subscription allowance".to_owned())?;
     Ok(vec![
-        parse_used_window(usage.get("rolling"), "5 小时窗口", "percent", "resetsAt")?,
-        parse_used_window(usage.get("weekly"), "每周额度", "percent", "resetsAt")?,
-        parse_used_window(usage.get("monthly"), "每月额度", "percent", "resetsAt")?,
+        parse_used_window(usage.get("rolling"), "5-hour window", "percent", "resetsAt")?,
+        parse_used_window(usage.get("weekly"), "Weekly allowance", "percent", "resetsAt")?,
+        parse_used_window(usage.get("monthly"), "Monthly allowance", "percent", "resetsAt")?,
     ])
 }
 
@@ -936,14 +936,14 @@ fn parse_used_window(
     percent_key: &str,
     reset_key: &str,
 ) -> Result<QuotaEntry, String> {
-    let value = value.ok_or_else(|| format!("{label}不可用"))?;
+    let value = value.ok_or_else(|| format!("{label} is unavailable"))?;
     let percent = loose_number(value, percent_key)
         .filter(|percent| percent.is_finite())
-        .ok_or_else(|| format!("{label}的已用比例无效"))?;
+        .ok_or_else(|| format!("{label} has an invalid used share"))?;
     let resets_at = value
         .get(reset_key)
         .and_then(parse_timestamp)
-        .ok_or_else(|| format!("{label}的重置时间无效"))?;
+        .ok_or_else(|| format!("{label} has an invalid reset time"))?;
     let mut entry = QuotaEntry::new(label, QuotaUnit::Percent);
     entry.percent = Some(percent.clamp(0.0, 100.0));
     entry.resets_at = Some(resets_at);
@@ -960,7 +960,7 @@ pub fn parse_agent_response(agent_type: &str, body: &Value) -> Result<Vec<QuotaE
     collect_windows(body, "", &mut entries);
     if entries.is_empty() {
         return Err(format!(
-            "{} 返回了未识别的结构（字段：{}）",
+            "{} returned an unrecognized structure (fields: {})",
             agent_display_name(agent_type),
             key_outline(body)
         ));
@@ -1032,9 +1032,9 @@ fn window_entry(object: &Map<String, Value>, key: &str) -> Option<QuotaEntry> {
 fn duration_label(seconds: f64) -> String {
     let hours = (seconds / 3_600.0).round() as i64;
     if hours < 24 {
-        format!("{hours} 小时窗口")
+        format!("{hours}-hour window")
     } else {
-        format!("{} 天窗口", (hours as f64 / 24.0).round() as i64)
+        format!("{}-day window", (hours as f64 / 24.0).round() as i64)
     }
 }
 
@@ -1042,16 +1042,16 @@ fn duration_label(seconds: f64) -> String {
 fn window_label(key: &str) -> String {
     let normalized = key.to_ascii_lowercase();
     if normalized.contains("five_hour") || normalized.contains("5h") {
-        "5 小时窗口".to_owned()
+        "5-hour window".to_owned()
     } else if normalized.contains("seven_day")
         || normalized.contains("weekly")
         || normalized.contains("week")
     {
-        "每周额度".to_owned()
+        "Weekly allowance".to_owned()
     } else if normalized.contains("opus") {
-        "Opus 额度".to_owned()
+        "Opus allowance".to_owned()
     } else if normalized.is_empty() {
-        "订阅额度".to_owned()
+        "Subscription allowance".to_owned()
     } else {
         key.replace('_', " ")
     }
@@ -1186,13 +1186,13 @@ mod tests {
     /// The CLIs report what is left; the app draws what has been consumed.
     #[test]
     fn a_remaining_share_becomes_a_consumed_percentage() {
-        let spent = remaining_share_entry("周额度", 0.0, Some("2026-09-18T16:45:19Z"));
+        let spent = remaining_share_entry("Weekly allowance", 0.0, Some("2026-09-18T16:45:19Z"));
         assert_eq!(spent.unit, QuotaUnit::Percent);
         assert_eq!(spent.percent, Some(100.0));
         // 2026-09-18T16:45:19Z
         assert_eq!(spent.resets_at, Some(1_789_749_919_000));
 
-        let untouched = remaining_share_entry("周额度", 1.0, None);
+        let untouched = remaining_share_entry("Weekly allowance", 1.0, None);
         assert_eq!(untouched.percent, Some(0.0));
         assert_eq!(untouched.resets_at, None);
     }
@@ -1361,14 +1361,14 @@ mod tests {
         let entries = parse_response("MiniMax", &body).unwrap();
 
         assert_eq!(entries.len(), 2);
-        assert_eq!(entries[0].label, "MiniMax-M3 · 当前区间");
+        assert_eq!(entries[0].label, "MiniMax-M3 · Current period");
         // The plan is sold in requests, not tokens, despite the endpoint's name.
         assert_eq!(entries[0].unit, QuotaUnit::Requests);
         assert_eq!(entries[0].remaining, Some(700.0));
         // `percent` is consumption, while MiniMax reports what is left.
         assert_eq!(entries[0].percent, Some(30.0));
         assert_eq!(entries[0].resets_at, Some(1_754_018_000_000));
-        assert_eq!(entries[1].label, "MiniMax-M3 · 本周");
+        assert_eq!(entries[1].label, "MiniMax-M3 · This week");
         assert_eq!(entries[1].remaining, Some(4000.0));
         assert_eq!(entries[1].percent, Some(20.0));
         assert_eq!(entries[1].resets_at, Some(1_754_500_000_000));
@@ -1383,7 +1383,7 @@ mod tests {
         let entries = parse_response("MiniMax", &body).unwrap();
 
         assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].label, "本周");
+        assert_eq!(entries[0].label, "This week");
         assert_eq!(entries[0].percent, Some(65.0));
     }
 
@@ -1405,7 +1405,7 @@ mod tests {
 
         let error = parse_response("MiniMax", &body).unwrap_err();
 
-        assert!(error.contains("未识别"));
+        assert!(error.contains("unrecognized"));
         // Key names help tighten the parser; values could carry the balance itself.
         assert!(error.contains("status_code"));
         assert!(!error.contains("unknown"));
@@ -1479,7 +1479,7 @@ mod tests {
         });
         let entries = parse_grok_response(&body).unwrap();
         assert_eq!(entries.len(), 2);
-        assert_eq!(entries[0].label, "每周共享额度");
+        assert_eq!(entries[0].label, "Weekly shared allowance");
         assert_eq!(entries[0].percent, Some(37.5));
         assert!(entries[0].resets_at.is_some());
         assert_eq!(entries[1].remaining, Some(7.25));
@@ -1582,13 +1582,13 @@ mod tests {
         assert_eq!(entries.len(), 2);
         let five_hour = entries
             .iter()
-            .find(|entry| entry.label == "5 小时窗口")
+            .find(|entry| entry.label == "5-hour window")
             .unwrap();
         assert_eq!(five_hour.unit, QuotaUnit::Percent);
         assert_eq!(five_hour.percent, Some(45.0));
         // 2026-08-10T05:00:00Z
         assert_eq!(five_hour.resets_at, Some(1_786_338_000_000));
-        assert!(entries.iter().any(|entry| entry.label == "每周额度"));
+        assert!(entries.iter().any(|entry| entry.label == "Weekly allowance"));
     }
 
     #[test]
@@ -1607,14 +1607,14 @@ mod tests {
         assert_eq!(entries.len(), 2);
         let five_hour = entries
             .iter()
-            .find(|entry| entry.label == "5 小时窗口")
+            .find(|entry| entry.label == "5-hour window")
             .unwrap();
         // `percent_left` is what remains; `percent` is what has been consumed.
         assert_eq!(five_hour.percent, Some(30.0));
         assert_eq!(five_hour.resets_at, Some(1_754_000_000_000));
         let weekly = entries
             .iter()
-            .find(|entry| entry.label == "7 天窗口")
+            .find(|entry| entry.label == "7-day window")
             .unwrap();
         assert_eq!(weekly.percent, Some(12.0));
     }
@@ -1625,7 +1625,7 @@ mod tests {
 
         let error = parse_agent_response("claude", &body).unwrap_err();
 
-        assert!(error.contains("未识别"));
+        assert!(error.contains("unrecognized"));
         assert!(error.contains("plan"));
         assert!(!error.contains("pro"));
     }
@@ -1703,10 +1703,10 @@ mod tests {
         .unwrap();
 
         assert_eq!(entries.len(), 2);
-        assert_eq!(entries[0].label, "5 小时窗口");
+        assert_eq!(entries[0].label, "5-hour window");
         assert_eq!(entries[0].percent, Some(25.0));
         assert_eq!(entries[0].resets_at, Some(1_800_000_000_000));
-        assert_eq!(entries[1].label, "每周额度");
+        assert_eq!(entries[1].label, "Weekly allowance");
         assert_eq!(entries[1].percent, Some(50.0));
     }
 
@@ -1722,10 +1722,10 @@ mod tests {
         .unwrap();
 
         assert_eq!(entries.len(), 3);
-        assert_eq!(entries[0].label, "5 小时窗口");
+        assert_eq!(entries[0].label, "5-hour window");
         assert_eq!(entries[0].percent, Some(20.0));
-        assert_eq!(entries[1].label, "每周额度");
-        assert_eq!(entries[2].label, "每月额度");
+        assert_eq!(entries[1].label, "Weekly allowance");
+        assert_eq!(entries[2].label, "Monthly allowance");
         assert_eq!(entries[2].percent, Some(60.0));
     }
 
@@ -1740,7 +1740,7 @@ mod tests {
         }))
         .unwrap_err();
 
-        assert!(error.contains("5 小时窗口"));
-        assert!(error.contains("已用比例无效"));
+        assert!(error.contains("5-hour window"));
+        assert!(error.contains("invalid used share"));
     }
 }

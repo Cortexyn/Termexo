@@ -27,13 +27,13 @@ const TRUSTED_WORKSPACES_KEY: &str = "trustedWorkspaces";
 
 #[derive(Debug, Error)]
 pub enum AntigravitySettingsError {
-    #[error("无法找到 Antigravity CLI 的配置目录。")]
+    #[error("Could not find the Antigravity CLI configuration directory.")]
     NoSettingsDirectory,
-    #[error("Antigravity 配置文件不是 JSON 对象，未做修改：{0}")]
+    #[error("The Antigravity configuration file is not a JSON object and was left unchanged: {0}")]
     NotAnObject(String),
-    #[error("读取或写入 Antigravity 配置失败：{0}")]
+    #[error("Could not read or write the Antigravity configuration: {0}")]
     Io(#[from] std::io::Error),
-    #[error("解析 Antigravity 配置失败：{0}")]
+    #[error("Could not parse the Antigravity configuration: {0}")]
     Parse(#[from] serde_json::Error),
 }
 

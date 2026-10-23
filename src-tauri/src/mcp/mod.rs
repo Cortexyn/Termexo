@@ -171,7 +171,7 @@ impl McpManager {
             return Ok(());
         }
         if !self.ready.load(Ordering::Acquire) {
-            return Err("Termexo MCP 服务尚未启动，请检查 AI 操控（MCP）设置后重试。".into());
+            return Err("The Termexo MCP service is not running. Check the AI control (MCP) settings and try again.".into());
         }
         let database = self
             .app

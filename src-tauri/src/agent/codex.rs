@@ -222,7 +222,7 @@ impl CodexCliAdapter {
                     target: "termexo::agent",
                     path = %path.display(),
                     %error,
-                    "无法读取 Codex 配置中的 notify 程序"
+                    "Could not read the notify program from the Codex configuration"
                 );
                 Vec::new()
             }),
@@ -258,7 +258,7 @@ impl AgentAdapter for CodexCliAdapter {
                 executable_path: None,
                 version: None,
                 healthy: false,
-                diagnostic: "未检测到 Codex CLI，请先安装后重试。".into(),
+                diagnostic: "Codex CLI was not found. Install it and try again.".into(),
             });
         };
 
@@ -271,9 +271,9 @@ impl AgentAdapter for CodexCliAdapter {
             version,
             healthy,
             diagnostic: if healthy {
-                "Codex CLI 可用".into()
+                "Codex CLI is available".into()
             } else {
-                "已找到 Codex CLI，但版本检测失败。".into()
+                "Codex CLI was found, but its version check failed.".into()
             },
         })
     }
@@ -456,7 +456,7 @@ fn parse_session(
         .cloned()
         .or(first_user_message)
         .filter(|value| !value.trim().is_empty())
-        .unwrap_or_else(|| format!("Codex 会话 {}", short_id(&native_session_id)));
+        .unwrap_or_else(|| format!("Codex session {}", short_id(&native_session_id)));
 
     Ok(Some(AgentSession {
         id: format!("codex:{native_session_id}"),
@@ -750,7 +750,7 @@ mod tests {
         let sessions = adapter.list_sessions(None).unwrap();
 
         assert_eq!(sessions.len(), 1);
-        assert_eq!(sessions[0].title, "Codex 会话 019f9978");
+        assert_eq!(sessions[0].title, "Codex session 019f9978");
 
         fs::remove_dir_all(directory).unwrap();
     }

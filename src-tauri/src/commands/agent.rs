@@ -371,7 +371,7 @@ pub fn prepare_claude_launch(
             let profile = database
                 .find_mcp_profile(profile_id)
                 .map_err(|error| error.to_string())?
-                .ok_or_else(|| "MCP Profile 不存在".to_owned())?;
+                .ok_or_else(|| "The MCP profile does not exist".to_owned())?;
             Some(
                 hooks
                     .write_mcp_config(&request.terminal_id, &profile.config_json)
@@ -413,7 +413,7 @@ pub fn prepare_claude_launch(
                 .map_err(|error| error.to_string())?
                 .ok_or_else(|| {
                     format!(
-                        "模型 Profile「{}」的 API Key 不存在或已失效，请在设置中重新输入并保存。",
+                        "The API key of model profile '{}' is missing or no longer valid. Enter it again in Settings and save.",
                         profile.name
                     )
                 })?;
@@ -503,7 +503,7 @@ pub fn prepare_codex_launch(
                 .map_err(|error| error.to_string())?
                 .ok_or_else(|| {
                     format!(
-                        "模型 Profile「{}」的 API Key 不存在或已失效，请在设置中重新输入并保存。",
+                        "The API key of model profile '{}' is missing or no longer valid. Enter it again in Settings and save.",
                         profile.name
                     )
                 })?;
@@ -573,7 +573,7 @@ pub fn prepare_codex_launch(
             tracing::warn!(
                 target: "termexo::agent",
                 terminal_id = %request.terminal_id,
-                "Codex 会话 {session_id} 已不存在，改为开始新会话"
+                "Codex session {session_id} no longer exists; starting a new session instead"
             );
         }
         exists
@@ -773,7 +773,7 @@ fn ensure_antigravity_status_feed(database: &WorkspaceDatabase) {
     let installed = match antigravity_settings::describe() {
         Ok(feed) => feed.installed,
         Err(error) => {
-            tracing::warn!(%error, "无法读取 Antigravity 配置，跳过状态回传的安装");
+            tracing::warn!(%error, "Could not read the Antigravity configuration; skipping the status feed installation");
             return;
         }
     };
@@ -788,7 +788,7 @@ fn ensure_antigravity_status_feed(database: &WorkspaceDatabase) {
         antigravity_settings::install(&executable).map(|_| ())
     };
     if let Err(error) = written {
-        tracing::warn!(%error, "无法写入 Antigravity 状态回传配置");
+        tracing::warn!(%error, "Could not write the Antigravity status feed configuration");
     }
 }
 
@@ -812,7 +812,7 @@ pub fn prepare_antigravity_launch(
     // opened to do something else is the last thing the user expects to deal with.
     if let Some(directory) = request.working_directory.as_deref() {
         if let Err(error) = antigravity_settings::trust_workspace(directory) {
-            tracing::warn!(%error, "无法将工作目录写入 Antigravity 的信任列表");
+            tracing::warn!(%error, "Could not add the working directory to Antigravity's trust list");
         }
     }
     log_proxy_environment(&environment);
@@ -840,7 +840,7 @@ pub fn prepare_account_login(
     let profile = database
         .find_account_profile(&request.account_profile_id)
         .map_err(|error| error.to_string())?
-        .ok_or_else(|| "账号 Profile 不存在。".to_owned())?;
+        .ok_or_else(|| "The account profile does not exist.".to_owned())?;
     let mut environment = account::environment(&profile);
     environment.extend(network_environment(
         &database,
@@ -869,7 +869,7 @@ fn account_profile_environment(
         Some(profile_id) => profiles
             .iter()
             .find(|profile| profile.id == profile_id)
-            .ok_or_else(|| "账号 Profile 不存在。".to_owned())?,
+            .ok_or_else(|| "The account profile does not exist.".to_owned())?,
         None => profiles
             .iter()
             .find(|profile| profile.agent_type == agent_type && profile.is_default)
@@ -878,10 +878,10 @@ fn account_profile_environment(
                     .iter()
                     .find(|profile| profile.agent_type == agent_type)
             })
-            .ok_or_else(|| "没有可用的账号 Profile。".to_owned())?,
+            .ok_or_else(|| "No account profile is available.".to_owned())?,
     };
     if profile.agent_type != agent_type {
-        return Err("所选账号与 Agent 类型不匹配。".into());
+        return Err("The selected account does not match the agent type.".into());
     }
     account::prepare_managed_directory(profile)?;
     Ok(account::environment(profile))

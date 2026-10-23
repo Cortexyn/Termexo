@@ -131,9 +131,9 @@ pub fn run() {
             // may never be opened. Nothing is installed where the user has no feed.
             if let Ok(executable) = std::env::current_exe() {
                 match agent::antigravity_settings::refresh(&executable) {
-                    Ok(true) => tracing::info!("已更新 Antigravity 状态回传配置中的可执行文件路径"),
+                    Ok(true) => tracing::info!("Updated the executable path in the Antigravity status feed configuration"),
                     Ok(false) => {}
-                    Err(error) => tracing::warn!(%error, "无法检查 Antigravity 状态回传配置"),
+                    Err(error) => tracing::warn!(%error, "Could not check the Antigravity status feed configuration"),
                 }
             }
 
