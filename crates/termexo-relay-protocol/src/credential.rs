@@ -29,7 +29,7 @@ const SECRET_BYTES: usize = 32;
 /// relay's responses, so it is user-facing.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum CredentialError {
-    #[error("无法生成设备凭据：{0}")]
+    #[error("Could not generate device credentials: {0}")]
     Random(String),
     #[error("设备凭据格式不正确。")]
     Malformed,
