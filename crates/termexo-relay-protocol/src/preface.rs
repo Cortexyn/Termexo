@@ -74,15 +74,15 @@ impl StreamPreface {
 /// panel, so it is user-facing.
 #[derive(Debug, Error)]
 pub enum PrefaceError {
-    #[error("读取流前导失败：{0}")]
+    #[error("Failed to read the stream preface: {0}")]
     Read(#[from] std::io::Error),
-    #[error("流前导长度 {length} 字节超过 {} 字节上限。", MAX_PREFACE_BYTES)]
+    #[error("The stream preface is {length} bytes, over the limit of {} bytes.", MAX_PREFACE_BYTES)]
     TooLarge { length: usize },
-    #[error("流前导不是有效的 JSON：{0}")]
+    #[error("The stream preface is not valid JSON: {0}")]
     Malformed(#[from] serde_json::Error),
-    #[error("流前导版本 {version} 不受支持，需要版本 {}。", PREFACE_VERSION)]
+    #[error("Stream preface version {version} is not supported; version {} is required.", PREFACE_VERSION)]
     UnsupportedVersion { version: u32 },
-    #[error("流前导经过 {hops} 台中继，超过 {} 台的上限。", MAX_HOPS)]
+    #[error("The stream preface passed through {hops} relays, over the limit of {}.", MAX_HOPS)]
     TooManyHops { hops: usize },
 }
 

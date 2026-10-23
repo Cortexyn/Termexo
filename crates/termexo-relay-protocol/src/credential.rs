@@ -31,11 +31,11 @@ const SECRET_BYTES: usize = 32;
 pub enum CredentialError {
     #[error("Could not generate device credentials: {0}")]
     Random(String),
-    #[error("设备凭据格式不正确。")]
+    #[error("The device credential has an invalid format.")]
     Malformed,
-    #[error("设备标识不是合法的设备 id。")]
+    #[error("The device identifier is not a valid device id.")]
     InvalidDeviceId,
-    #[error("设备凭据缺少密钥。")]
+    #[error("The device credential is missing its key.")]
     MissingSecret,
 }
 

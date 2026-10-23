@@ -14,7 +14,7 @@ use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{OwnedPermit, Receiver, Sender};
 
 /// Reported once the outbound half is gone, so a multiplexer stops writing instead of spinning.
-const OUTBOUND_CLOSED_MESSAGE: &str = "隧道出站通道已关闭。";
+const OUTBOUND_CLOSED_MESSAGE: &str = "The tunnel outbound channel is closed.";
 
 type Reservation = Pin<Box<dyn Future<Output = Result<OwnedPermit<Bytes>, SendError<()>>> + Send>>;
 
