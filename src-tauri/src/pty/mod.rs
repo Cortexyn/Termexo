@@ -657,7 +657,8 @@ impl PtyManager {
             })
             .map_err(|error| PtyError::Open(error.to_string()))?;
 
-        let mut command = CommandBuilder::new(&request.shell);
+        let shell = crate::platform::resolve_shell(&request.shell);
+        let mut command = CommandBuilder::new(&shell);
         command.cwd(&request.working_directory);
         for (key, value) in environment {
             command.env(key, value);
@@ -668,7 +669,7 @@ impl PtyManager {
         let initial_command = request.command.as_deref().filter(|value| !value.is_empty());
         let command_started_without_echo = configure_shell(
             &mut command,
-            &request.shell,
+            &shell,
             request
                 .hide_initial_command
                 .then_some(initial_command)
@@ -1066,6 +1067,10 @@ fn configure_shell(
             command.arg(initial_command);
             return true;
         }
+    } else if cfg!(unix) {
+        // A login shell reads the user's profile, which is where PATH and the agents' environment
+        // are set up; a terminal inside an app bundle would otherwise start without them.
+        command.arg("-l");
     }
     false
 }
