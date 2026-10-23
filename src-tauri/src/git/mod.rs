@@ -1255,6 +1255,8 @@ mod tests {
         assert_eq!(changes[1].path, "new name.rs");
     }
 
+    #[cfg(windows)] // asserts Windows paths or PowerShell syntax
+
     #[test]
     fn rejects_paths_outside_the_worktree() {
         assert!(validate_relative_path("src/main.rs").is_ok());
@@ -1363,6 +1365,8 @@ mod tests {
             return;
         }
 
+        // git reports the real path, and the temp directory is a symlink on macOS (/var → /private/var).
+        let project = project.canonicalize().unwrap();
         assert_eq!(repository_root(&terminal_directory).unwrap(), Some(project));
         fs::remove_dir_all(&terminal_directory).ok();
     }

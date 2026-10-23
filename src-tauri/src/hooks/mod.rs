@@ -2323,6 +2323,8 @@ mod tests {
         fs::remove_dir_all(directory).unwrap();
     }
 
+    #[cfg(windows)] // asserts Windows paths or PowerShell syntax
+
     #[test]
     fn keeps_the_antigravity_memory_file_inside_the_spool_directory() {
         let memory =

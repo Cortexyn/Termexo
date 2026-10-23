@@ -1317,6 +1317,7 @@ mod tests {
 
     /// A CLI found outside the script's own directory stays where it is; the plan has to say so,
     /// because the machine then carries two of them.
+    #[cfg(windows)] // asserts Windows paths or PowerShell syntax
     #[test]
     fn a_second_copy_elsewhere_is_reported() {
         let script = definition("claude").unwrap().script.unwrap();
