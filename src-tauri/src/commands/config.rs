@@ -322,6 +322,7 @@ pub async fn save_account_profile(
         .filter(|profile| profile.is_system)
         .map(|profile| profile.agent_type.clone())
         .unwrap_or(requested_agent_type);
+    account::validate_login_method(&agent_type, input.login_method)?;
     let config_dir = if is_system {
         None
     } else {
@@ -339,6 +340,7 @@ pub async fn save_account_profile(
         id: profile_id,
         name,
         agent_type,
+        login_method: input.login_method,
         config_dir,
         is_default: input.is_default,
         is_system,
@@ -367,13 +369,15 @@ pub async fn refresh_account_profile(
     let refreshed = tauri::async_runtime::spawn_blocking(move || account::refresh_status(profile))
         .await
         .map_err(|error| error.to_string())?;
-    // Persisted, not just returned: the sign-in state is read straight from the database on the
-    // next start, so without this every restart shows a signed-in account as signed out until
-    // something happens to refresh it again.
-    database
-        .save_account_profile(&refreshed)
-        .map_err(|error| error.to_string())?;
-    Ok(refreshed)
+    // Status is probed live, while configuration may have changed during the CLI call.
+    // A refresh must not overwrite a newly saved login method with its earlier snapshot.
+    let mut current = database
+        .find_account_profile(&profile_id)
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "账号 Profile 不存在。".to_owned())?;
+    current.authenticated = refreshed.authenticated;
+    current.diagnostic = refreshed.diagnostic;
+    Ok(current)
 }
 
 /// Copies one account's user configuration onto another, leaving both sign-ins untouched.

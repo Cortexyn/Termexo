@@ -48,6 +48,7 @@ describe('AppStateService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.removeItem('termexo.selectedTerminals.v1');
+    window.localStorage.removeItem('termexo.workspace-organization.v1');
     repository.list.mockResolvedValue([]);
     repository.watchChanges.mockResolvedValue(() => undefined);
     gateway.liveTerminals.mockResolvedValue(new Map<string, number>());
@@ -510,7 +511,7 @@ describe('AppStateService', () => {
     );
   });
 
-  it('moves a workspace manually and persists the new order', async () => {
+  it('moves a workspace manually and persists order in local organization data', async () => {
     await service.initialize();
     repository.saveAll.mockClear();
     const workspaceIds = service.workspaces().map((workspace) => workspace.id);
@@ -524,12 +525,11 @@ describe('AppStateService', () => {
       workspaceIds[1],
     ]);
     expect(service.workspaces().map((workspace) => workspace.sortOrder)).toEqual([0, 1, 2]);
-    expect(repository.saveAll).toHaveBeenCalledWith(
-      service.workspaces().map((workspace) => expect.objectContaining({ id: workspace.id })),
-    );
+    expect(service.organization().workspaces[workspaceIds[2]].sortOrder).toBe(1);
+    expect(repository.saveAll).not.toHaveBeenCalled();
   });
 
-  it('inserts a dragged workspace at the requested position and persists it', async () => {
+  it('inserts a dragged workspace at the requested position without rewriting workspace rows', async () => {
     await service.initialize();
     repository.saveAll.mockClear();
     const ids = service.workspaces().map((workspace) => workspace.id);
@@ -537,7 +537,8 @@ describe('AppStateService', () => {
     expect(service.reorderWorkspace(ids[2], ids[0], 'before')).toBe(true);
     expect(service.workspaces().map((workspace) => workspace.id)).toEqual([ids[2], ids[0], ids[1]]);
     expect(service.workspaces().map((workspace) => workspace.sortOrder)).toEqual([0, 1, 2]);
-    expect(repository.saveAll).toHaveBeenCalledWith(service.workspaces());
+    expect(service.organization().workspaces[ids[2]].sortOrder).toBe(0);
+    expect(repository.saveAll).not.toHaveBeenCalled();
 
     repository.saveAll.mockClear();
     expect(service.reorderWorkspace(ids[2], ids[0], 'before')).toBe(false);

@@ -2,12 +2,15 @@
 
 import {
   type AccountProfile,
+  type AccountProfileInput,
   ModelProfile,
   ModelProfileInput,
   NetworkProfile,
   NetworkProfileInput,
 } from '../core/models/agent.models';
 import { AgentSettingsDialogComponent } from './agent-settings-dialog';
+import { AgentService } from '../core/services/agent.service';
+import { ModelCatalogService } from '../core/services/model-catalog.service';
 
 const CUSTOM_PROFILE: ModelProfile = {
   id: 'custom-default',
@@ -51,6 +54,89 @@ describe('AgentSettingsDialogComponent', () => {
     fixture = TestBed.createComponent(AgentSettingsDialogComponent);
     component = fixture.componentInstance;
     root = fixture.nativeElement as HTMLElement;
+  });
+
+  it('offers newly discovered models when adding a profile and saves the selected id', async () => {
+    const catalog = TestBed.inject(ModelCatalogService);
+    catalog['items'].set([
+      {
+        provider: 'Anthropic',
+        id: 'claude-sonnet-new',
+        name: 'New Sonnet',
+        family: 'claude-sonnet',
+        releaseDate: '2026-01-01',
+        retired: false,
+      },
+    ]);
+    fixture.componentRef.setInput('initialTab', 'models');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    component['newModel']();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const choice = root.querySelector<HTMLSelectElement>('[data-testid="claude-model-choice"]')!;
+    expect(Array.from(choice.options).some((option) => option.value === 'claude-sonnet-new')).toBe(
+      true,
+    );
+    choice.value = 'claude-sonnet-new';
+    choice.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    const saved: ModelProfileInput[] = [];
+    component.modelSaved.subscribe((input) => saved.push(input));
+    component['saveModel']();
+    expect(saved[0].claudeModel).toBe('claude-sonnet-new');
+  });
+
+  it('applies a default-model upgrade to the draft and preserves other profile settings', async () => {
+    const original = {
+      ...CUSTOM_PROFILE,
+      claudeBaseUrl: '',
+      claudeEffort: 'high',
+      planAlertThreshold: 82,
+    };
+    const agents = TestBed.inject(AgentService);
+    agents['modelProfileItems'].set([original]);
+    TestBed.inject(ModelCatalogService)['items'].set([
+      {
+        provider: 'Anthropic',
+        id: original.claudeModel,
+        name: 'Old Sonnet',
+        family: 'claude-sonnet',
+        releaseDate: '2025-01-01',
+        retired: false,
+      },
+      {
+        provider: 'Anthropic',
+        id: 'claude-sonnet-new',
+        name: 'New Sonnet',
+        family: 'claude-sonnet',
+        releaseDate: '2026-01-01',
+        retired: false,
+      },
+    ]);
+    fixture.componentRef.setInput('modelProfiles', [original]);
+    fixture.componentRef.setInput('initialTab', 'models');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const saved: ModelProfileInput[] = [];
+    component.modelSaved.subscribe((input) => saved.push(input));
+    expect(root.querySelector('[data-testid="model-upgrade"]')?.textContent).toContain(
+      'claude-sonnet-new',
+    );
+    clickButton('采用新模型');
+    fixture.detectChanges();
+    expect(saved).toEqual([]);
+    expect(agents.modelProfiles()[0].claudeModel).toBe(original.claudeModel);
+    clickButton('保存 Profile');
+    expect(saved[0]).toMatchObject({
+      id: original.id,
+      isDefault: true,
+      claudeModel: 'claude-sonnet-new',
+      claudeEffort: 'high',
+      planAlertThreshold: 82,
+    });
+    expect(saved[0].apiKey).toBeUndefined();
+    expect(saved[0].clearCredential).toBe(false);
   });
 
   it('loads the persisted default profile into the editor', async () => {
@@ -464,6 +550,89 @@ describe('AgentSettingsDialogComponent', () => {
     fixture.detectChanges();
     component['requestClose']();
     expect(closed).toBe(true);
+  });
+
+  it('offers only compatible login methods and saves the current choice before signing in', async () => {
+    fixture.componentRef.setInput('activeWorkspaceId', 'workspace-1');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    component['selectTab']('accounts');
+    component['newAccount']();
+    component['accountName'] = 'Device account';
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const methods = (): HTMLSelectElement =>
+      root.querySelector('[data-testid="account-login-method"]')!;
+    expect(Array.from(methods().options, (option) => option.value)).toEqual([
+      'browser',
+      'console',
+      'sso',
+    ]);
+    component['accountLoginMethod'] = 'sso';
+    component['changeAccountAgentType']('codex');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(component['accountLoginMethod']).toBe('browser');
+    expect(Array.from(methods().options, (option) => option.value)).toEqual([
+      'browser',
+      'device-code',
+    ]);
+    methods().value = 'device-code';
+    methods().dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    const logins: AccountProfileInput[] = [];
+    component.accountLoginRequested.subscribe((input) => logins.push(input));
+    root.querySelector<HTMLButtonElement>('[data-testid="account-login-submit"]')!.click();
+    expect(logins).toEqual([
+      expect.objectContaining({
+        name: 'Device account',
+        agentType: 'codex',
+        loginMethod: 'device-code',
+      }),
+    ]);
+    expect(logins[0].id).toBeTruthy();
+  });
+
+  it('keeps per-account login drafts through switching records and status refreshes', async () => {
+    const profiles: AccountProfile[] = [
+      {
+        id: 'claude-account',
+        name: 'Claude',
+        agentType: 'claude',
+        loginMethod: 'console',
+        isDefault: true,
+        isSystem: false,
+        authenticated: false,
+        diagnostic: '',
+      },
+      {
+        id: 'codex-account',
+        name: 'Codex',
+        agentType: 'codex',
+        loginMethod: 'device-code',
+        isDefault: false,
+        isSystem: false,
+        authenticated: false,
+        diagnostic: '',
+      },
+    ];
+    fixture.componentRef.setInput('accountProfiles', profiles);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    component['editAccount'](profiles[0]);
+    component['accountLoginMethod'] = 'sso';
+    component['editAccount'](profiles[1]);
+    expect(component['accountLoginMethod']).toBe('device-code');
+    component['editAccount'](profiles[0]);
+    expect(component['accountLoginMethod']).toBe('sso');
+    fixture.componentRef.setInput(
+      'accountProfiles',
+      profiles.map((profile) => ({ ...profile, authenticated: true })),
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(component['accountLoginMethod']).toBe('sso');
+    expect(component['accountDirty']()).toBe(true);
   });
 
   function clickButton(label: string): void {

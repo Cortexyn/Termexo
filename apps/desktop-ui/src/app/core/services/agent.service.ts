@@ -2,6 +2,7 @@ import { effect, inject, Injectable, signal, type WritableSignal } from '@angula
 import { open as openDialog, save } from '@tauri-apps/plugin-dialog';
 
 import { I18nService } from '../i18n/i18n.service';
+import { accountLoginOption } from '../models/account-login';
 import {
   AccountLoginRequest,
   AccountProfile,
@@ -406,9 +407,10 @@ export class AgentService {
       const profile = this.accountProfileItems().find(
         (candidate) => candidate.id === request.accountProfileId,
       );
+      if (!profile) throw new Error(this.i18n.t('account.notFound'));
       return {
-        command: profile?.agentType === 'codex' ? 'codex login' : 'claude auth login',
-        executablePath: profile?.agentType === 'codex' ? 'codex' : 'claude',
+        command: accountLoginOption(profile.agentType, profile.loginMethod).command,
+        executablePath: profile.agentType === 'codex' ? 'codex' : 'claude',
       };
     }
     return invoke<AgentLaunchSpec>('prepare_account_login', { request });
@@ -916,7 +918,9 @@ export class AgentService {
 
   private upsertModelProfile(profile: ModelProfile): void {
     this.modelProfileItems.update((items) => [
-      ...items.filter((item) => item.id !== profile.id),
+      ...items
+        .filter((item) => item.id !== profile.id)
+        .map((item) => (profile.isDefault ? { ...item, isDefault: false } : item)),
       profile,
     ]);
   }

@@ -2,6 +2,13 @@
 
 Release notes for every Termexo version, newest first. The current release is summarised in [README.md](README.md).
 
+## V0.10.15
+
+- **Organize workspaces in a tree.** Create nested folders, reorder projects and folders by dragging, add tags and icons, search the sidebar, and open a project directory from its menu.
+- **Choose how to sign in.** Claude Code accounts support browser, Console and SSO sign-in; Codex supports browser and device-code sign-in. Save the account and start its login terminal directly in the current project.
+- **Discover models and available upgrades.** Model settings load a public model directory and visible models from the local Codex cache, with upgrade suggestions for supported default profiles and an explicit choice before applying changes.
+- **Confirm before closing active work.** Running Agent terminals ask for confirmation near the close button; account login terminals use their own status so they do not appear as coding tasks.
+
 ## V0.10.14
 
 - **Easier Agent installation and updates.** Settings → Install & update shows six Agents with clear readiness states. Install a missing Agent with one click, check existing versions before updating, and return to the result after closing settings. Advanced version, command and log details stay collapsed.

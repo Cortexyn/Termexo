@@ -12,7 +12,14 @@ import {
 import { FormsModule } from '@angular/forms';
 
 import { I18nService } from '../core/i18n/i18n.service';
+import { ModelCatalogService } from '../core/services/model-catalog.service';
+import type { ModelUpgrade } from '../core/models/model-catalog';
 import { TranslatePipe } from '../core/i18n/translate.pipe';
+import {
+  ACCOUNT_LOGIN_OPTIONS,
+  accountLoginOption,
+  type AccountLoginMethod,
+} from '../core/models/account-login';
 import {
   AccountAgentType,
   AccountProfile,
@@ -443,12 +450,26 @@ const DEFAULT_ALERT_THRESHOLD = 80;
                       /></label>
                       <label>
                         <span>{{ 'settings.cliType' | t }}</span>
-                        <select [(ngModel)]="accountAgentType" [disabled]="accountSystem()">
+                        <select
+                          [ngModel]="accountAgentType"
+                          (ngModelChange)="changeAccountAgentType($event)"
+                          [disabled]="accountSystem()"
+                        >
                           <option value="claude">Claude Code</option>
                           <option value="codex">ChatGPT / Codex</option>
                         </select>
                       </label>
                     </div>
+
+                    <label class="account-login-method">
+                      <span>{{ 'account.loginMethod' | t }}</span>
+                      <select [(ngModel)]="accountLoginMethod" data-testid="account-login-method">
+                        @for (method of accountLoginMethods(); track method.id) {
+                          <option [value]="method.id">{{ method.labelKey | t }}</option>
+                        }
+                      </select>
+                      <small>{{ accountLoginChoice().helpKey | t }}</small>
+                    </label>
 
                     @if (selectedAccount(); as profile) {
                       <div
@@ -567,15 +588,22 @@ const DEFAULT_ALERT_THRESHOLD = 80;
                       >
                         <app-icon name="refresh" [size]="13" />{{ 'settings.refreshStatus' | t }}
                       </button>
-                      <button
-                        type="button"
-                        class="secondary"
-                        [disabled]="busy()"
-                        (click)="accountLoginRequested.emit(accountId())"
-                      >
-                        <app-icon name="terminal" [size]="13" />{{ 'settings.loginSwitch' | t }}
-                      </button>
                     }
+                    <button
+                      type="button"
+                      class="secondary"
+                      data-testid="account-login-submit"
+                      [disabled]="busy() || !accountName.trim() || !activeWorkspaceId()"
+                      [title]="!activeWorkspaceId() ? ('account.loginWorkspaceRequired' | t) : ''"
+                      (click)="saveAccount(true)"
+                    >
+                      <app-icon name="terminal" [size]="13" />{{
+                        (!selectedAccount() || accountDirty()
+                          ? 'account.saveAndLogin'
+                          : 'settings.loginSwitch'
+                        ) | t
+                      }}
+                    </button>
                     <button
                       type="button"
                       class="primary"
@@ -627,6 +655,58 @@ const DEFAULT_ALERT_THRESHOLD = 80;
                 </div>
                 <div class="profile-editor">
                   <div class="profile-fields">
+                    <div class="model-catalog-tools">
+                      <strong>{{ 'settings.modelCatalog' | t }}</strong>
+                      <button
+                        type="button"
+                        class="secondary"
+                        data-testid="model-catalog-refresh"
+                        [disabled]="catalog.loading()"
+                        (click)="catalog.refresh(true)"
+                      >
+                        <app-icon name="refresh" [size]="13" />
+                        {{
+                          (catalog.loading()
+                            ? 'settings.catalogChecking'
+                            : 'settings.catalogRefresh'
+                          ) | t
+                        }}
+                      </button>
+                    </div>
+                    <p class="model-catalog-help">{{ 'settings.catalogHelp' | t }}</p>
+                    @if (catalog.error()) {
+                      <p class="model-catalog-help" role="status">
+                        {{ 'settings.catalogOffline' | t }}
+                      </p>
+                    }
+                    @for (upgrade of selectedModelUpgrades(); track upgrade.key) {
+                      <div class="model-upgrade" role="status" data-testid="model-upgrade">
+                        <strong>{{
+                          'settings.modelUpgrade'
+                            | t: { agent: upgrade.agent === 'claude' ? 'Claude' : 'Codex' }
+                        }}</strong>
+                        <p>{{ upgrade.current }} → {{ upgrade.model.id }}</p>
+                        <small>{{ 'settings.modelUpgradeHelp' | t }}</small>
+                        <div>
+                          <button
+                            type="button"
+                            class="secondary"
+                            [disabled]="busy()"
+                            (click)="catalog.dismiss(upgrade)"
+                          >
+                            {{ 'settings.modelUpgradeDismiss' | t }}
+                          </button>
+                          <button
+                            type="button"
+                            class="primary"
+                            [disabled]="busy()"
+                            (click)="applyModelUpgrade(upgrade)"
+                          >
+                            {{ 'settings.modelUpgradeUse' | t }}
+                          </button>
+                        </div>
+                      </div>
+                    }
                     <div class="two-columns">
                       <label
                         ><span>{{ 'settings.name' | t }}</span
@@ -659,7 +739,30 @@ const DEFAULT_ALERT_THRESHOLD = 80;
                       <div class="two-columns">
                         <label
                           ><span>{{ 'settings.model' | t }}</span
-                          ><input [disabled]="!claudeEnabled" [(ngModel)]="claudeModel"
+                          ><select
+                            data-testid="claude-model-choice"
+                            [disabled]="!claudeEnabled"
+                            [ngModel]="claudeModel"
+                            (ngModelChange)="claudeModel = $event"
+                            [attr.aria-label]="('settings.catalogPick' | t) + ' · Claude'"
+                          >
+                            <option [value]="claudeModel">
+                              {{ claudeModel || ('settings.catalogPick' | t) }}
+                            </option>
+                            @for (
+                              model of catalog.choices(modelProvider, 'claude');
+                              track model.id
+                            ) {
+                              @if (model.id !== claudeModel) {
+                                <option [value]="model.id">
+                                  {{ model.name }} · {{ model.id }}
+                                </option>
+                              }
+                            }</select
+                          ><input
+                            [disabled]="!claudeEnabled"
+                            [(ngModel)]="claudeModel"
+                            [attr.aria-label]="('settings.catalogCustom' | t) + ' · Claude'"
                         /></label>
                         <label
                           ><span>{{ 'settings.endpointAnthropic' | t }}</span
@@ -696,7 +799,30 @@ const DEFAULT_ALERT_THRESHOLD = 80;
                       <div class="two-columns">
                         <label
                           ><span>{{ 'settings.model' | t }}</span
-                          ><input [disabled]="!codexEnabled" [(ngModel)]="codexModel"
+                          ><select
+                            data-testid="codex-model-choice"
+                            [disabled]="!codexEnabled"
+                            [ngModel]="codexModel"
+                            (ngModelChange)="codexModel = $event"
+                            [attr.aria-label]="('settings.catalogPick' | t) + ' · Codex'"
+                          >
+                            <option [value]="codexModel">
+                              {{ codexModel || ('settings.catalogPick' | t) }}
+                            </option>
+                            @for (
+                              model of catalog.choices(modelProvider, 'codex');
+                              track model.id
+                            ) {
+                              @if (model.id !== codexModel) {
+                                <option [value]="model.id">
+                                  {{ model.name }} · {{ model.id }}
+                                </option>
+                              }
+                            }</select
+                          ><input
+                            [disabled]="!codexEnabled"
+                            [(ngModel)]="codexModel"
+                            [attr.aria-label]="('settings.catalogCustom' | t) + ' · Codex'"
                         /></label>
                         <label
                           ><span>{{ 'settings.endpointOpenAI' | t }}</span
@@ -1192,6 +1318,7 @@ const DEFAULT_ALERT_THRESHOLD = 80;
 })
 export class AgentSettingsDialogComponent {
   private readonly i18n = inject(I18nService);
+  protected readonly catalog = inject(ModelCatalogService);
   readonly installation = input<AgentInstallation | null>(null);
   readonly codexInstallation = input<AgentInstallation | null>(null);
   readonly openCodeInstallation = input<AgentInstallation | null>(null);
@@ -1238,7 +1365,7 @@ export class AgentSettingsDialogComponent {
   readonly networkSystemProxyRequested = output<void>();
   readonly accountSaved = output<AccountProfileInput>();
   readonly deleteAccountRequested = output<string>();
-  readonly accountLoginRequested = output<string>();
+  readonly accountLoginRequested = output<AccountProfileInput>();
   readonly accountRefreshRequested = output<string>();
   readonly accountConfigCopyRequested = output<{ sourceId: string; targetId: string }>();
 
@@ -1349,6 +1476,7 @@ export class AgentSettingsDialogComponent {
   protected clearNetworkCredential = false;
   protected accountName = '';
   protected accountAgentType: AccountAgentType = 'claude';
+  protected accountLoginMethod: AccountLoginMethod = 'browser';
   protected accountDefault = false;
   private initialSelectionApplied = false;
 
@@ -1411,11 +1539,25 @@ export class AgentSettingsDialogComponent {
     return this.accountProfiles().find((profile) => profile.id === this.accountId());
   }
 
+  protected accountLoginMethods() {
+    return ACCOUNT_LOGIN_OPTIONS[this.accountAgentType];
+  }
+
+  protected accountLoginChoice() {
+    return accountLoginOption(this.accountAgentType, this.accountLoginMethod);
+  }
+
+  protected changeAccountAgentType(agentType: AccountAgentType): void {
+    this.accountAgentType = agentType;
+    this.accountLoginMethod = this.accountLoginChoice().id;
+  }
+
   protected editAccount(profile: AccountProfile): void {
     this.accountDrafts.remember(this.accountId(), this.captureAccountDraft());
     this.accountId.set(profile.id);
     this.accountName = profile.name;
     this.accountAgentType = profile.agentType;
+    this.accountLoginMethod = accountLoginOption(profile.agentType, profile.loginMethod).id;
     this.accountDefault = profile.isDefault;
     this.accountSystem.set(profile.isSystem);
     // The previous pick belongs to the account being left, not this one.
@@ -1437,22 +1579,26 @@ export class AgentSettingsDialogComponent {
     this.accountId.set('');
     this.accountName = '';
     this.accountAgentType = 'claude';
+    this.accountLoginMethod = 'browser';
     this.accountDefault = false;
     this.accountSystem.set(false);
     Object.assign(this, this.accountDrafts.restore(this.accountId(), this.captureAccountDraft()));
   }
 
-  protected saveAccount(): void {
+  protected saveAccount(loginAfterSave = false): void {
     if (this.busy() || !this.accountName.trim()) return;
     const profileId = this.accountId() || createId();
     this.accountDrafts.beginSave(this.accountId(), profileId, this.captureAccountDraft());
     this.accountId.set(profileId);
-    this.accountSaved.emit({
+    const input: AccountProfileInput = {
       id: profileId,
       name: this.accountName.trim(),
       agentType: this.accountAgentType,
+      loginMethod: this.accountLoginChoice().id,
       isDefault: this.accountDefault,
-    });
+    };
+    if (loginAfterSave) this.accountLoginRequested.emit(input);
+    else this.accountSaved.emit(input);
   }
 
   /**
@@ -1512,6 +1658,7 @@ export class AgentSettingsDialogComponent {
     return {
       accountName: this.accountName,
       accountAgentType: this.accountAgentType,
+      accountLoginMethod: this.accountLoginMethod,
       accountDefault: this.accountDefault,
     };
   }
@@ -1567,6 +1714,32 @@ export class AgentSettingsDialogComponent {
 
   protected modelDirty(): boolean {
     return this.modelDrafts.dirty(this.modelId(), this.captureModelDraft());
+  }
+
+  protected selectedModelUpgrades(): ModelUpgrade[] {
+    return this.catalog
+      .upgrades()
+      .filter(
+        (upgrade) =>
+          upgrade.profileId === this.modelId() &&
+          upgrade.current === (upgrade.agent === 'claude' ? this.claudeModel : this.codexModel),
+      );
+  }
+
+  protected applyModelUpgrade(upgrade: ModelUpgrade): void {
+    if (this.busy() || !this.selectedModelUpgrades().some((item) => item.key === upgrade.key))
+      return;
+    const previous = this.catalog
+      .models()
+      .find(
+        (model) =>
+          model.provider === this.modelProvider &&
+          model.id === upgrade.current.replace(/\[1m\]$/, ''),
+      );
+    if (this.modelName === previous?.name || this.modelName === upgrade.current)
+      this.modelName = upgrade.model.name;
+    if (upgrade.agent === 'claude') this.claudeModel = upgrade.model.id;
+    else this.codexModel = upgrade.model.id;
   }
 
   private acknowledgeProfileSave(saved: ProfileSaveCompleted): void {

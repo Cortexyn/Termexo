@@ -21,6 +21,7 @@ import { RemoteConnectionService } from './remote-connection.service';
 import { TerminalGatewayService } from './terminal-gateway.service';
 import { hasBackend, runtimeMode } from './tauri-runtime';
 import { WorkspaceRepository } from './workspace.repository';
+import { WorkspaceOrganizationService } from './workspace-organization.service';
 
 const DEFAULT_SHELL = 'powershell.exe';
 const SELECTED_TERMINALS_STORAGE_KEY = 'termexo.selectedTerminals.v1';
@@ -61,6 +62,7 @@ async function loadPreviewWorkspaces(): Promise<Workspace[]> {
 @Injectable({ providedIn: 'root' })
 export class AppStateService {
   private readonly repository = inject(WorkspaceRepository);
+  private readonly workspaceOrganization = inject(WorkspaceOrganizationService);
   private readonly remoteConnection = inject(RemoteConnectionService);
   private readonly gateway = inject(TerminalGatewayService);
   /**
@@ -94,6 +96,7 @@ export class AppStateService {
   private readonly exitedRevisions = new Map<string, number>();
 
   readonly workspaces = this.workspaceItems.asReadonly();
+  readonly organization = this.workspaceOrganization.organization;
   readonly activeWorkspace = computed(
     () => this.workspaceItems().find((item) => item.id === this.activeWorkspaceId()) ?? null,
   );
@@ -163,6 +166,7 @@ export class AppStateService {
           : await loadPreviewWorkspaces();
 
     const orderedWorkspaces = this.normalizeWorkspaceOrder(initialWorkspaces);
+    this.workspaceOrganization.initialize(orderedWorkspaces);
     this.workspaceItems.set(orderedWorkspaces);
     const firstWorkspace = orderedWorkspaces[0];
     this.activeWorkspaceId.set(firstWorkspace?.id ?? null);
@@ -189,7 +193,10 @@ export class AppStateService {
         ? this.attachToRunningTerminals(storedWorkspaces, await this.gateway.liveTerminals())
         : storedWorkspaces,
     );
-    this.workspaceItems.set(workspaces);
+    this.workspaceOrganization.ensureWorkspaces(workspaces);
+    this.workspaceItems.set(
+      this.normalizeWorkspaceOrder(this.workspaceOrganization.orderWorkspaces(workspaces)),
+    );
     const activeWorkspace =
       workspaces.find((workspace) => workspace.id === this.activeWorkspaceId()) ??
       workspaces[0] ??
@@ -227,7 +234,10 @@ export class AppStateService {
           (right.sortOrder ?? Number.MAX_SAFE_INTEGER),
       ),
     );
-    this.workspaceItems.set(orderedWorkspaces);
+    this.workspaceOrganization.ensureWorkspaces(orderedWorkspaces);
+    this.workspaceItems.set(
+      this.normalizeWorkspaceOrder(this.workspaceOrganization.orderWorkspaces(orderedWorkspaces)),
+    );
 
     if (!this.activeWorkspaceId()) {
       const firstWorkspace = orderedWorkspaces[0];
@@ -259,7 +269,10 @@ export class AppStateService {
     const remainingWorkspaces = this.normalizeWorkspaceOrder(
       workspaces.filter((workspace) => workspace.id !== workspaceId),
     );
-    this.workspaceItems.set(remainingWorkspaces);
+    this.workspaceOrganization.ensureWorkspaces(remainingWorkspaces);
+    this.workspaceItems.set(
+      this.normalizeWorkspaceOrder(this.workspaceOrganization.orderWorkspaces(remainingWorkspaces)),
+    );
     this.forgetWorkspaceTerminal(workspaceId);
     if (this.activeWorkspaceId() !== workspaceId) {
       return;
@@ -329,6 +342,8 @@ export class AppStateService {
     // Keep the current selection intact when the write fails so creation can be retried.
     await this.repository.save(workspace);
     this.workspaceItems.update((items) => [...items, workspace]);
+    this.workspaceOrganization.ensureWorkspaces(this.workspaceItems());
+    this.applyWorkspaceOrganizationOrder();
     this.activeWorkspaceId.set(workspace.id);
     this.setActiveTerminal(workspace, null);
     return workspace;
@@ -347,7 +362,10 @@ export class AppStateService {
     );
     await this.repository.delete(workspaceId);
     await this.repository.saveAll(remainingWorkspaces);
-    this.workspaceItems.set(remainingWorkspaces);
+    this.workspaceOrganization.ensureWorkspaces(remainingWorkspaces);
+    this.workspaceItems.set(
+      this.normalizeWorkspaceOrder(this.workspaceOrganization.orderWorkspaces(remainingWorkspaces)),
+    );
     this.forgetWorkspaceTerminal(workspaceId);
 
     if (this.activeWorkspaceId() === workspaceId) {
@@ -406,7 +424,10 @@ export class AppStateService {
 
     const previouslyActiveWorkspaceId = this.activeWorkspaceId();
     const previouslyActiveTerminalId = this.activeTerminalId();
-    this.workspaceItems.set(mergedWorkspaces);
+    this.workspaceOrganization.ensureWorkspaces(mergedWorkspaces);
+    this.workspaceItems.set(
+      this.normalizeWorkspaceOrder(this.workspaceOrganization.orderWorkspaces(mergedWorkspaces)),
+    );
     this.forgetWorkspaceTerminal(sourceWorkspaceId);
     this.activeWorkspaceId.set(targetWorkspaceId);
     const preservesActiveTerminal =
@@ -437,21 +458,13 @@ export class AppStateService {
   }
 
   moveWorkspace(workspaceId: string, direction: -1 | 1): boolean {
-    const workspaces = [...this.workspaceItems()];
-    const currentIndex = workspaces.findIndex((workspace) => workspace.id === workspaceId);
-    const targetIndex = currentIndex + direction;
-    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= workspaces.length) {
-      return false;
-    }
-
-    [workspaces[currentIndex], workspaces[targetIndex]] = [
-      workspaces[targetIndex],
-      workspaces[currentIndex],
-    ];
-    const orderedWorkspaces = this.normalizeWorkspaceOrder(workspaces);
-    this.workspaceItems.set(orderedWorkspaces);
-    void this.repository.saveAll(orderedWorkspaces);
-    return true;
+    const moved = this.workspaceOrganization.moveWorkspace(
+      workspaceId,
+      direction,
+      this.workspaceItems(),
+    );
+    if (moved) this.applyWorkspaceOrganizationOrder();
+    return moved;
   }
 
   reorderWorkspace(
@@ -459,24 +472,57 @@ export class AppStateService {
     targetWorkspaceId: string,
     position: 'before' | 'after',
   ): boolean {
-    const workspaces = [...this.workspaceItems()];
-    const currentIndex = workspaces.findIndex((workspace) => workspace.id === workspaceId);
-    if (currentIndex < 0 || workspaceId === targetWorkspaceId) return false;
-
-    const [moved] = workspaces.splice(currentIndex, 1);
-    const targetIndex = workspaces.findIndex((workspace) => workspace.id === targetWorkspaceId);
-    if (targetIndex < 0) return false;
-    const insertIndex = targetIndex + (position === 'after' ? 1 : 0);
-    if (insertIndex === currentIndex) return false;
-
-    workspaces.splice(insertIndex, 0, moved);
-    const orderedWorkspaces = this.normalizeWorkspaceOrder(workspaces);
-    this.workspaceItems.set(orderedWorkspaces);
-    void this.repository.saveAll(orderedWorkspaces);
-    return true;
+    const moved = this.workspaceOrganization.reorderWorkspace(
+      workspaceId,
+      targetWorkspaceId,
+      position,
+      this.workspaceItems(),
+    );
+    if (moved) this.applyWorkspaceOrganizationOrder();
+    return moved;
   }
 
-  updateWorkspaceAppearance(workspaceId: string, name: string, themeColor: string): boolean {
+  moveWorkspaceToFolder(workspaceId: string, folderId: string | null): boolean {
+    const moved = this.workspaceOrganization.moveWorkspaceToFolder(workspaceId, folderId);
+    if (moved) this.applyWorkspaceOrganizationOrder();
+    return moved;
+  }
+
+  createWorkspaceFolder(name: string, parentId: string | null = null): boolean {
+    return this.workspaceOrganization.createFolder(name, parentId) !== null;
+  }
+
+  renameWorkspaceFolder(folderId: string, name: string): boolean {
+    return this.workspaceOrganization.renameFolder(folderId, name);
+  }
+
+  deleteWorkspaceFolder(folderId: string): boolean {
+    const deleted = this.workspaceOrganization.deleteFolder(folderId);
+    if (deleted) this.applyWorkspaceOrganizationOrder();
+    return deleted;
+  }
+
+  toggleWorkspaceFolder(folderId: string): void {
+    this.workspaceOrganization.toggleFolder(folderId);
+  }
+
+  moveWorkspaceFolder(
+    folderId: string,
+    targetFolderId: string | null,
+    position?: 'before' | 'after',
+  ): boolean {
+    const moved = this.workspaceOrganization.moveFolder(folderId, targetFolderId, position);
+    if (moved) this.applyWorkspaceOrganizationOrder();
+    return moved;
+  }
+
+  updateWorkspaceAppearance(
+    workspaceId: string,
+    name: string,
+    themeColor: string,
+    tags: string[] = [],
+    icon: string | null = null,
+  ): boolean {
     const workspace = this.workspaceItems().find((item) => item.id === workspaceId);
     const normalizedName = name.trim();
     if (!workspace || !normalizedName) {
@@ -490,6 +536,7 @@ export class AppStateService {
     };
     this.replaceWorkspace(updatedWorkspace);
     void this.repository.save(updatedWorkspace);
+    this.workspaceOrganization.updateWorkspace(workspaceId, { tags, icon });
     return true;
   }
 
@@ -985,6 +1032,7 @@ export class AppStateService {
                 : 'Local'),
       branch: workspace.activeBranch,
       command: input.command ?? this.defaultCommand(agentType),
+      accountLogin: input.accountLogin,
       nativeSessionId: input.nativeSessionId,
       profileId: input.profileId,
       mcpProfileId: input.mcpProfileId,
@@ -1003,6 +1051,14 @@ export class AppStateService {
       ...workspace,
       sortOrder,
     }));
+  }
+
+  private applyWorkspaceOrganizationOrder(): void {
+    this.workspaceItems.set(
+      this.normalizeWorkspaceOrder(
+        this.workspaceOrganization.orderWorkspaces(this.workspaceItems()),
+      ),
+    );
   }
 
   /**

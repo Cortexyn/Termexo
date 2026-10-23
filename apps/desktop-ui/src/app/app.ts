@@ -1,4 +1,5 @@
 import type { ProfileSaveCompleted, SettingsProfileKind } from './dialogs/profile-drafts';
+import { ModelCatalogService } from './core/services/model-catalog.service';
 import {
   Component,
   computed,
@@ -122,10 +123,8 @@ import { DirectoryPromptDialogComponent } from './dialogs/directory-prompt-dialo
 import { WebviewUpgradeDialogComponent } from './dialogs/webview-upgrade-dialog';
 import { BackgroundSessionDialogComponent } from './dialogs/background-session-dialog';
 import { DeleteWorkspaceDialogComponent } from './dialogs/delete-workspace-dialog';
-import {
-  EditWorkspaceDialogComponent,
-  WorkspaceAppearanceValue,
-} from './dialogs/edit-workspace-dialog';
+import { EditWorkspaceDialogComponent } from './dialogs/edit-workspace-dialog';
+import type { WorkspaceAppearanceValue } from './dialogs/edit-workspace-dialog';
 import { MergeWorkspaceDialogComponent } from './dialogs/merge-workspace-dialog';
 import { AccountSwitchDialogComponent } from './dialogs/account-switch-dialog';
 import { ModelSwitchDialogComponent, ModelSwitchValue } from './dialogs/model-switch-dialog';
@@ -160,6 +159,8 @@ import {
 } from './terminal/terminal-visibility';
 import { TerminalToolbarComponent } from './terminal/terminal-toolbar';
 import { TerminalWorkbenchComponent } from './terminal/terminal-workbench';
+import { TerminalCloseConfirmComponent } from './terminal/terminal-close-confirm';
+import type { CloseConfirmAnchor } from './terminal/terminal-close-request';
 import { TodoBoardComponent } from './todo/todo-board';
 import { WorkspaceSidebarComponent } from './workspace/workspace-sidebar';
 import { GitWorkbenchComponent } from './git/git-workbench';
@@ -284,6 +285,7 @@ function readStoredString(key: string, fallback: string): string {
     SessionCenterDialogComponent,
     TerminalToolbarComponent,
     TerminalWorkbenchComponent,
+    TerminalCloseConfirmComponent,
     TodoBoardComponent,
     TranslatePipe,
     WebviewUpgradeDialogComponent,
@@ -312,11 +314,13 @@ export class App {
   private readonly injector = inject(Injector);
   protected readonly state = inject(AppStateService);
   protected readonly agents = inject(AgentService);
+  protected readonly modelCatalog = inject(ModelCatalogService);
   protected readonly i18n = inject(I18nService);
   protected readonly updates = inject(UpdateService);
   protected readonly windowControls = inject(WindowControlsService);
   protected readonly remoteConnection = inject(RemoteConnectionService);
   protected readonly previewMode = runtimeMode() === 'preview';
+  protected readonly canOpenDirectory = runtimeMode() === 'desktop';
   protected readonly profileSaving = signal(false);
   /**
    * Set while a profile delete round-trip is in flight so the four delete buttons (and their
@@ -491,12 +495,9 @@ export class App {
   protected readonly selectedTerminalDirectory = signal<string | null>(null);
   protected readonly toastMessage = signal<string | null>(null);
   protected readonly toastTone = signal<ToastTone>('success');
-  /**
-   * Set when the user clicks × on a terminal whose status is not idle. The terminal panel header
-   * swaps its close button for an inline confirmation block while this is non-null, and clears
-   * it on confirm/cancel so accidental middle-clicks do not lose work.
-   */
+  /** A running terminal waits for confirmation near the close action's click position. */
   protected readonly pendingTerminalClose = signal<string | null>(null);
+  protected readonly terminalCloseAnchor = signal<CloseConfirmAnchor>({ x: 0, y: 0 });
   /**
    * Set while a forced close is round-tripping through the gateway so a double-click on the
    * "Close anyway" button does not call `terminalGateway.close` twice on the same id.
@@ -625,6 +626,7 @@ export class App {
 
   constructor() {
     this.adaptLayoutToViewport();
+    if (hasBackend()) this.modelCatalog.initialize();
     void this.initialize();
     effect(() => {
       const unhandled = this.agents
@@ -1431,7 +1433,7 @@ export class App {
    * through `requestCloseTerminal` first, which closes settled terminals directly and asks before
    * interrupting a launch, an active turn, or a turn waiting for user input.
    */
-  protected requestCloseTerminal(terminalId: string): void {
+  protected requestCloseTerminal(terminalId: string, event?: MouseEvent): void {
     const located = this.findTerminal(terminalId);
     if (!located) {
       this.closeTerminal(terminalId);
@@ -1441,6 +1443,19 @@ export class App {
       this.closeTerminal(terminalId);
       return;
     }
+    const trigger =
+      event?.currentTarget instanceof HTMLElement
+        ? event.currentTarget
+        : document.getElementById(`terminal-tab-${terminalId}`);
+    const bounds = trigger?.getBoundingClientRect();
+    this.terminalCloseAnchor.set(
+      event && (event.clientX !== 0 || event.clientY !== 0)
+        ? { x: event.clientX, y: event.clientY }
+        : {
+            x: bounds ? bounds.left + bounds.width / 2 : window.innerWidth / 2,
+            y: bounds?.bottom ?? window.innerHeight / 2,
+          },
+    );
     this.pendingTerminalClose.set(terminalId);
   }
 
@@ -1999,9 +2014,17 @@ export class App {
       return;
     }
     event.preventDefault();
-    // Middle-click must also respect the run-state guard introduced for the × button; running
-    // terminals still raise the inline confirmation bar instead of closing immediately.
-    this.requestCloseTerminal(terminalId);
+    this.requestCloseTerminal(terminalId, event);
+  }
+
+  protected async openProjectDirectory(path: string): Promise<void> {
+    try {
+      await this.terminalGateway.openDirectory(path);
+    } catch (error) {
+      this.reportFailure(
+        this.i18n.t('terminal.openFailed', { target: path, error: String(error) }),
+      );
+    }
   }
 
   /** Everything a tab cannot show at its width: where it runs, and what it responds to. */
@@ -2606,7 +2629,15 @@ export class App {
   }
 
   protected saveWorkspaceAppearance(value: WorkspaceAppearanceValue): void {
-    if (this.state.updateWorkspaceAppearance(value.workspaceId, value.name, value.themeColor)) {
+    if (
+      this.state.updateWorkspaceAppearance(
+        value.workspaceId,
+        value.name,
+        value.themeColor,
+        value.tags,
+        value.icon,
+      )
+    ) {
       this.editingWorkspaceId.set(null);
       this.showToast(this.i18n.t('workspace.updated', { name: value.name }));
     }
@@ -2957,31 +2988,39 @@ export class App {
     }
   }
 
-  protected async loginAccount(profileId: string): Promise<void> {
+  protected async loginAccount(input: AccountProfileInput): Promise<void> {
+    if (this.profileSaving()) return;
     const workspace = this.state.activeWorkspace();
-    const profile = this.agents.accountProfiles().find((item) => item.id === profileId);
-    if (!workspace || !profile) {
+    if (!workspace) {
+      this.showToast(this.i18n.t('account.loginWorkspaceRequired'), 'attention');
       return;
     }
-    const workingDirectory = await this.selectTerminalDirectory();
-    if (!workingDirectory) {
-      return;
-    }
+    this.profileSaving.set(true);
+    const profileId = input.id;
     const terminalId = createId();
     try {
+      await this.agents.saveAccountProfile(input);
+      this.profileSaveCompleted.set({ kind: 'accounts', id: profileId });
+      const profile = this.agents.accountProfiles().find((item) => item.id === profileId);
+      if (!profile) throw new Error(this.i18n.t('account.notFound'));
       const launch = await this.agents.prepareAccountLogin({
         terminalId,
         workspaceId: workspace.id,
         accountProfileId: profileId,
       });
-      const terminal = this.state.createTerminal({
-        id: terminalId,
-        agentType: profile.agentType,
-        name: this.i18n.t('account.loginName', { name: profile.name }),
-        command: launch.command,
-        model: this.i18n.t('account.loginModel'),
-        workingDirectory,
-      });
+      const terminal = this.state.createTerminal(
+        {
+          id: terminalId,
+          agentType: profile.agentType,
+          name: this.i18n.t('account.loginName', { name: profile.name }),
+          command: launch.command,
+          accountLogin: true,
+          accountProfileId: profileId,
+          model: this.i18n.t('account.loginModel'),
+          workingDirectory: workspace.projectPath,
+        },
+        workspace.id,
+      );
       this.settingsOpen.set(false);
       if (terminal) {
         this.revealCreatedTerminal(terminal.id);
@@ -2990,6 +3029,8 @@ export class App {
       }
     } catch (error) {
       this.showToast(this.errorMessage(error), 'error');
+    } finally {
+      this.profileSaving.set(false);
     }
   }
 

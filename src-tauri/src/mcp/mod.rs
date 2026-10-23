@@ -154,6 +154,10 @@ impl McpManager {
         request: &mut crate::commands::terminal::TerminalStartRequest,
         environment: &mut HashMap<String, String>,
     ) -> Result<(), String> {
+        // Account login is independent of the MCP server's settings and readiness.
+        if request.account_login {
+            return Ok(());
+        }
         let _configs = self.agent_configs.lock().unwrap_or_else(|e| e.into_inner());
         let settings = self.settings();
         if !settings.enabled || !settings.auto_connect_agents {

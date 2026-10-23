@@ -847,10 +847,10 @@ pub fn prepare_account_login(
         &credentials,
         request.workspace_id.as_deref(),
     )?);
+    let (command, executable_path) = account::login_spec(&profile)?;
     launch_environment
         .put(request.terminal_id, environment)
         .map_err(|error| error.to_string())?;
-    let (command, executable_path) = account::login_spec(&profile)?;
     Ok(AgentLaunchSpec {
         command,
         executable_path,

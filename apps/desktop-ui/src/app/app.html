@@ -29,7 +29,16 @@
       @if (state.activeWorkspace(); as workspace) {
         <div class="workspace-title">
           <strong>{{ workspace.name }}</strong>
-          <span>{{ workspace.projectPath }}</span>
+          <button
+            type="button"
+            class="workspace-path"
+            [disabled]="!canOpenDirectory"
+            [title]="('common.openInExplorer' | t) + ': ' + workspace.projectPath"
+            [attr.aria-label]="('common.openInExplorer' | t) + ': ' + workspace.projectPath"
+            (click)="openProjectDirectory(workspace.projectPath)"
+          >
+            {{ workspace.projectPath }}
+          </button>
         </div>
       }
     </div>
@@ -275,6 +284,17 @@
           <app-language-selector />
           <app-remote-access-button (opened)="openSettings('remote')" />
         }
+        @if (modelCatalog.upgrades().length > 0) {
+          <button
+            type="button"
+            class="tool-button"
+            data-testid="model-updates-open"
+            (click)="openSettings('models', modelCatalog.upgrades()[0].profileId)"
+          >
+            <app-icon name="refresh" [size]="14" />
+            <span>{{ 'settings.newModels' | t: { count: modelCatalog.upgrades().length } }}</span>
+          </button>
+        }
         <button
           type="button"
           class="window-tool"
@@ -358,21 +378,36 @@
   }
 
   @if (workspaceSidebarOpen()) {
-    <app-workspace-sidebar
-      [workspaces]="state.workspaces()"
-      [activeWorkspaceId]="state.activeWorkspace()?.id ?? null"
-      [appVersion]="appVersion()"
-      (workspaceSelected)="selectWorkspace($event)"
-      (favoriteToggled)="state.toggleFavorite($event)"
-      (editRequested)="openWorkspaceEditor($event)"
-      (mergeRequested)="openWorkspaceMerge($event)"
-      (deleteRequested)="openWorkspaceDelete($event)"
-      (moveRequested)="state.moveWorkspace($event.workspaceId, $event.direction)"
-      (reorderRequested)="
-        state.reorderWorkspace($event.workspaceId, $event.targetWorkspaceId, $event.position)
-      "
-      (createRequested)="createWorkspaceOpen.set(true)"
-    />
+    @defer (on immediate) {
+      <app-workspace-sidebar
+        [workspaces]="state.workspaces()"
+        [organization]="state.organization()"
+        [activeWorkspaceId]="state.activeWorkspace()?.id ?? null"
+        [appVersion]="appVersion()"
+        [canOpenDirectory]="canOpenDirectory"
+        (directoryOpenRequested)="openProjectDirectory($event)"
+        (workspaceSelected)="selectWorkspace($event)"
+        (favoriteToggled)="state.toggleFavorite($event)"
+        (editRequested)="openWorkspaceEditor($event)"
+        (mergeRequested)="openWorkspaceMerge($event)"
+        (deleteRequested)="openWorkspaceDelete($event)"
+        (moveRequested)="state.moveWorkspace($event.workspaceId, $event.direction)"
+        (reorderRequested)="
+          state.reorderWorkspace($event.workspaceId, $event.targetWorkspaceId, $event.position)
+        "
+        (createRequested)="createWorkspaceOpen.set(true)"
+        (folderCreateRequested)="state.createWorkspaceFolder($event.name, $event.parentId)"
+        (folderRenameRequested)="state.renameWorkspaceFolder($event.folderId, $event.name)"
+        (folderDeleteRequested)="state.deleteWorkspaceFolder($event)"
+        (folderToggleRequested)="state.toggleWorkspaceFolder($event)"
+        (workspaceFolderRequested)="
+          state.moveWorkspaceToFolder($event.workspaceId, $event.folderId)
+        "
+        (folderMoveRequested)="
+          state.moveWorkspaceFolder($event.folderId, $event.targetFolderId, $event.position)
+        "
+      />
+    }
     <!-- Dragging an edge needs a pointer; on a phone the panel floats and is either open or not. -->
     @if (!phoneLayout()) {
       <div
@@ -440,7 +475,7 @@
                 class="tab-close"
                 [title]="'terminal.close' | t"
                 [attr.aria-label]="'terminal.close' | t"
-                (click)="requestCloseTerminal(terminal.id)"
+                (click)="requestCloseTerminal(terminal.id, $event)"
               >
                 <app-icon name="x" [size]="11" />
               </button>
@@ -598,7 +633,7 @@
             [gridColumns]="gridColumns()"
             [gridRows]="gridRows()"
             (terminalSelected)="selectTerminal($event)"
-            (terminalClosed)="requestCloseTerminal($event)"
+            (terminalClosed)="requestCloseTerminal($event.terminalId, $event.event)"
             (terminalMaximizeRequested)="toggleTerminalMaximize($event)"
             (launchRequested)="launchAgent($event)"
             (installRequested)="installAgent($event)"
@@ -718,12 +753,16 @@
   />
 }
 
-@if (editingWorkspace(); as workspace) {
-  <app-edit-workspace-dialog
-    [workspace]="workspace"
-    (saved)="saveWorkspaceAppearance($event)"
-    (cancelled)="editingWorkspaceId.set(null)"
-  />
+@defer (when editingWorkspace() !== null) {
+  @if (editingWorkspace(); as workspace) {
+    <app-edit-workspace-dialog
+      [workspace]="workspace"
+      [tags]="state.organization().workspaces[workspace.id]?.tags ?? []"
+      [customIcon]="state.organization().workspaces[workspace.id]?.icon ?? null"
+      (saved)="saveWorkspaceAppearance($event)"
+      (cancelled)="editingWorkspaceId.set(null)"
+    />
+  }
 }
 
 @if (backgroundSessions().length > 0) {
@@ -981,27 +1020,14 @@
 }
 
 @if (pendingTerminalClose(); as pendingCloseId) {
-  <div class="app-terminal-close-confirm" role="alert" aria-live="assertive">
-    <p>{{ 'terminal.closeRunningConfirm' | t }}</p>
-    <div class="app-terminal-close-actions">
-      <button
-        type="button"
-        class="btn btn-sm btn-ghost"
-        [disabled]="closingTerminal()"
-        (click)="cancelCloseTerminal()"
-      >
-        {{ 'common.cancel' | t }}
-      </button>
-      <button
-        type="button"
-        class="btn btn-sm btn-error"
-        [disabled]="closingTerminal()"
-        (click)="confirmCloseTerminal(pendingCloseId)"
-      >
-        {{ 'terminal.closeForce' | t }}
-      </button>
-    </div>
-  </div>
+  @defer (on immediate) {
+    <app-terminal-close-confirm
+      [anchor]="terminalCloseAnchor()"
+      [busy]="closingTerminal()"
+      (cancelled)="cancelCloseTerminal()"
+      (confirmed)="confirmCloseTerminal(pendingCloseId)"
+    />
+  }
 }
 
 @if (toastMessage(); as message) {

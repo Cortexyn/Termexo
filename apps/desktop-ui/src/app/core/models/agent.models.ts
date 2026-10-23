@@ -1,4 +1,5 @@
 import { AgentType, TerminalStatus } from './workspace.models';
+import type { AccountLoginMethod } from './account-login';
 
 export type NativeAgentType = 'claude' | 'codex' | 'opencode' | 'pi' | 'grok' | 'antigravity';
 
@@ -299,6 +300,7 @@ export interface AccountProfile {
   id: string;
   name: string;
   agentType: AccountAgentType;
+  loginMethod?: AccountLoginMethod;
   configDir?: string;
   isDefault: boolean;
   isSystem: boolean;
@@ -310,6 +312,7 @@ export interface AccountProfileInput {
   id: string;
   name: string;
   agentType: AccountAgentType;
+  loginMethod?: AccountLoginMethod;
   isDefault: boolean;
 }
 

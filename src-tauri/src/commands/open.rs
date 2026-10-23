@@ -60,6 +60,21 @@ pub fn open_terminal_path(path: String, working_directory: Option<String>) -> Re
     open_with_default_program(&resolved)
 }
 
+/// Opens a project directory's contents, rather than selecting it in its parent folder.
+#[tauri::command(async)]
+pub fn open_directory(path: String) -> Result<(), String> {
+    let resolved = resolve_directory(&path)?;
+    open_with_default_program(&resolved)
+}
+
+fn resolve_directory(path: &str) -> Result<PathBuf, String> {
+    let resolved = resolve(path, None)?;
+    if !resolved.is_dir() {
+        return Err(format!("不是文件夹：{}。", resolved.to_string_lossy()));
+    }
+    Ok(resolved)
+}
+
 /// Resolves what the terminal printed into a path that exists on this machine.
 fn resolve(path: &str, working_directory: Option<&str>) -> Result<PathBuf, String> {
     let trimmed = path.trim().trim_matches('"');
@@ -110,6 +125,9 @@ fn open_with_default_program(path: &Path) -> Result<(), String> {
 #[cfg(windows)]
 fn strip_extended_prefix(path: &Path) -> String {
     let text = path.to_string_lossy().into_owned();
+    if let Some(unc) = text.strip_prefix(r"\\?\UNC\") {
+        return format!(r"\\{unc}");
+    }
     text.strip_prefix(r"\\?\").unwrap_or(&text).to_owned()
 }
 
@@ -188,5 +206,47 @@ mod tests {
     #[test]
     fn refuses_a_relative_path_with_no_directory_to_resolve_it_against() {
         assert!(resolve("src/main.rs", None).is_err());
+    }
+
+    #[test]
+    fn resolves_project_directories_with_spaces_and_unicode() {
+        let directory =
+            std::env::temp_dir().join(format!("termexo-project-{} 空格目录", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        assert_eq!(
+            resolve_directory(directory.to_str().unwrap()).unwrap(),
+            directory.canonicalize().unwrap()
+        );
+        std::fs::remove_dir(directory).unwrap();
+    }
+
+    #[test]
+    fn refuses_files_and_invalid_project_directories() {
+        let file =
+            std::env::temp_dir().join(format!("termexo-project-file-{}.txt", std::process::id()));
+        std::fs::write(&file, "x").unwrap();
+        assert!(resolve_directory(file.to_str().unwrap()).is_err());
+        std::fs::remove_file(file).unwrap();
+        assert!(resolve_directory("").is_err());
+        assert!(resolve_directory("relative/project").is_err());
+        assert!(resolve_directory(
+            &std::env::temp_dir()
+                .join("termexo-nonexistent-project-directory")
+                .to_string_lossy()
+        )
+        .is_err());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn converts_extended_local_and_unc_paths_for_explorer() {
+        assert_eq!(
+            strip_extended_prefix(Path::new(r"\\?\C:\my project")),
+            r"C:\my project"
+        );
+        assert_eq!(
+            strip_extended_prefix(Path::new(r"\\?\UNC\server\share\项目")),
+            r"\\server\share\项目"
+        );
     }
 }

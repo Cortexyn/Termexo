@@ -59,6 +59,7 @@ pub const REMOTE_ALLOWED: &[&str] = &[
     "detect_antigravity",
     "scan_antigravity_sessions",
     "list_antigravity_models",
+    "read_model_catalog",
     "read_antigravity_status_feed",
     "prepare_antigravity_launch",
     "scan_claude_sessions",
@@ -166,6 +167,7 @@ pub const REMOTE_DENIED: &[&str] = &[
     "open_terminal_url",
     "open_support_email",
     "open_terminal_path",
+    "open_directory",
     "update_via_npm",
     // Describes the desktop window's own WebView2, which says nothing about the browser a
     // remote client is being drawn in and would have it offer an install for another machine.

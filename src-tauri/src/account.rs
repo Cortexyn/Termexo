@@ -7,7 +7,7 @@ use std::process::{Command, Output};
 use serde_json::{Map, Value};
 
 use crate::agent::{AgentAdapter, AgentInstallation, ClaudeCodeAdapter, CodexCliAdapter};
-use crate::config::AccountProfile;
+use crate::config::{AccountLoginMethod, AccountProfile};
 
 /// Claude's per-home global config: identity, first-run state and caches.
 const CLAUDE_GLOBAL_CONFIG_FILE: &str = ".claude.json";
@@ -343,17 +343,42 @@ fn copy_directory(from: &Path, to: &Path) -> Result<(), String> {
 }
 
 pub fn login_spec(profile: &AccountProfile) -> Result<(String, String), String> {
+    validate_agent_type(&profile.agent_type)?;
+    validate_login_method(&profile.agent_type, profile.login_method)?;
     prepare_managed_directory(profile)?;
     let installation = detect(&profile.agent_type)?;
     let executable = installation
         .executable_path
         .ok_or_else(|| installation.diagnostic.clone())?;
-    let command = if profile.agent_type == "claude" {
-        format!("& {} auth login", powershell_quote(&executable))
-    } else {
-        format!("& {} login", powershell_quote(&executable))
-    };
+    let command = login_command(&profile.agent_type, profile.login_method, &executable)?;
     Ok((command, executable))
+}
+
+pub fn validate_login_method(agent_type: &str, method: AccountLoginMethod) -> Result<(), String> {
+    login_arguments(agent_type, method).map(|_| ())
+}
+
+fn login_arguments(agent_type: &str, method: AccountLoginMethod) -> Result<&'static str, String> {
+    match (validate_agent_type(agent_type)?, method) {
+        ("claude", AccountLoginMethod::Browser) => Ok("auth login"),
+        ("claude", AccountLoginMethod::Console) => Ok("auth login --console"),
+        ("claude", AccountLoginMethod::Sso) => Ok("auth login --sso"),
+        ("codex", AccountLoginMethod::Browser) => Ok("login"),
+        ("codex", AccountLoginMethod::DeviceCode) => Ok("login --device-auth"),
+        _ => Err(format!(
+            "{agent_type} 不支持 {} 登录方式。",
+            method.as_str()
+        )),
+    }
+}
+
+fn login_command(
+    agent_type: &str,
+    method: AccountLoginMethod,
+    executable: &str,
+) -> Result<String, String> {
+    let arguments = login_arguments(agent_type, method)?;
+    Ok(format!("& {} {arguments}", powershell_quote(executable)))
 }
 
 fn detect(agent_type: &str) -> Result<AgentInstallation, String> {
@@ -413,6 +438,66 @@ fn powershell_quote(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn each_agent_uses_its_native_authentication_subcommand() {
+        assert_eq!(
+            login_command(
+                "claude",
+                AccountLoginMethod::Browser,
+                "C:/Claude Code/claude.exe"
+            )
+            .unwrap(),
+            "& 'C:/Claude Code/claude.exe' auth login"
+        );
+        assert_eq!(
+            login_command(
+                "codex",
+                AccountLoginMethod::Browser,
+                "C:/Codex's CLI/codex.cmd"
+            )
+            .unwrap(),
+            "& 'C:/Codex''s CLI/codex.cmd' login"
+        );
+        assert!(login_command("unknown-agent", AccountLoginMethod::Browser, "agent.exe").is_err());
+    }
+
+    #[test]
+    fn builds_only_the_login_methods_supported_by_each_agent() {
+        for (agent, method, arguments) in [
+            (
+                "claude",
+                AccountLoginMethod::Console,
+                "auth login --console",
+            ),
+            ("claude", AccountLoginMethod::Sso, "auth login --sso"),
+            (
+                "codex",
+                AccountLoginMethod::DeviceCode,
+                "login --device-auth",
+            ),
+        ] {
+            assert_eq!(
+                login_command(agent, method, "C:/Agent's CLI/agent.exe").unwrap(),
+                format!("& 'C:/Agent''s CLI/agent.exe' {arguments}")
+            );
+        }
+        assert!(validate_login_method("claude", AccountLoginMethod::DeviceCode).is_err());
+        assert!(validate_login_method("codex", AccountLoginMethod::Console).is_err());
+        assert!(validate_login_method("codex", AccountLoginMethod::Sso).is_err());
+    }
+
+    #[test]
+    fn legacy_account_inputs_keep_browser_login_and_unknown_methods_are_rejected() {
+        let input = json!({"id":"legacy", "name":"Legacy", "agentType":"claude"});
+        let parsed: crate::config::AccountProfileInput =
+            serde_json::from_value(input.clone()).unwrap();
+        assert_eq!(parsed.login_method, AccountLoginMethod::Browser);
+        let mut invalid = input;
+        invalid["loginMethod"] = json!("custom; injected-command");
+        assert!(serde_json::from_value::<crate::config::AccountProfileInput>(invalid).is_err());
+    }
 
     #[test]
     fn maps_managed_profiles_to_isolated_cli_homes() {
@@ -420,6 +505,7 @@ mod tests {
             id: "claude-one".into(),
             name: "Claude One".into(),
             agent_type: "claude".into(),
+            login_method: AccountLoginMethod::Browser,
             config_dir: Some("C:\\profiles\\claude-one".into()),
             is_default: true,
             is_system: false,
@@ -465,6 +551,7 @@ mod tests {
             id: "managed".into(),
             name: "Managed".into(),
             agent_type: "claude".into(),
+            login_method: AccountLoginMethod::Browser,
             config_dir: Some(config_dir.to_string_lossy().into_owned()),
             is_default: false,
             is_system: false,
@@ -587,6 +674,7 @@ mod tests {
             id: "source".into(),
             name: "Source".into(),
             agent_type: "claude".into(),
+            login_method: AccountLoginMethod::Browser,
             config_dir: Some(source_dir.to_string_lossy().into_owned()),
             is_default: false,
             is_system: false,
@@ -627,6 +715,7 @@ mod tests {
             id: "one".into(),
             name: "One".into(),
             agent_type: "claude".into(),
+            login_method: AccountLoginMethod::Browser,
             config_dir: Some("C:\\profiles\\one".into()),
             is_default: false,
             is_system: false,

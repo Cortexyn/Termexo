@@ -35,11 +35,11 @@ termexo --help       Show command help
 Set `TERMEXO_PATH` to the full path of another `termexo.exe` to override the
 bundled executable.
 
-## Version 0.10.14
+## Version 0.10.15
 
-Simplifies Agent installation and updates, adds Pi Agent, uses the official
-Antigravity updater, and keeps pending and completion reminders flashing until
-acknowledged. Restart Termexo and Agent terminals after updating.
+Adds workspace folders, tags and icons, account login choices, model discovery and
+upgrade suggestions, and confirmation before closing active Agent terminals.
+Restart Termexo and Agent terminals after updating.
 
 ## Let one AI operate another through MCP
 

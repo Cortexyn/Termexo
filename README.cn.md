@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version 0.10.14" src="https://img.shields.io/badge/version-0.10.14-58c7a0">
+  <img alt="Version 0.10.15" src="https://img.shields.io/badge/version-0.10.15-58c7a0">
   <img alt="Windows" src="https://img.shields.io/badge/platform-Windows-0078D4?logo=windows">
   <img alt="Tauri 2" src="https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white">
   <img alt="Angular 22" src="https://img.shields.io/badge/Angular-22-DD0031?logo=angular">
@@ -133,7 +133,7 @@ MCP 是 AI 与 Termexo 之间的连接。**你用日常语言提出要求，不�
 
 ## 最新版本
 
-**[v0.10.14](https://github.com/gemron/Termexo/releases/tag/v0.10.14)** 简化六种 Agent 的安装与更新，加入 Pi Agent，Antigravity 改用官方升级命令，待处理和任务完成提醒持续闪动到确认。
+**[v0.10.15](https://github.com/gemron/Termexo/releases/tag/v0.10.15)** 加入工作区文件夹、标签与图标，支持选择账号登录方式、模型目录与升级建议，以及关闭活动 Agent 终端前确认。
 [完整更新记录](CHANGELOG.cn.md)。
 
 如果 Termexo 帮到了你，欢迎 **给仓库点一个 Star**，帮助更多开发者发现它。
@@ -423,7 +423,8 @@ flowchart LR
 | V0.10.11 | Agent 状态与启动修复、移动快捷键和更清楚的设置引导 | 已发布 |
 | V0.10.12 | 桌面终端响应、Windows 粘贴和 Codex 手机快捷键 | 已发布 |
 | V0.10.13 | 代理清理、旧版 OpenCode 扫描、干净标题、可区分的完成态 | 已发布 |
-| V0.10.14 | 简化安装与更新、Pi Agent、官方 Antigravity 升级、持续闪动提醒 | 当前版本 |
+| V0.10.14 | 简化安装与更新、Pi Agent、官方 Antigravity 升级、持续闪动提醒 | 已发布 |
+| V0.10.15 | 工作区整理、登录方式、模型目录、活动终端关闭确认 | 当前版本 |
 | V1.0 | 稳定性、安全加固与恢复体验 | 规划中 |
 
 进行中的工作见 [Issues](https://github.com/gemron/Termexo/issues)，实际交付内容见

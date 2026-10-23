@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version 0.10.14" src="https://img.shields.io/badge/version-0.10.14-58c7a0">
+  <img alt="Version 0.10.15" src="https://img.shields.io/badge/version-0.10.15-58c7a0">
   <img alt="Windows" src="https://img.shields.io/badge/platform-Windows-0078D4?logo=windows">
   <img alt="Tauri 2" src="https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white">
   <img alt="Angular 22" src="https://img.shields.io/badge/Angular-22-DD0031?logo=angular">
@@ -134,7 +134,7 @@ Keep the token private. Closing Termexo or stopping the PC ends the running proc
 
 ## Latest release
 
-**[v0.10.14](https://github.com/gemron/Termexo/releases/tag/v0.10.14)** makes installation and updates easier for six Agents, adds Pi Agent, uses the official Antigravity updater, and keeps pending and completion reminders flashing until acknowledged.
+**[v0.10.15](https://github.com/gemron/Termexo/releases/tag/v0.10.15)** adds workspace folders, tags and icons, account login choices, model discovery and upgrade suggestions, and confirmation before closing active Agent terminals.
 [Full changelog](CHANGELOG.md).
 
 If Termexo helps your workflow, a **Star on this repository** helps other developers discover it.
@@ -442,7 +442,8 @@ identifiers still use a legacy name. This does not affect the Termexo product na
 | V0.10.11 | Agent status and launch fixes, mobile shortcuts, and clearer setup | Released |
 | V0.10.12 | Responsive terminals, Windows paste, and Codex mobile shortcuts | Released |
 | V0.10.13 | Proxy cleanup, older OpenCode scans, clean Codex titles, distinct completed tabs | Released |
-| V0.10.14 | Easier setup, Pi Agent, official Antigravity updates, persistent reminders | Current |
+| V0.10.14 | Easier setup, Pi Agent, official Antigravity updates, persistent reminders | Released |
+| V0.10.15 | Workspace organization, login choices, model discovery, active terminal close confirmation | Current |
 | V1.0 | Stability, security hardening, and recovery experience | Planned |
 
 See [open issues](https://github.com/gemron/Termexo/issues) for ongoing work and
