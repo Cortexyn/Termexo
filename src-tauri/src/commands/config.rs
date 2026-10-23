@@ -328,7 +328,7 @@ pub async fn save_account_profile(
     } else {
         Some(
             account::managed_config_dir(
-                &app.path().app_data_dir().map_err(|e| e.to_string())?,
+                &crate::platform::app_data_dir(&app)?,
                 &agent_type,
                 &profile_id,
             )?
