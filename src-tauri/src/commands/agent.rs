@@ -1819,6 +1819,16 @@ mod tests {
 
     #[test]
     fn restores_opencode_proxy_and_terminal_plugin() {
+        // The relaunch probes the real CLI's version, so the test needs one installed.
+        let installed = std::env::var_os("PATH").is_some_and(|path| {
+            std::env::split_paths(&path)
+                .any(|directory| directory.join("opencode").is_file())
+                || std::env::split_paths(&path)
+                    .any(|directory| directory.join("opencode.exe").is_file())
+        });
+        if !installed {
+            return;
+        }
         let directory = std::env::temp_dir().join(format!(
             "termexo-opencode-relaunch-{}",
             std::time::SystemTime::now()
