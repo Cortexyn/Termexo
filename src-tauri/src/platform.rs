@@ -78,16 +78,23 @@ pub fn shell_invoke(executable: &str) -> String {
     return shell_quote(executable);
 }
 
+/// `~/Library/Application Support/Termexo`, the macOS home of everything Termexo stores.
+#[cfg(target_os = "macos")]
+pub fn macos_data_dir() -> Option<PathBuf> {
+    home_dir().map(|home| {
+        home.join("Library")
+            .join("Application Support")
+            .join(MACOS_DATA_DIRECTORY)
+    })
+}
+
 /// Application data directory under the macOS convention, or the one Tauri chose elsewhere.
 pub fn app_data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     use tauri::Manager;
 
     #[cfg(target_os = "macos")]
-    if let Some(home) = home_dir() {
-        return Ok(home
-            .join("Library")
-            .join("Application Support")
-            .join(MACOS_DATA_DIRECTORY));
+    if let Some(directory) = macos_data_dir() {
+        return Ok(directory);
     }
     app.path().app_data_dir().map_err(|error| error.to_string())
 }

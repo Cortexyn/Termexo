@@ -131,12 +131,31 @@ fn strip_extended_prefix(path: &Path) -> String {
     text.strip_prefix(r"\\?\").unwrap_or(&text).to_owned()
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+fn reveal(path: &Path) -> Result<(), String> {
+    std::process::Command::new("open")
+        .arg("-R")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("无法在 Finder 中定位该文件：{error}"))
+}
+
+#[cfg(target_os = "macos")]
+fn open_with_default_program(path: &Path) -> Result<(), String> {
+    std::process::Command::new("open")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("无法打开该文件：{error}"))
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
 fn reveal(_path: &Path) -> Result<(), String> {
     Err("当前平台不支持在文件管理器中定位。".into())
 }
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 fn open_with_default_program(_path: &Path) -> Result<(), String> {
     Err("当前平台不支持打开文件。".into())
 }

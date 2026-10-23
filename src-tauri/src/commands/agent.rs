@@ -933,8 +933,12 @@ fn append_proxy_diagnostic(line: &str) {
     }
 }
 
-/// Resolves the same app data directory Tauri uses for `dev.agentdock.desktop`.
+/// Resolves the app data directory: Tauri's for `dev.agentdock.desktop` on Windows, the
+/// `Application Support/Termexo` one on macOS.
 fn dirs_app_data() -> Option<PathBuf> {
+    #[cfg(target_os = "macos")]
+    return crate::platform::macos_data_dir();
+    #[cfg(not(target_os = "macos"))]
     std::env::var_os("APPDATA").map(|base| PathBuf::from(base).join("dev.agentdock.desktop"))
 }
 

@@ -45,5 +45,5 @@ pub fn show_desktop_notification(
     body: String,
     app: AppHandle,
 ) -> Result<(), String> {
-    notification::show_toast(app.config(), &title, &body)
+    notification::show_toast(&app, &title, &body)
 }
