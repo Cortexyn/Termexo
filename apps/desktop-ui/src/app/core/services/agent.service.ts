@@ -3,6 +3,7 @@ import { open as openDialog, save } from '@tauri-apps/plugin-dialog';
 
 import { I18nService } from '../i18n/i18n.service';
 import { accountLoginOption } from '../models/account-login';
+import { nameSystemAccountQuotas } from '../models/system-account-quota';
 import {
   AccountLoginRequest,
   AccountProfile,
@@ -137,7 +138,9 @@ export class AgentService {
         : profile,
     ),
   );
-  readonly providerQuotas = this.providerQuotaItems.asReadonly();
+  readonly providerQuotas = computed(() =>
+    nameSystemAccountQuotas(this.providerQuotaItems(), this.accountProfiles()),
+  );
   readonly quotaLoading = this.quotaLoadingState.asReadonly();
   readonly busy = this.busyState.asReadonly();
   readonly error = this.errorState.asReadonly();
