@@ -459,6 +459,10 @@ const EN: TranslationTable = {
   'quota.window.weeklyShared': 'Weekly shared allowance',
   'quota.window.monthlyShared': 'Monthly shared allowance',
   'quota.window.subscriptionShared': 'Subscription shared allowance',
+  'quota.diagnostic.ownStatusLine':
+    'Claude Code is using your own status line, so Termexo cannot read the allowance from it.',
+  'quota.diagnostic.noAllowanceYet':
+    'No allowance reported yet. It appears after Claude Code answers in a Termexo terminal (Pro and Max plans).',
   'quota.refresh': 'Refresh',
   'quota.refreshing': 'Checking…',
   'quota.showAll': 'View all providers',
@@ -1352,6 +1356,10 @@ const ZH_CN: TranslationTable = {
   'quota.window.weeklyShared': '每周共享额度',
   'quota.window.monthlyShared': '每月共享额度',
   'quota.window.subscriptionShared': '订阅共享额度',
+  'quota.diagnostic.ownStatusLine':
+    'Claude Code 正在使用你自己的状态栏，Termexo 无法从中读取额度。',
+  'quota.diagnostic.noAllowanceYet':
+    '尚未收到额度信息。在 Termexo 终端中与 Claude Code 完成一次对话后会显示（仅限 Pro 和 Max 套餐）。',
   'quota.refresh': '刷新',
   'quota.refreshing': '查询中…',
   'quota.showAll': '查看全部供应商',
@@ -2645,6 +2653,10 @@ const DE: TranslationTable = {
   'quota.window.weeklyShared': 'Gemeinsames Wochenkontingent',
   'quota.window.monthlyShared': 'Gemeinsames Monatskontingent',
   'quota.window.subscriptionShared': 'Gemeinsames Abo-Kontingent',
+  'quota.diagnostic.ownStatusLine':
+    'Claude Code nutzt deine eigene Statuszeile, deshalb kann Termexo das Kontingent daraus nicht lesen.',
+  'quota.diagnostic.noAllowanceYet':
+    'Noch kein Kontingent gemeldet. Es erscheint, nachdem Claude Code in einem Termexo-Terminal geantwortet hat (Pro- und Max-Tarife).',
   'quota.refresh': 'Aktualisieren',
   'quota.refreshing': 'Wird geprüft…',
   'quota.showAll': 'Alle Anbieter anzeigen',

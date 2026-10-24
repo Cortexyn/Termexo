@@ -307,7 +307,7 @@
               @if (row.quota.diagnostic) {
                 <div class="quota-unavailable">
                   <app-icon name="triangle-alert" [size]="13" />
-                  <span>{{ row.quota.diagnostic }}</span>
+                  <span>{{ quotaDiagnostic(row.quota.diagnostic) }}</span>
                 </div>
               } @else {
                 <small class="quota-checked">
