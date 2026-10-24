@@ -444,6 +444,10 @@ const EN: TranslationTable = {
   'quota.window.hours': '{count}-hour window',
   'quota.window.days': '{count}-day window',
   'quota.window.weekly': 'Weekly allowance',
+  'quota.diagnostic.ownStatusLine':
+    'Claude Code is using your own status line, so Termexo cannot read the allowance from it.',
+  'quota.diagnostic.noAllowanceYet':
+    'No allowance reported yet. It appears after Claude Code answers in a Termexo terminal (Pro and Max plans).',
   'quota.window.opus': 'Opus allowance',
   'quota.window.subscription': 'Subscription allowance',
   'quota.window.balance': 'Available balance',
@@ -1326,6 +1330,10 @@ const ZH_CN: TranslationTable = {
   'quota.window.hours': '{count} 小时窗口',
   'quota.window.days': '{count} 天窗口',
   'quota.window.weekly': '每周额度',
+  'quota.diagnostic.ownStatusLine':
+    'Claude Code 正在使用你自己的状态栏，Termexo 无法从中读取额度。',
+  'quota.diagnostic.noAllowanceYet':
+    '尚未收到额度信息。在 Termexo 终端中与 Claude Code 完成一次对话后会显示（仅限 Pro 和 Max 套餐）。',
   'quota.window.opus': 'Opus 额度',
   'quota.window.subscription': '订阅额度',
   'quota.window.balance': '可用余额',

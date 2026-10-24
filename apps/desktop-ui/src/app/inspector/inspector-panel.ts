@@ -89,6 +89,14 @@ const DAY_MINUTES = 24 * HOUR_MINUTES;
 /** Keeps the minute-precision countdown honest without re-rendering every second. */
 const COUNTDOWN_TICK_MS = 20_000;
 
+/** Explanations the backend writes for an allowance it cannot show, and the wording replacing each. */
+const QUOTA_DIAGNOSTIC_KEYS: Readonly<Record<string, string>> = {
+  'Claude Code is using your own status line, so Termexo cannot read the allowance from it.':
+    'quota.diagnostic.ownStatusLine',
+  'No allowance reported yet. It appears after Claude Code answers in a Termexo terminal (Pro and Max plans).':
+    'quota.diagnostic.noAllowanceYet',
+};
+
 /** Allowance line names the backend writes, and the wording that replaces each. */
 const QUOTA_LABEL_KEYS: Readonly<Record<string, string>> = {
   每周额度: 'quota.window.weekly',
@@ -437,6 +445,12 @@ export class InspectorPanelComponent {
     if (days) return this.i18n.t('quota.window.days', { count: days[1] });
     const key = QUOTA_LABEL_KEYS[label];
     return key ? this.i18n.t(key) : label;
+  }
+
+  /** A diagnostic the backend is known to write is shown in the interface language. */
+  protected quotaDiagnostic(text: string): string {
+    const key = QUOTA_DIAGNOSTIC_KEYS[text];
+    return key ? this.i18n.t(key) : text;
   }
 
   protected usedLabel(percent: number): string {
