@@ -78,6 +78,58 @@ pub fn managed_config_dir(
         .join(profile_id))
 }
 
+/// Keychain service Claude Code files a config directory's sign-in under: the shared name with
+/// the first eight hex digits of the directory path's SHA-256 appended.
+#[cfg(target_os = "macos")]
+fn claude_keychain_service(config_dir: &str) -> String {
+    use sha2::{Digest, Sha256};
+
+    let digest = Sha256::digest(config_dir.as_bytes());
+    let suffix: String = digest
+        .iter()
+        .take(4)
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+    format!("Claude Code-credentials-{suffix}")
+}
+
+/// Removes what a deleted managed account leaves behind on macOS: its config directory and, for
+/// Claude, the sign-in Claude Code keeps in the Keychain rather than in that directory.
+///
+/// Only a directory inside Termexo's own `accounts` folder is touched, so a profile pointing at
+/// someone's real `~/.claude` is never deleted. Best effort: the profile is already gone.
+#[cfg(target_os = "macos")]
+pub fn forget_managed_account(profile: &AccountProfile, data_directory: &Path) {
+    let Some(config_dir) = profile.config_dir.as_deref() else {
+        return;
+    };
+    let accounts = data_directory.join("accounts");
+    let inside_accounts = Path::new(config_dir)
+        .canonicalize()
+        .ok()
+        .zip(accounts.canonicalize().ok())
+        .is_some_and(|(directory, accounts)| directory.starts_with(accounts));
+    if !inside_accounts {
+        return;
+    }
+    if profile.agent_type == "claude" {
+        let removed = Command::new("security")
+            .args([
+                "delete-generic-password",
+                "-s",
+                &claude_keychain_service(config_dir),
+            ])
+            .output()
+            .is_ok_and(|output| output.status.success());
+        if !removed {
+            tracing::info!(target: "termexo::account", "No Keychain sign-in found for the deleted account");
+        }
+    }
+    if let Err(error) = fs::remove_dir_all(config_dir) {
+        tracing::warn!(target: "termexo::account", "Could not remove the account directory: {error}");
+    }
+}
+
 pub fn prepare_managed_directory(profile: &AccountProfile) -> Result<(), String> {
     let Some(config_dir) = profile.config_dir.as_deref() else {
         return Ok(());
@@ -433,6 +485,17 @@ fn output_text(output: &Output) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn the_keychain_service_follows_claude_codes_naming() {
+        // Observed on a real sign-in: this config directory was filed under this suffix.
+        assert_eq!(
+            super::claude_keychain_service(
+                "/Users/ullvarirontrail/Library/Application Support/Termexo/accounts/claude/d9834650-9eae-4951-a853-2737eb32673a"
+            ),
+            "Claude Code-credentials-20e800dd"
+        );
+    }
     use super::*;
     use serde_json::json;
 
