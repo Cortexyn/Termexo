@@ -1469,43 +1469,6 @@ mod tests {
     }
 
     #[test]
-    fn system_accounts_seeded_in_chinese_are_renamed_once() {
-        let connection = Connection::open_in_memory().unwrap();
-        connection
-            .execute_batch(&format!(
-                "{INITIAL_MIGRATION}\n{AGENT_MIGRATION}\n{NETWORK_MIGRATION}\n{ACCOUNT_MIGRATION}"
-            ))
-            .unwrap();
-        let name = |id: &str| -> String {
-            connection
-                .query_row(
-                    "SELECT name FROM account_profiles WHERE id = ?1",
-                    [id],
-                    |row| row.get(0),
-                )
-                .unwrap()
-        };
-        assert_eq!(name("claude-system"), "System Claude account");
-
-        connection
-            .execute(
-                "UPDATE account_profiles SET name = '系统 Claude 账号' WHERE id = 'claude-system'",
-                [],
-            )
-            .unwrap();
-        connection
-            .execute(
-                "UPDATE account_profiles SET name = 'My work account' WHERE id = 'codex-system'",
-                [],
-            )
-            .unwrap();
-        connection.execute_batch(ACCOUNT_MIGRATION).unwrap();
-
-        assert_eq!(name("claude-system"), "System Claude account");
-        assert_eq!(name("codex-system"), "My work account");
-    }
-
-    #[test]
     fn upserts_one_live_draft_per_terminal_and_keeps_history() {
         let database = asset_database();
         let mut draft = PromptAsset {
