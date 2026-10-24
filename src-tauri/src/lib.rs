@@ -1,5 +1,6 @@
 mod account;
 mod agent;
+mod claude_status;
 mod cli;
 mod commands;
 mod config;
@@ -10,6 +11,7 @@ mod hooks;
 mod mcp;
 mod network;
 mod notification;
+mod platform;
 mod process;
 mod pty;
 mod quota;
@@ -47,6 +49,11 @@ pub fn capture_antigravity_status_from_cli() -> Result<(), String> {
     hooks::capture_antigravity_status_from_cli().map_err(|error| error.to_string())
 }
 
+/// Records Claude Code's subscription allowance from its status line input.
+pub fn capture_claude_status_from_cli() -> Result<(), String> {
+    claude_status::capture_from_cli()
+}
+
 pub fn capture_codex_hook_event_from_cli() -> Result<(), String> {
     hooks::capture_codex_hook_event_from_cli().map_err(|error| error.to_string())
 }
@@ -70,6 +77,10 @@ pub fn run() {
         )
         .init();
 
+    // A Finder-launched app has launchd's minimal PATH; agent detection and every terminal
+    // inherit this process's environment, so it is repaired before anything reads it.
+    platform::inherit_login_environment();
+
     // Nothing below can report this: without a runtime Tauri cannot build the webview, and the
     // process dies behind a panic message no user sees. An install from npm never ran an
     // installer that could deploy WebView2, so this is the only notice such a user ever gets.
@@ -91,7 +102,7 @@ pub fn run() {
             // largest thing Termexo writes, so the data can be moved elsewhere. The pointer that
             // records where stays behind in the default directory — something has to be findable
             // without configuration.
-            let default_data_dir = app.path().app_data_dir()?;
+            let default_data_dir = platform::app_data_dir(app.handle())?;
             fs::create_dir_all(&default_data_dir)?;
             let app_data_dir = storage::resolve_data_directory(&default_data_dir);
             fs::create_dir_all(&app_data_dir)?;

@@ -1,8 +1,9 @@
-import { effect, inject, Injectable, signal, type WritableSignal } from '@angular/core';
+import { computed, effect, inject, Injectable, signal, type WritableSignal } from '@angular/core';
 import { open as openDialog, save } from '@tauri-apps/plugin-dialog';
 
 import { I18nService } from '../i18n/i18n.service';
 import { accountLoginOption } from '../models/account-login';
+import { nameSystemAccountQuotas } from '../models/system-account-quota';
 import {
   AccountLoginRequest,
   AccountProfile,
@@ -121,8 +122,25 @@ export class AgentService {
   readonly modelProfiles = this.modelProfileItems.asReadonly();
   readonly mcpProfiles = this.mcpProfileItems.asReadonly();
   readonly networkProfiles = this.networkProfileItems.asReadonly();
-  readonly accountProfiles = this.accountProfileItems.asReadonly();
-  readonly providerQuotas = this.providerQuotaItems.asReadonly();
+  /**
+   * The backend seeds its two system accounts with Chinese names, so they are named here, in the
+   * language the interface is showing, from the agent they belong to.
+   */
+  readonly accountProfiles = computed(() =>
+    this.accountProfileItems().map((profile) =>
+      profile.isSystem
+        ? {
+            ...profile,
+            name: this.i18n.t('agent.systemAccount', {
+              name: profile.agentType === 'codex' ? 'ChatGPT' : 'Claude',
+            }),
+          }
+        : profile,
+    ),
+  );
+  readonly providerQuotas = computed(() =>
+    nameSystemAccountQuotas(this.providerQuotaItems(), this.accountProfiles()),
+  );
   readonly quotaLoading = this.quotaLoadingState.asReadonly();
   readonly busy = this.busyState.asReadonly();
   readonly error = this.errorState.asReadonly();
