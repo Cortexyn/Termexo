@@ -3,6 +3,8 @@ mod colour_query;
 
 use std::collections::HashMap;
 use std::io::{Read, Write};
+#[cfg(unix)]
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -692,7 +694,8 @@ impl PtyManager {
             .map_err(|error| PtyError::Backend(error.to_string()))?;
 
         if let Some(initial_command) = initial_command.filter(|_| !command_started_without_echo) {
-            writer.write_all(initial_command.as_bytes())?;
+            let typed_line = typed_initial_command(&app, &request.terminal_id, initial_command);
+            writer.write_all(typed_line.as_bytes())?;
             writer.write_all(line_ending().as_bytes())?;
             writer.flush()?;
         }
@@ -1058,6 +1061,65 @@ fn accepts_login_flag(shell: &str) -> bool {
     LOGIN_SHELLS.contains(&name)
 }
 
+/// The longest line typed into a freshly started shell.
+///
+/// The terminal driver holds a line in canonical mode until the shell's own line editor takes
+/// over, and it discards what passes about a thousand characters. A Codex launch with its
+/// lifecycle hook overrides is several times that.
+#[cfg(unix)]
+const MAX_TYPED_COMMAND_LENGTH: usize = 800;
+
+/// What to type for the initial command: the command itself, or, when it is too long to type
+/// safely, a line that sources a script holding it.
+#[cfg(unix)]
+fn typed_initial_command(app: &AppHandle, terminal_id: &str, command: &str) -> String {
+    if command.len() <= MAX_TYPED_COMMAND_LENGTH {
+        return command.to_owned();
+    }
+    crate::platform::app_data_dir(app)
+        .and_then(|directory| stage_command_script(&directory, terminal_id, command))
+        .map(|script| format!(". {}", crate::platform::shell_quote(&script.to_string_lossy())))
+        .unwrap_or_else(|error| {
+            tracing::warn!(target: "termexo::pty", %error, "Could not stage the launch command; typing it instead");
+            command.to_owned()
+        })
+}
+
+#[cfg(not(unix))]
+fn typed_initial_command(_app: &AppHandle, _terminal_id: &str, command: &str) -> String {
+    command.to_owned()
+}
+
+/// Writes the command to a script only its owner can read, overwritten by the next launch of the
+/// same terminal.
+#[cfg(unix)]
+fn stage_command_script(
+    data_directory: &Path,
+    terminal_id: &str,
+    command: &str,
+) -> Result<PathBuf, String> {
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
+    let directory = data_directory.join("runtime");
+    std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+    let safe_id: String = terminal_id
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric() || *character == '-')
+        .collect();
+    let path = directory.join(format!("launch-{safe_id}.sh"));
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(&path)
+        .map_err(|error| error.to_string())?;
+    file.set_permissions(std::fs::Permissions::from_mode(0o600))
+        .and_then(|_| writeln!(file, "{command}"))
+        .map_err(|error| error.to_string())?;
+    Ok(path)
+}
+
 fn configure_shell(
     command: &mut CommandBuilder,
     shell: &str,
@@ -1087,6 +1149,44 @@ fn configure_shell(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn a_long_launch_command_is_sourced_from_a_private_script() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let directory = std::env::temp_dir().join(format!("termexo-launch-{}", std::process::id()));
+        let command = format!("printf '%s' '{}'", "x".repeat(5000));
+
+        let script = stage_command_script(&directory, "terminal-1", &command).unwrap();
+
+        assert_eq!(
+            std::fs::metadata(&script).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        let output = std::process::Command::new("/bin/sh")
+            .arg("-c")
+            .arg(format!(
+                ". {}",
+                crate::platform::shell_quote(&script.to_string_lossy())
+            ))
+            .output()
+            .unwrap();
+        assert_eq!(String::from_utf8_lossy(&output.stdout), "x".repeat(5000));
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_terminal_id_cannot_steer_the_script_path() {
+        let directory =
+            std::env::temp_dir().join(format!("termexo-launch-id-{}", std::process::id()));
+
+        let script = stage_command_script(&directory, "../../evil", "true").unwrap();
+
+        assert_eq!(script.parent().unwrap(), directory.join("runtime"));
+        std::fs::remove_dir_all(directory).unwrap();
+    }
 
     #[derive(Debug, Clone)]
     struct AttachmentKiller;
