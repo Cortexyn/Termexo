@@ -1,4 +1,4 @@
-use crate::platform::{shell_invoke};
+use crate::platform::shell_invoke;
 use std::cmp::Reverse;
 use std::env;
 #[cfg(test)]

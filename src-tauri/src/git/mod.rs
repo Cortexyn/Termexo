@@ -1255,8 +1255,7 @@ mod tests {
         assert_eq!(changes[1].path, "new name.rs");
     }
 
-    #[cfg(windows)] // asserts Windows paths or PowerShell syntax
-
+    #[cfg(windows)]
     #[test]
     fn rejects_paths_outside_the_worktree() {
         assert!(validate_relative_path("src/main.rs").is_ok());
