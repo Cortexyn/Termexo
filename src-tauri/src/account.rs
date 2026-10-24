@@ -464,13 +464,21 @@ mod tests {
     #[test]
     fn login_commands_are_plain_posix_words() {
         assert_eq!(
-            login_command("claude", AccountLoginMethod::Browser, "/Users/me/my tools/claude")
-                .unwrap(),
+            login_command(
+                "claude",
+                AccountLoginMethod::Browser,
+                "/Users/me/my tools/claude"
+            )
+            .unwrap(),
             "'/Users/me/my tools/claude' auth login"
         );
         assert_eq!(
-            login_command("codex", AccountLoginMethod::DeviceCode, "/opt/codex's/bin/codex")
-                .unwrap(),
+            login_command(
+                "codex",
+                AccountLoginMethod::DeviceCode,
+                "/opt/codex's/bin/codex"
+            )
+            .unwrap(),
             r"'/opt/codex'\''s/bin/codex' login --device-auth"
         );
         assert!(login_command("unknown-agent", AccountLoginMethod::Browser, "agent").is_err());
