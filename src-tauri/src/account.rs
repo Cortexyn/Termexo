@@ -402,7 +402,11 @@ pub fn login_spec(profile: &AccountProfile) -> Result<(String, String), String> 
     let executable = installation
         .executable_path
         .ok_or_else(|| installation.diagnostic.clone())?;
-    let command = login_command(&profile.agent_type, profile.login_method, &executable)?;
+    let command = close_when_done(login_command(
+        &profile.agent_type,
+        profile.login_method,
+        &executable,
+    )?);
     Ok((command, executable))
 }
 
@@ -422,6 +426,17 @@ fn login_arguments(agent_type: &str, method: AccountLoginMethod) -> Result<&'sta
             method.as_str()
         )),
     }
+}
+
+/// Ends the shell when the login CLI does, so the terminal's exit is the moment the account is
+/// read back. PowerShell is started with the command as its argument and needs no help; a Unix
+/// shell has the command typed into it and would otherwise sit at its prompt, leaving the tab
+/// "running" and the account never re-read. `exit` with no status passes the CLI's on.
+fn close_when_done(command: String) -> String {
+    #[cfg(unix)]
+    return format!("{command}; exit");
+    #[cfg(not(unix))]
+    return command;
 }
 
 fn login_command(
@@ -521,6 +536,15 @@ mod tests {
             "& 'C:/Codex''s CLI/codex.cmd' login"
         );
         assert!(login_command("unknown-agent", AccountLoginMethod::Browser, "agent.exe").is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_login_shell_exits_with_the_cli() {
+        assert_eq!(
+            close_when_done("'/bin/claude' auth login".into()),
+            "'/bin/claude' auth login; exit"
+        );
     }
 
     #[cfg(unix)]
