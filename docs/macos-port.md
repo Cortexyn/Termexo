@@ -59,8 +59,43 @@ Branch: `macos-port`. Regel: Windows-Verhalten bleibt unverändert; macOS/Unix k
   Dafür baut macOS Angular mit der Konfiguration `macos` (`inlineCritical` aus), weil der sonst
   erzeugte Inline-Handler `onload="this.media='all'"` von `script-src` blockiert würde. Unter
   Windows bleibt `csp: null`. Geprüft wurde die ausgelieferte Oberfläche in WKWebView ohne
-  Verstöße; nicht geprüft sind die Abläufe mit echter Tauri-Schnittstelle (Terminals, xterm,
-  Einstellungen) — beim ersten Start einmal durchklicken.
+  Verstöße und danach von Hand in der echten App (Terminals, Einstellungen, Fernzugriff).
+
+## Getestet (Handtest, 24.10.2026)
+
+Umgebung: Apple Silicon, macOS 27, Xcode 27.1, Development-Signatur, **Firewall aus**.
+
+| Ablauf | Ergebnis |
+|---|---|
+| Modellprofil mit API-Key anlegen, Neustart, löschen | Key liegt nur im Schlüsselbund (`dev.agentdock.desktop`), nicht in Datenbank, Logs oder Caches; die Oberfläche zeigt ihn nie; nach dem Löschen ist der Eintrag weg |
+| Claude Code im Termexo-Terminal (bestehender Login), Quota über die Statusline | läuft, 5-Stunden- und Wochenwerte erscheinen |
+| Codex im Termexo-Terminal (bestehender Login), Hooks, Quota | läuft, Status wechselt per Hook auf „abgeschlossen“ |
+| Zweites Claude-Konto: `claude auth login`, eigener Schlüsselbund-Eintrag, Konto löschen | Login läuft in zsh, Zugangsdaten bleiben vom System-Konto getrennt, Verzeichnis und Eintrag verschwinden beim Löschen |
+| Fernzugriff einschalten, vom Handy verbinden, Terminal bedienen, ausschalten | TLS (selbstsigniert, Warnung im Browser), Token im Schlüsselbund; falsches Token wird abgelehnt, nach 5 Fehlversuchen gesperrt, fremder Origin 403, Downgrade abgelehnt; nach dem Ausschalten ist der Port zu |
+| Agenten per Finder gestartet finden (`~/.local/bin`) | gefunden über den Login-Shell-PATH |
+
+Bei den Handtests gefunden und behoben: zu lange Codex-Startzeile (die Shell verwarf Eingaben über
+etwa 1000 Zeichen; lange Befehle laufen jetzt über ein Skript), Token eines gelöschten Kontos blieb
+im Schlüsselbund, TLS-Schlüssel mit zu offenen Rechten, Login-Terminal endete nie.
+
+## Nicht getestet
+
+- Fernzugriff über einen Relay, mehrere Handys gleichzeitig, WLAN-Wechsel.
+- Aktive macOS-Firewall (die Abfrage nach eingehenden Verbindungen).
+- Andere Signaturen als „Apple Development“ (Developer ID, ad-hoc) und die Notarisierung; der
+  Schlüsselbund-Zugriff ist an die App-Signatur gebunden und könnte sich anders verhalten.
+- Agent-Login für Codex mit einem zweiten Konto, Antigravity, OpenCode, Pi, Grok.
+- Echte API-Keys eines Anbieters (getestet wurde mit einem Test-Key).
+- Intel-Macs (nur kompiliert, `x86_64-apple-darwin`).
+- Windows: Der Code wurde nur auf macOS gebaut. Alle Änderungen liegen hinter `cfg`-Schaltern, ein
+  Windows-Build war hier nicht möglich.
+
+## Bekannte Eigenheiten
+
+- Die Frontend-Tests sind teilweise instabil (Tests, die `__TAURI_INTERNALS__` ersetzen, zum
+  Beispiel `clipboard-text`, `external-link`). Das gilt auch für das unveränderte Original: In vier
+  Läufen fielen zweimal drei bis vier Tests aus, zweimal liefen alle durch.
+- Fehlermeldungen aus dem Rust-Teil sind nicht lokalisiert.
 
 ## Bauen und Signieren
 
