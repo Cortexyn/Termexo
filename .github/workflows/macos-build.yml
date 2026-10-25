@@ -36,12 +36,12 @@ jobs:
       ARCH: ${{ matrix.arch }}
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
@@ -57,6 +57,7 @@ jobs:
         with:
           workspaces: src-tauri -> target
           key: macos-${{ matrix.target }}
+          cache-on-failure: true
 
       - name: Install frontend dependencies
         run: npm --prefix apps/desktop-ui ci
@@ -99,7 +100,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload installers
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Termexo-macOS-${{ matrix.target }}
           path: artifacts/${{ matrix.target }}/
