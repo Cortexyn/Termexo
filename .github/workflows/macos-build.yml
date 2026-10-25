@@ -78,7 +78,7 @@ jobs:
           version=$(node -p "require('./package.json').version")
           mkdir -p "$output"
 
-          lipo -verify_arch "$ARCH" "$app/Contents/MacOS/termexo"
+          lipo "$app/Contents/MacOS/termexo" -verify_arch "$ARCH"
           codesign --verify --deep --strict --verbose=2 "$app"
           for dmg in "$bundle"/dmg/*.dmg; do
             hdiutil verify "$dmg"
