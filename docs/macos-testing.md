@@ -31,25 +31,29 @@ with an "Apple Development" certificate, **macOS firewall off**.
   build and the unit tests, but nobody has started the Windows app or a terminal with each agent
   since the merge.
 
-## Windows: build and unit tests (CI run on a fork, 25 October 2026)
+## Windows: build and unit tests (CI runs on a fork, 25 October 2026)
 
-The build and the tests were run on a GitHub `windows-latest` runner (MSVC, Node 24), once for the
-state before the macOS merge (`1585c63`) and once for `main` after it (`51e382e`).
+The build and the tests were run twice on a GitHub `windows-latest` runner (MSVC, Node 24) for the
+state before the macOS merge (`1585c63`) and for `main` after it (`51e382e`). The second run also
+covered two follow-up branches (dependency updates, rustfmt) that are not part of `main`.
 
-| | Before the merge | After the merge |
-|---|---|---|
-| `npm ci` and the production frontend build | passed | passed |
-| `cargo test --lib` | 432 passed, **2 failed** | 437 passed, **1 failed** |
-| Frontend tests (three tries) | `clipboard-text` and `external-link` failed in every try | the same two files failed in every try |
+| State | `npm ci` and frontend build | `cargo test --lib` | Frontend tests, three tries each |
+|---|---|---|---|
+| Before the merge | passed | 432 passed, **2 failed** | 3, 6 and 3 tests failed (two runs agree: always one or two spec files) |
+| After the merge (`main`) | passed | 437 passed, **1 failed** | first run: 3 tries failed (one or two files); second run: 5, 2 and **0 failed** (702/702 in the last try) |
+| Dependency updates (branch) | passed | 437 passed, **1 failed** | 6, 6 and 3 failed |
+| rustfmt (branch) | passed | 437 passed, **1 failed** | 6, 6 and 6 failed |
 
 - The failing Rust tests are not caused by the merge.
-  `git::tests::discovers_a_repository_created_below_the_terminal_directory` fails in both states
+  `git::tests::discovers_a_repository_created_below_the_terminal_directory` fails in every state
   (it compares a temp path in two spellings on the runner), and
   `commands::agent::tests::restores_opencode_proxy_and_terminal_plugin` failed only before the
   merge because it needs an `opencode` CLI on the machine; it is skipped without one now.
-- The frontend failures are the same in both states: the tests replace
-  `window.__TAURI_INTERNALS__` and fail with `window.__TAURI_INTERNALS__.invoke is not a function`.
-- The Windows-only tests (PowerShell syntax, extended paths, ConPTY checks) passed in both states.
+- The frontend suite is flaky on Windows as it is on macOS, in the same specs
+  (`clipboard-text`, `external-link`, sometimes others). They replace `window.__TAURI_INTERNALS__`
+  and fail with `window.__TAURI_INTERNALS__.invoke is not a function`; one try on `main` passed
+  completely. The failures are the same before and after the merge.
+- The Windows-only tests (PowerShell syntax, extended paths, ConPTY checks) passed in every state.
 
 ## Known limits
 
