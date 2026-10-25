@@ -141,7 +141,9 @@ mod platform {
     use std::ptr;
 
     use objc2_core_foundation::CFString;
-    use objc2_core_text::{CTFont, CTFontManagerCopyAvailableFontFamilyNames, CTFontSymbolicTraits};
+    use objc2_core_text::{
+        CTFont, CTFontManagerCopyAvailableFontFamilyNames, CTFontSymbolicTraits,
+    };
 
     use super::SystemFont;
 
@@ -218,8 +220,12 @@ mod tests {
     fn lists_macos_families_with_monospaced_ones_flagged() {
         let fonts = list_system_fonts().expect("system font enumeration should succeed");
 
-        assert!(fonts.iter().any(|font| font.name == "Menlo" && font.monospaced));
-        assert!(fonts.iter().any(|font| font.name == "Helvetica" && !font.monospaced));
+        assert!(fonts
+            .iter()
+            .any(|font| font.name == "Menlo" && font.monospaced));
+        assert!(fonts
+            .iter()
+            .any(|font| font.name == "Helvetica" && !font.monospaced));
     }
 
     #[cfg(windows)]

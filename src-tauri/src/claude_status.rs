@@ -130,7 +130,7 @@ pub fn read_allowance(
         );
     }
     let updated_at = record.get("updated_at").and_then(Value::as_i64)? * 1000;
-    (!body.is_empty()).then(|| StoredAllowance {
+    (!body.is_empty()).then_some(StoredAllowance {
         body: Value::Object(body),
         updated_at,
     })
@@ -213,14 +213,23 @@ mod tests {
         store(&directory, None, &input(10.0, 2_000), 1_000).unwrap();
         store(&directory, None, &json!({"model": {}}), 1_200).unwrap();
 
-        assert_eq!(read_allowance(&directory, None, 1_500).unwrap().updated_at, 1_000_000);
+        assert_eq!(
+            read_allowance(&directory, None, 1_500).unwrap().updated_at,
+            1_000_000
+        );
         fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]
     fn each_account_has_its_own_file() {
         let directory = directory("accounts");
-        store(&directory, Some("/profiles/one"), &input(10.0, 2_000), 1_000).unwrap();
+        store(
+            &directory,
+            Some("/profiles/one"),
+            &input(10.0, 2_000),
+            1_000,
+        )
+        .unwrap();
 
         assert!(read_allowance(&directory, Some("/profiles/one"), 1_500).is_some());
         assert!(read_allowance(&directory, None, 1_500).is_none());

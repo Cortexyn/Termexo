@@ -17,8 +17,25 @@ const EXECUTABLE_EXTENSIONS: &[&str] = &[
 /// necessarily be registered for. `.app` bundles are directories and are revealed already.
 #[cfg(target_os = "macos")]
 const MACOS_EXECUTABLE_EXTENSIONS: &[&str] = &[
-    "command", "terminal", "tool", "sh", "zsh", "bash", "pkg", "mpkg", "dmg", "workflow",
-    "action", "scpt", "scptd", "applescript", "app", "jar", "py", "pl", "rb",
+    "command",
+    "terminal",
+    "tool",
+    "sh",
+    "zsh",
+    "bash",
+    "pkg",
+    "mpkg",
+    "dmg",
+    "workflow",
+    "action",
+    "scpt",
+    "scptd",
+    "applescript",
+    "app",
+    "jar",
+    "py",
+    "pl",
+    "rb",
 ];
 
 #[cfg(not(target_os = "macos"))]
@@ -198,7 +215,14 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn macos_files_that_run_when_opened_are_recognised() {
-        for name in ["fix.command", "x.TERMINAL", "setup.pkg", "a.dmg", "run.scpt", "job.workflow"] {
+        for name in [
+            "fix.command",
+            "x.TERMINAL",
+            "setup.pkg",
+            "a.dmg",
+            "run.scpt",
+            "job.workflow",
+        ] {
             assert!(is_executable_extension(Path::new(name)), "{name}");
         }
         for name in ["notes.md", "image.png", "main.rs", "README"] {
@@ -211,7 +235,8 @@ mod tests {
     fn a_file_with_an_execute_bit_counts_as_executable() {
         use std::os::unix::fs::PermissionsExt;
 
-        let directory = std::env::temp_dir().join(format!("termexo-open-exec-{}", std::process::id()));
+        let directory =
+            std::env::temp_dir().join(format!("termexo-open-exec-{}", std::process::id()));
         std::fs::create_dir_all(&directory).unwrap();
         let plain = directory.join("notes");
         let program = directory.join("tool-without-extension");

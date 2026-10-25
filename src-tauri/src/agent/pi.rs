@@ -323,6 +323,7 @@ fn read_session(path: &Path) -> Result<Option<AgentSession>, PiError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
     use crate::platform::shell_quote;
     use serde_json::json;
     use std::time::{SystemTime, UNIX_EPOCH};

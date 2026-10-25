@@ -280,9 +280,8 @@ fn claude_status_quota(
     data_directory: &std::path::Path,
 ) -> ProviderQuota {
     let provider = quota::agent_display_name(&account.agent_type);
-    let unavailable = |reason: &str| {
-        ProviderQuota::unavailable(cache_key, &account.name, provider, now, reason)
-    };
+    let unavailable =
+        |reason: &str| ProviderQuota::unavailable(cache_key, &account.name, provider, now, reason);
     if crate::claude_status::user_has_status_line() {
         return unavailable(
             "Claude Code is using your own status line, so Termexo cannot read the allowance from it.",

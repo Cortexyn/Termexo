@@ -1819,7 +1819,10 @@ mod tests {
             serde_json::from_str::<Value>(&fs::read_to_string(runtime.settings_path).unwrap())
                 .unwrap();
 
-        match settings.pointer("/statusLine/command").and_then(Value::as_str) {
+        match settings
+            .pointer("/statusLine/command")
+            .and_then(Value::as_str)
+        {
             Some(command) => {
                 assert!(!crate::claude_status::user_has_status_line());
                 assert!(command.contains("claude-status --event-file"));

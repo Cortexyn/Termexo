@@ -304,11 +304,11 @@ pub fn resolve_config_dir(profile: &AccountProfile) -> Result<PathBuf, String> {
     let home = crate::platform::home_dir()
         .ok_or_else(|| "无法定位用户主目录，系统账号的配置位置未知。".to_owned())?;
     let default_dir = if profile.agent_type == "claude" {
-        PathBuf::from(home).join(".claude")
+        home.join(".claude")
     } else {
         match std::env::var_os("CODEX_HOME") {
             Some(codex_home) => PathBuf::from(codex_home),
-            None => PathBuf::from(home).join(".codex"),
+            None => home.join(".codex"),
         }
     };
     Ok(default_dir)
@@ -551,13 +551,21 @@ mod tests {
     #[test]
     fn login_commands_are_plain_posix_words() {
         assert_eq!(
-            login_command("claude", AccountLoginMethod::Browser, "/Users/me/my tools/claude")
-                .unwrap(),
+            login_command(
+                "claude",
+                AccountLoginMethod::Browser,
+                "/Users/me/my tools/claude"
+            )
+            .unwrap(),
             "'/Users/me/my tools/claude' auth login"
         );
         assert_eq!(
-            login_command("codex", AccountLoginMethod::DeviceCode, "/opt/codex's/bin/codex")
-                .unwrap(),
+            login_command(
+                "codex",
+                AccountLoginMethod::DeviceCode,
+                "/opt/codex's/bin/codex"
+            )
+            .unwrap(),
             r"'/opt/codex'\''s/bin/codex' login --device-auth"
         );
         assert!(login_command("unknown-agent", AccountLoginMethod::Browser, "agent").is_err());

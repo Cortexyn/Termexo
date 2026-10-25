@@ -1047,7 +1047,11 @@ impl ScriptInstaller {
 /// prompt, and this says so outright rather than relying on that.
 /// Where the vendors' installers put a user-level binary, per platform.
 const HOME_VARIABLE: &str = if cfg!(windows) { "USERPROFILE" } else { "HOME" };
-const LOCAL_BIN_SUFFIX: &str = if cfg!(windows) { ".local\\bin" } else { ".local/bin" };
+const LOCAL_BIN_SUFFIX: &str = if cfg!(windows) {
+    ".local\\bin"
+} else {
+    ".local/bin"
+};
 const LOCAL_BIN_LABEL: &str = if cfg!(windows) {
     "%USERPROFILE%\\.local\\bin"
 } else {
@@ -1087,7 +1091,11 @@ fn definition(agent_type: &str) -> Result<CliDefinition, String> {
                 },
                 update_command: None,
                 // The Unix script installs next to Claude's, in `~/.local/bin`.
-                directory_root: if cfg!(windows) { "LOCALAPPDATA" } else { HOME_VARIABLE },
+                directory_root: if cfg!(windows) {
+                    "LOCALAPPDATA"
+                } else {
+                    HOME_VARIABLE
+                },
                 directory_suffix: if cfg!(windows) {
                     "Programs\\OpenAI\\Codex\\bin"
                 } else {
@@ -1132,8 +1140,16 @@ fn definition(agent_type: &str) -> Result<CliDefinition, String> {
                     "https://antigravity.google/cli/install.sh"
                 },
                 update_command: Some("update"),
-                directory_root: if cfg!(windows) { "LOCALAPPDATA" } else { HOME_VARIABLE },
-                directory_suffix: if cfg!(windows) { "agy\\bin" } else { LOCAL_BIN_SUFFIX },
+                directory_root: if cfg!(windows) {
+                    "LOCALAPPDATA"
+                } else {
+                    HOME_VARIABLE
+                },
+                directory_suffix: if cfg!(windows) {
+                    "agy\\bin"
+                } else {
+                    LOCAL_BIN_SUFFIX
+                },
                 directory_label: if cfg!(windows) {
                     "%LOCALAPPDATA%\\agy\\bin"
                 } else {

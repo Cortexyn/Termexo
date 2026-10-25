@@ -193,7 +193,13 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn windows_shells_resolve_to_the_users_shell() {
-        for shell in ["powershell.exe", "powershell", "PowerShell.EXE", "cmd.exe", ""] {
+        for shell in [
+            "powershell.exe",
+            "powershell",
+            "PowerShell.EXE",
+            "cmd.exe",
+            "",
+        ] {
             assert_eq!(resolve_shell(shell), default_shell(), "{shell}");
         }
     }
@@ -209,7 +215,10 @@ mod tests {
     #[test]
     fn other_shells_are_left_alone() {
         assert_eq!(resolve_shell("/bin/bash"), "/bin/bash");
-        assert_eq!(resolve_shell("/opt/homebrew/bin/pwsh"), "/opt/homebrew/bin/pwsh");
+        assert_eq!(
+            resolve_shell("/opt/homebrew/bin/pwsh"),
+            "/opt/homebrew/bin/pwsh"
+        );
     }
 
     #[cfg(target_os = "macos")]
