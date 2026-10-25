@@ -27,9 +27,29 @@ with an "Apple Development" certificate, **macOS firewall off**.
 - Codex login with a second account; Antigravity, OpenCode, Pi and Grok on macOS.
 - Real provider API keys (a test key was used).
 - Intel Macs: the code compiles for `x86_64-apple-darwin`, nothing more.
-- **Windows.** The macOS work was done on a Mac and could not be built for Windows. All platform
-  code sits behind `cfg` switches and the Windows paths are meant to behave as before, but nobody
-  has run the Windows build, its tests or a terminal with each agent since the merge.
+- **Windows at run time.** The macOS work was done on a Mac. A Windows CI run (below) covers the
+  build and the unit tests, but nobody has started the Windows app or a terminal with each agent
+  since the merge.
+
+## Windows: build and unit tests (CI run on a fork, 25 October 2026)
+
+The build and the tests were run on a GitHub `windows-latest` runner (MSVC, Node 24), once for the
+state before the macOS merge (`1585c63`) and once for `main` after it (`51e382e`).
+
+| | Before the merge | After the merge |
+|---|---|---|
+| `npm ci` and the production frontend build | passed | passed |
+| `cargo test --lib` | 432 passed, **2 failed** | 437 passed, **1 failed** |
+| Frontend tests (three tries) | `clipboard-text` and `external-link` failed in every try | the same two files failed in every try |
+
+- The failing Rust tests are not caused by the merge.
+  `git::tests::discovers_a_repository_created_below_the_terminal_directory` fails in both states
+  (it compares a temp path in two spellings on the runner), and
+  `commands::agent::tests::restores_opencode_proxy_and_terminal_plugin` failed only before the
+  merge because it needs an `opencode` CLI on the machine; it is skipped without one now.
+- The frontend failures are the same in both states: the tests replace
+  `window.__TAURI_INTERNALS__` and fail with `window.__TAURI_INTERNALS__.invoke is not a function`.
+- The Windows-only tests (PowerShell syntax, extended paths, ConPTY checks) passed in both states.
 
 ## Known limits
 
