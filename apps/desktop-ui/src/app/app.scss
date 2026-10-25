@@ -170,6 +170,11 @@ app-inspector-panel {
   padding-left: 10px;
 }
 
+// The three macOS window buttons sit over the topbar's left edge.
+.topbar .topbar-lead.native-traffic-lights {
+  padding-left: 80px;
+}
+
 /*
    Product identity, moved off the workspace panel so it survives that panel being hidden.
    A separator sets it apart from the workspace title beside it, which changes per workspace.

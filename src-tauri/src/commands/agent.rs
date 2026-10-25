@@ -933,8 +933,12 @@ fn append_proxy_diagnostic(line: &str) {
     }
 }
 
-/// Resolves the same app data directory Tauri uses for `dev.agentdock.desktop`.
+/// Resolves the app data directory: Tauri's for `dev.agentdock.desktop` on Windows, the
+/// `Application Support/Termexo` one on macOS.
 fn dirs_app_data() -> Option<PathBuf> {
+    #[cfg(target_os = "macos")]
+    return crate::platform::macos_data_dir();
+    #[cfg(not(target_os = "macos"))]
     std::env::var_os("APPDATA").map(|base| PathBuf::from(base).join("dev.agentdock.desktop"))
 }
 
@@ -1819,6 +1823,16 @@ mod tests {
 
     #[test]
     fn restores_opencode_proxy_and_terminal_plugin() {
+        // The relaunch probes the real CLI's version, so the test needs one installed.
+        let installed = std::env::var_os("PATH").is_some_and(|path| {
+            std::env::split_paths(&path)
+                .any(|directory| directory.join("opencode").is_file())
+                || std::env::split_paths(&path)
+                    .any(|directory| directory.join("opencode.exe").is_file())
+        });
+        if !installed {
+            return;
+        }
         let directory = std::env::temp_dir().join(format!(
             "termexo-opencode-relaunch-{}",
             std::time::SystemTime::now()
