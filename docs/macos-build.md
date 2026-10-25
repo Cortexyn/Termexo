@@ -1,5 +1,7 @@
 # 在 GitHub Actions 构建 macOS 安装包
 
+Windows 的 EXE、MSI 构建见 [Windows 打包说明](windows-build.md)。
+
 在仓库的 **Actions → Build macOS installers → Run workflow** 中选择分支并启动。
 工作流会分别在 macOS 主机上构建 Apple Silicon 和 Intel 版本，不需要本地 Mac。
 
