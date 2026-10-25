@@ -1364,9 +1364,13 @@ mod tests {
             return;
         }
 
-        // git reports the real path, and the temp directory is a symlink on macOS (/var → /private/var).
+        // Normalize both paths: macOS temp directories may be symlinks, while Windows
+        // canonicalization adds a verbatim prefix that Git's output does not include.
         let project = project.canonicalize().unwrap();
-        assert_eq!(repository_root(&terminal_directory).unwrap(), Some(project));
+        let discovered = repository_root(&terminal_directory)
+            .unwrap()
+            .map(|path| path.canonicalize().unwrap());
+        assert_eq!(discovered, Some(project));
         fs::remove_dir_all(&terminal_directory).ok();
     }
 
