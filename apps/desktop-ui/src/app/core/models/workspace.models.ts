@@ -84,7 +84,17 @@ export function normalizeWorkspaceThemeColor(value: string | undefined): string 
     : DEFAULT_WORKSPACE_THEME_COLOR;
 }
 
+export interface CommonAction {
+  id: string;
+  name: string;
+  command: string;
+  workingDirectory: string;
+  description: string;
+  terminalId?: string;
+}
+
 export interface TerminalSession {
+  commonActionId?: string;
   id: string;
   name: string;
   workingDirectory: string;
@@ -118,9 +128,11 @@ export interface Workspace {
   gridColumns?: number;
   gridRows?: number;
   terminals: TerminalSession[];
+  commonActions?: CommonAction[];
 }
 
 export interface CreateTerminalInput {
+  commonActionId?: string;
   id?: string;
   agentType: AgentType;
   name?: string;

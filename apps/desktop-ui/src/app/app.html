@@ -71,6 +71,22 @@
           />
           <span>{{ 'workspace.section' | t }}</span>
         </button>
+        <button
+          type="button"
+          class="tool-button btn btn-ghost btn-sm join-item"
+          data-testid="common-actions-open"
+          title="常用操作"
+          aria-label="常用操作"
+          aria-haspopup="dialog"
+          [attr.aria-expanded]="commonActionsOpen()"
+          [disabled]="!state.activeWorkspace()"
+          (click)="commonActionsOpen.set(true)"
+        >
+          <app-icon name="command" [size]="14" /><span>常用操作</span>
+          @if (commonActions.reviews()[state.activeWorkspace()?.id ?? '']) {
+            <b>待审核</b>
+          }
+        </button>
       </div>
 
       <div
@@ -82,8 +98,8 @@
           type="button"
           role="tab"
           class="tool-button"
-          [class.active]="workspaceView() === 'terminal'"
-          [attr.aria-selected]="workspaceView() === 'terminal'"
+          [class.active]="workspaceView() === 'terminal' || workspaceView() === 'preview'"
+          [attr.aria-selected]="workspaceView() === 'terminal' || workspaceView() === 'preview'"
           [attr.aria-label]="'terminal.groupTerminal' | t"
           (click)="workspaceView.set('terminal')"
         >
@@ -283,6 +299,7 @@
         @defer (on immediate) {
           <app-language-selector />
           <app-remote-access-button (opened)="openSettings('remote')" />
+          <app-third-party-notifications-toggle (failed)="reportFailure($event)" />
         }
         @if (modelCatalog.upgrades().length > 0) {
           <button
@@ -420,10 +437,10 @@
     }
   }
 
-  <section class="workspace-main" [class.auxiliary-view-active]="workspaceView() !== 'terminal'">
+  <section class="workspace-main" [class.auxiliary-view-active]="workspaceView() === 'tasks' || workspaceView() === 'git'">
     <div
       class="terminal-tabs"
-      [class.view-hidden]="workspaceView() !== 'terminal' || !state.activeWorkspace()"
+      [class.view-hidden]="(workspaceView() !== 'terminal' && workspaceView() !== 'preview') || !state.activeWorkspace()"
     >
       <div class="tab-bar">
         <div
@@ -453,11 +470,11 @@
                 type="button"
                 role="tab"
                 class="tab"
-                [class.active]="terminal.id === activeTerminalId()"
-                [class.visible]="isTerminalVisible(terminal.id)"
+                [class.active]="workspaceView() === 'terminal' && terminal.id === activeTerminalId()"
+                [class.visible]="workspaceView() === 'terminal' && isTerminalVisible(terminal.id)"
                 [attr.data-tone]="statusTone(terminal.status)"
                 [attr.data-pulse]="statusMeta(terminal.status)?.pulse ?? false"
-                [attr.aria-selected]="terminal.id === activeTerminalId()"
+                [attr.aria-selected]="workspaceView() === 'terminal' && terminal.id === activeTerminalId()"
                 [title]="terminalTabTitle(terminal)"
                 (click)="selectTerminal(terminal.id)"
                 (auxclick)="closeTerminalOnMiddleClick($event, terminal.id)"
@@ -477,6 +494,26 @@
                 [attr.aria-label]="'terminal.close' | t"
                 (click)="requestCloseTerminal(terminal.id, $event)"
               >
+                <app-icon name="x" [size]="11" />
+              </button>
+            </div>
+          }
+          @for (tab of preview.workspaceTabs(); track tab.id) {
+            <div class="tab-slot">
+              <button
+                [id]="'content-preview-tab-' + tab.id"
+                type="button"
+                role="tab"
+                class="tab"
+                data-testid="content-preview-tab"
+                [class.active]="workspaceView() === 'preview' && preview.activeTab()?.id === tab.id"
+                [attr.aria-selected]="workspaceView() === 'preview' && preview.activeTab()?.id === tab.id"
+                [attr.aria-controls]="'content-preview-panel-' + tab.id"
+                [title]="tab.file()?.path || tab.url() || tab.label"
+                (click)="preview.activate(tab.id)"
+                (auxclick)="$event.button === 1 && preview.close(tab.id)"
+              ><app-icon name="folder" [size]="12" /><span>{{ tab.title() }}</span></button>
+              <button type="button" class="tab-close" [attr.aria-label]="'关闭预览：' + tab.title()" (click)="preview.close(tab.id)">
                 <app-icon name="x" [size]="11" />
               </button>
             </div>
@@ -504,12 +541,13 @@
           </button>
           @if (agentMenuOpen()) {
             <div class="agent-menu menu rounded-box bg-base-200 shadow-xl" role="menu">
-              <app-agent-launch-options (optionSelected)="launchAgent($event)" />
+              <app-agent-launch-options [includePreview]="true" (optionSelected)="launchAgent($event)" (previewRequested)="openProjectPreview()" />
             </div>
           }
         </div>
       </div>
 
+      @if (workspaceView() === 'terminal') {
       <app-terminal-toolbar
         [visibleCount]="visibleTerminalIds().length"
         [visibleLimit]="visibleTerminalLimit()"
@@ -528,6 +566,7 @@
         (gridDimensionChange)="adjustGridDimension($event.axis, $event.delta)"
         (gridSwapRequested)="swapGridDimensions()"
       />
+      }
     </div>
 
     @if (attentionBanner(); as banner) {
@@ -570,6 +609,27 @@
 
     <section class="workbench-area" [class.board-active]="workspaceView() !== 'terminal'">
       @if (state.activeWorkspace(); as activeWorkspace) {
+        @defer (when preview.open()) {
+          @for (tab of preview.liveTabs(); track tab.id) {
+            <div
+              [id]="'content-preview-panel-' + tab.id"
+              class="preview-tab-content"
+              [class.view-hidden]="workspaceView() !== 'preview' || tab.workspaceId() !== activeWorkspace.id || preview.activeTab()?.id !== tab.id"
+              role="tabpanel"
+              [attr.aria-labelledby]="'content-preview-tab-' + tab.id"
+            >
+              <app-project-preview-panel [session]="tab" [style.width.px]="previewWidth()" />
+              <div
+                class="preview-width-resizer"
+                role="separator"
+                aria-label="调整内容预览宽度"
+                aria-orientation="vertical"
+                data-testid="preview-resizer"
+                (pointerdown)="startSidebarResize('preview', $event)"
+              ></div>
+            </div>
+          }
+        }
         @defer (when workspaceView() === 'tasks') {
           @if (workspaceView() === 'tasks') {
             <app-todo-board
@@ -700,21 +760,23 @@
         (pointerdown)="startSidebarResize('inspector', $event)"
       ></div>
     }
-    <app-inspector-panel
-      [workspace]="state.activeWorkspace()"
-      [activeTerminal]="state.activeTerminal()"
-      [events]="agents.events()"
-      [quotas]="agents.providerQuotas()"
-      [quotaLoading]="agents.quotaLoading()"
-      [modelProfiles]="agents.modelProfiles()"
-      [accountProfiles]="agents.accountProfiles()"
-      [repository]="git.overview()"
-      (refreshQuotas)="refreshProviderQuotas(true)"
-      (gitRequested)="openGitView($event)"
-      (openSettingsRequested)="openSettings($event)"
-      (terminalSelected)="selectTerminal($event)"
-      (collapseRequested)="toggleInspector()"
-    />
+    @defer (on immediate) {
+      <app-inspector-panel
+        [workspace]="state.activeWorkspace()"
+        [activeTerminal]="state.activeTerminal()"
+        [events]="agents.events()"
+        [quotas]="agents.providerQuotas()"
+        [quotaLoading]="agents.quotaLoading()"
+        [modelProfiles]="agents.modelProfiles()"
+        [accountProfiles]="agents.accountProfiles()"
+        [repository]="git.overview()"
+        (refreshQuotas)="refreshProviderQuotas(true)"
+        (gitRequested)="openGitView($event)"
+        (openSettingsRequested)="openSettings($event)"
+        (terminalSelected)="selectTerminal($event)"
+        (collapseRequested)="toggleInspector()"
+      />
+    }
   }
 </main>
 
@@ -1072,4 +1134,19 @@
 <!-- Covers everything until the remote socket is authenticated; renders nothing on the desktop. -->
 @defer (when remoteMode) {
   <app-remote-access-gate />
+}
+
+@defer (when commonActionsOpen()) {
+  @if (commonActionsOpen()) {
+    @if (state.activeWorkspace(); as workspace) {
+      <app-common-actions-dialog
+        [workspace]="workspace"
+        (closed)="commonActionsOpen.set(false)"
+        (recognitionRequested)="recognizeCommonActions($event)"
+        (terminalRequested)="openCommonActionTerminal($event)"
+        (agentRequested)="startCommonActionAgent()"
+        (recognitionAgentRequested)="viewCommonActionAgent($event)"
+      />
+    }
+  }
 }

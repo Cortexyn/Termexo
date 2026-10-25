@@ -1,3 +1,5 @@
+import { WechatNotificationsPanelComponent } from './wechat-notifications-panel';
+import { registerTranslations } from '../core/i18n/i18n.service';
 import { ProfileDrafts, type ProfileSaveCompleted } from './profile-drafts';
 import {
   Component,
@@ -61,11 +63,16 @@ export type SettingsTab =
   | 'models'
   | 'mcp'
   | 'mcp-server'
+  | 'wechat'
   | 'network'
   | 'remote'
   | 'storage';
 
 registerMcpServerTranslations();
+registerTranslations({
+  en: { 'wechat.tab': 'WeChat notifications' },
+  'zh-CN': { 'wechat.tab': '微信通知' },
+});
 
 interface ModelEditorDraft {
   modelName: string;
@@ -91,6 +98,7 @@ const DEFAULT_ALERT_THRESHOLD = 80;
 @Component({
   selector: 'app-agent-settings-dialog',
   imports: [
+    WechatNotificationsPanelComponent,
     ModalFocusDirective,
     FormsModule,
     IconComponent,
@@ -1292,6 +1300,11 @@ const DEFAULT_ALERT_THRESHOLD = 80;
                 <section class="profile-editor"></section>
               }
             }
+            @case ('wechat') {
+              @defer (on immediate) {
+                <app-wechat-notifications-panel />
+              }
+            }
             @case ('mcp-server') {
               @defer (on immediate) {
                 <app-mcp-server-panel />
@@ -1405,6 +1418,7 @@ export class AgentSettingsDialogComponent {
       section: 'settings.sectionApp',
       tabs: [
         { id: 'mcp-server', label: 'mcpServer.tab' },
+        { id: 'wechat', label: 'wechat.tab' },
         { id: 'storage', label: 'settings.tabStorage' },
       ],
     },

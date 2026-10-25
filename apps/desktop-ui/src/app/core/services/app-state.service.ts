@@ -4,6 +4,7 @@ import { AgentEvent, EVENT_STATUS, TOOL_STARTED_EVENT_TYPE } from '../models/age
 import { createId } from '../models/identifiers';
 import {
   AGENT_LABELS,
+  CommonAction,
   AgentType,
   CreateTerminalInput,
   DEFAULT_TERMINAL_GRID_DIMENSION,
@@ -540,6 +541,22 @@ export class AppStateService {
     return true;
   }
 
+  async saveCommonActions(workspaceId: string, commonActions: CommonAction[]): Promise<void> {
+    const workspace = this.workspaceItems().find((item) => item.id === workspaceId);
+    if (!workspace) throw new Error('项目不存在。');
+    const updated = { ...workspace, commonActions };
+    // Apply before awaiting: concurrent terminal status saves must include the confirmed actions.
+    this.replaceWorkspace(updated);
+    try {
+      await this.repository.save(updated);
+    } catch (error) {
+      const latest = this.workspaceItems().find((item) => item.id === workspaceId);
+      if (latest?.commonActions === commonActions)
+        this.replaceWorkspace({ ...latest, commonActions: workspace.commonActions });
+      throw error;
+    }
+  }
+
   createTerminal(input: CreateTerminalInput, workspaceId?: string): TerminalSession | null {
     const workspace = workspaceId
       ? (this.workspaceItems().find((item) => item.id === workspaceId) ?? null)
@@ -650,6 +667,16 @@ export class AppStateService {
   }
 
   updateTerminalStatus(terminalId: string, status: TerminalStatus): void {
+    const current = this.findTerminal(terminalId);
+    // Killing a common operation produces a late unsuccessful PTY exit on Windows.
+    // Preserve the user's explicit stop after that runtime has already been marked exited.
+    if (
+      current?.commonActionId &&
+      current.status === 'STOPPED' &&
+      this.isExitedLaunch(current) &&
+      status === 'FAILED'
+    )
+      return;
     this.recordStatusChange(terminalId, Date.now());
     this.updateTerminal(terminalId, (terminal) => ({ ...terminal, status }));
   }
@@ -769,6 +796,10 @@ export class AppStateService {
     return (
       terminal !== undefined &&
       (this.isExitedLaunch(terminal) ||
+        // A delayed startup hook is not evidence that a submitted turn, approval or error ended.
+        (event.agentType === 'codex' &&
+          event.eventType === 'session.ready' &&
+          !['STARTING', 'IDLE'].includes(terminal.status)) ||
         (event.eventType === 'agent.idle' &&
           ['COMPLETED', 'FAILED', 'STOPPED', 'DISCONNECTED'].includes(terminal.status)) ||
         (terminal.status === 'WAITING_APPROVAL' && event.eventType === TOOL_STARTED_EVENT_TYPE))
@@ -1014,6 +1045,7 @@ export class AppStateService {
 
     return {
       id: input.id ?? createId(),
+      commonActionId: input.commonActionId,
       name: input.name?.trim() || `${agentLabel} ${workspace.terminals.length + 1}`,
       workingDirectory: input.workingDirectory ?? workspace.projectPath,
       shell: DEFAULT_SHELL,
@@ -1082,13 +1114,19 @@ export class AppStateService {
         .map((terminal) => {
           const runningRevision = live.get(terminal.id);
           return runningRevision === undefined
-            ? {
+            ? terminal.commonActionId
+              ? { ...terminal, status: 'STOPPED' as const }
+              : {
+                  ...terminal,
+                  status: 'STARTING' as const,
+                  command: terminal.command ?? this.restoredCommand(terminal),
+                  runtimeRevision: (terminal.runtimeRevision ?? 0) + 1,
+                }
+            : {
                 ...terminal,
-                status: 'STARTING' as const,
-                command: terminal.command ?? this.restoredCommand(terminal),
-                runtimeRevision: (terminal.runtimeRevision ?? 0) + 1,
-              }
-            : { ...terminal, runtimeRevision: runningRevision };
+                runtimeRevision: runningRevision,
+                status: terminal.commonActionId ? ('RUNNING' as const) : terminal.status,
+              };
         }),
     }));
   }
@@ -1103,8 +1141,14 @@ export class AppStateService {
       terminals: workspace.terminals.map((terminal) => {
         const runningRevision = live.get(terminal.id);
         return runningRevision === undefined
-          ? terminal
-          : { ...terminal, runtimeRevision: runningRevision };
+          ? terminal.commonActionId
+            ? { ...terminal, status: 'STOPPED' as const }
+            : terminal
+          : {
+              ...terminal,
+              runtimeRevision: runningRevision,
+              status: terminal.commonActionId ? ('RUNNING' as const) : terminal.status,
+            };
       }),
     }));
   }

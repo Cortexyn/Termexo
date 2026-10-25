@@ -1,3 +1,4 @@
+import { ProjectPreviewService } from '../core/services/project-preview.service';
 import {
   AfterViewInit,
   Component,
@@ -553,6 +554,14 @@ export class TerminalPanelComponent implements AfterViewInit {
     let startingProcess = false;
     try {
       const session = this.session();
+      // Saved project commands only start through an explicit Run/Restart action.
+      if (
+        session.commonActionId &&
+        ['STOPPED', 'FAILED', 'DISCONNECTED'].includes(session.status)
+      ) {
+        this.terminal.writeln('此常用操作已停止。请在“常用操作”中启动。');
+        return;
+      }
       unlisten = await this.gateway.connect(
         session.id,
         session.runtimeRevision ?? 0,
@@ -1123,7 +1132,7 @@ export class TerminalPanelComponent implements AfterViewInit {
       activate: (event: MouseEvent, text: string) => {
         // Read from the click itself: a plain click on a link is left to selection.
         if (event.ctrlKey) {
-          void this.openLink(link.kind, text);
+          void this.openLink(link.kind, text, link.line, link.column);
         }
       },
     };
@@ -1138,11 +1147,24 @@ export class TerminalPanelComponent implements AfterViewInit {
    * an agent redraws relative to its own cursor, so a line it never produced pushes its frame out
    * of place. The user still needs to know why nothing opened, so the shell raises a toast.
    */
-  private async openLink(kind: TerminalLink['kind'], text: string): Promise<void> {
+  private readonly projectPreview = inject(ProjectPreviewService);
+
+  private async openLink(
+    kind: TerminalLink['kind'],
+    text: string,
+    line = 1,
+    column = 1,
+  ): Promise<void> {
     try {
       await (kind === 'url'
-        ? this.gateway.openUrl(text)
-        : this.gateway.openPath(text, this.session().workingDirectory));
+        ? Promise.resolve(this.projectPreview.openUrl(text, this.workspaceId()))
+        : this.projectPreview.openFile(
+            this.workspaceId(),
+            text,
+            this.session().workingDirectory,
+            line,
+            column,
+          ));
     } catch (error) {
       this.zone.run(() =>
         this.interactionFailed.emit(

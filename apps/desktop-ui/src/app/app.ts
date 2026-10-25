@@ -1,3 +1,7 @@
+import { ProjectPreviewPanelComponent } from './preview/project-preview-panel';
+import { ProjectPreviewService } from './core/services/project-preview.service';
+import { CommonActionsDialogComponent } from './dialogs/common-actions-dialog';
+import { CommonActionsService } from './core/services/common-actions.service';
 import type { ProfileSaveCompleted, SettingsProfileKind } from './dialogs/profile-drafts';
 import { ModelCatalogService } from './core/services/model-catalog.service';
 import {
@@ -54,7 +58,11 @@ import { createId } from './core/models/identifiers';
 
 /** Visual tone for the corner toast region; the template maps each tone to a colour and icon. */
 export type ToastTone = 'success' | 'info' | 'attention' | 'error';
-import { TERMINAL_INPUT_SETTLE_MS, terminalPromptWrites } from './core/models/terminal-input';
+import {
+  TERMINAL_INPUT_SETTLE_MS,
+  TERMINAL_PASTE_SETTLE_MS,
+  terminalPromptWrites,
+} from './core/models/terminal-input';
 import type { TodoContinuationRequest, TodoTask } from './core/models/todo.models';
 import {
   compatibleTodoSessionId,
@@ -143,6 +151,7 @@ import { IconComponent } from './shared/icon/icon';
 import { LanguageSelectorComponent } from './shared/language-selector/language-selector';
 import { TopbarOverflowMenuComponent } from './shared/topbar-overflow-menu/topbar-overflow-menu';
 import { RemoteAccessButtonComponent } from './shared/remote-access-button';
+import { ThirdPartyNotificationsToggleComponent } from './shared/third-party-notifications-toggle';
 import { WorkspaceOnboardingComponent } from './workspace/workspace-onboarding';
 import {
   DEFAULT_TERMINAL_FONT_NAME,
@@ -165,8 +174,8 @@ import { TodoBoardComponent } from './todo/todo-board';
 import { WorkspaceSidebarComponent } from './workspace/workspace-sidebar';
 import { GitWorkbenchComponent } from './git/git-workbench';
 
-type SidebarResizeTarget = 'workspace' | 'inspector';
-type WorkspaceView = 'terminal' | 'tasks' | 'git';
+type SidebarResizeTarget = 'workspace' | 'inspector' | 'preview';
+type WorkspaceView = 'terminal' | 'tasks' | 'git' | 'preview';
 
 /** How a resume should proceed once the CLI's hold on the session has been dealt with. */
 interface BackgroundReclaim {
@@ -184,6 +193,8 @@ const WORKSPACE_SIDEBAR_MAX_WIDTH = 360;
 const INSPECTOR_DEFAULT_WIDTH = 280;
 const INSPECTOR_MIN_WIDTH = 240;
 const INSPECTOR_MAX_WIDTH = 460;
+const PREVIEW_MIN_WIDTH = 320;
+const PREVIEW_MAX_WIDTH = 2400;
 const INSPECTOR_AUTO_COLLAPSE_WIDTH = 900;
 const WORKSPACE_SIDEBAR_AUTO_COLLAPSE_WIDTH = 760;
 /**
@@ -255,6 +266,8 @@ function readStoredString(key: string, fallback: string): string {
 @Component({
   selector: 'app-root',
   imports: [
+    ProjectPreviewPanelComponent,
+    CommonActionsDialogComponent,
     AgentLaunchOptionsComponent,
     AgentSettingsDialogComponent,
     ClaudeLaunchDialogComponent,
@@ -275,6 +288,7 @@ function readStoredString(key: string, fallback: string): string {
     LanguageSelectorComponent,
     TopbarOverflowMenuComponent,
     RemoteAccessButtonComponent,
+    ThirdPartyNotificationsToggleComponent,
     WorkspaceOnboardingComponent,
     MergeWorkspaceDialogComponent,
     AccountSwitchDialogComponent,
@@ -313,6 +327,11 @@ function readStoredString(key: string, fallback: string): string {
 export class App {
   private readonly injector = inject(Injector);
   protected readonly state = inject(AppStateService);
+  protected readonly commonActions = inject(CommonActionsService);
+  protected readonly preview = inject(ProjectPreviewService);
+  protected readonly commonActionsOpen = signal(false);
+  private pendingCommonActionLaunch: string | null = null;
+  private readonly returnToCommonActionReview = signal<{ workspaceId: string; requestId: string } | null>(null);
   protected readonly agents = inject(AgentService);
   protected readonly modelCatalog = inject(ModelCatalogService);
   protected readonly i18n = inject(I18nService);
@@ -481,6 +500,14 @@ export class App {
     ),
   );
   protected readonly resizingSidebar = signal<SidebarResizeTarget | null>(null);
+  protected readonly previewWidth = signal(
+    readStoredWidth(
+      'termexo.previewWidth',
+      Math.max(PREVIEW_MIN_WIDTH, Math.min(PREVIEW_MAX_WIDTH, window.innerWidth)),
+      PREVIEW_MIN_WIDTH,
+      PREVIEW_MAX_WIDTH,
+    ),
+  );
   protected readonly workspaceMaximized = signal(false);
   protected readonly terminalMaximized = signal(false);
   protected readonly layoutRevision = signal(0);
@@ -625,6 +652,30 @@ export class App {
   });
 
   constructor() {
+    effect(() => {
+      const pending = this.returnToCommonActionReview();
+      if (!pending) return;
+      const review = this.commonActions.reviews()[pending.workspaceId];
+      if (!review || review.requestId !== pending.requestId) {
+        this.returnToCommonActionReview.set(null);
+      } else if (!review.waiting) {
+        this.returnToCommonActionReview.set(null);
+        if (this.state.activeWorkspace()?.id === pending.workspaceId) this.commonActionsOpen.set(true);
+      }
+    });
+    effect(() => {
+      this.preview.activation();
+      // Terminal state updates are not navigation requests. Only an explicit preview activation
+      // may select this view; reading the workspace here used to steal focus on every status change.
+      untracked(() => {
+        if (this.preview.open()) this.workspaceView.set('preview');
+      });
+    });
+    effect(() => {
+      if (!this.preview.open() && untracked(() => this.workspaceView()) === 'preview') {
+        this.workspaceView.set('terminal');
+      }
+    });
     this.adaptLayoutToViewport();
     if (hasBackend()) this.modelCatalog.initialize();
     void this.initialize();
@@ -867,6 +918,83 @@ export class App {
       case 'shell':
         await this.createTerminal('shell');
         break;
+    }
+  }
+
+  protected async openProjectPreview(): Promise<void> {
+    const workspace = this.state.activeWorkspace();
+    this.agentMenuOpen.set(false);
+    if (!workspace) return;
+    await this.preview.browse(workspace.id);
+  }
+
+  protected openCommonActionTerminal(terminalId: string): void {
+    this.revealCreatedTerminal(terminalId);
+  }
+
+  protected async startCommonActionAgent(): Promise<void> {
+    const workspace = this.state.activeWorkspace();
+    if (!workspace || this.commonActions.reviews()[workspace.id]?.waiting) return;
+    if (!hasBackend()) {
+      this.reportFailure('请连接桌面应用后识别项目。');
+      return;
+    }
+    this.pendingCommonActionLaunch = workspace.id;
+    this.commonActionsOpen.set(false);
+    await this.openCodexLaunch();
+    if (!this.codexLaunchOpen()) {
+      this.pendingCommonActionLaunch = null;
+      this.commonActionsOpen.set(true);
+    }
+  }
+
+  protected viewCommonActionAgent(terminalId: string): void {
+    const workspace = this.state.activeWorkspace();
+    const review = workspace && this.commonActions.reviews()[workspace.id];
+    if (workspace && review?.waiting && review.terminalId === terminalId) {
+      this.returnToCommonActionReview.set({ workspaceId: workspace.id, requestId: review.requestId });
+    }
+    this.commonActionsOpen.set(false);
+    this.revealCreatedTerminal(terminalId);
+  }
+
+  private async submitCommonActionRecognition(workspaceId: string, terminalId: string, requestId: string): Promise<void> {
+    const review = this.commonActions.reviews()[workspaceId];
+    if (!review?.waiting || review.requestId !== requestId) return;
+    const workspace = this.state.workspaces().find((item) => item.id === workspaceId);
+    if (!workspace) return;
+    const { recognitionPrompt } = await import('./core/models/common-action-recognition');
+    // Cancellation may happen while the prompt module is loading.
+    const current = this.commonActions.reviews()[workspaceId];
+    if (!current?.waiting || current.requestId !== requestId) return;
+    this.commonActions.updateRecognition(workspaceId, requestId, { phase: 'reading' });
+    await this.deliverTerminalPrompt(terminalId, recognitionPrompt(workspace.projectPath, workspaceId, requestId), true);
+  }
+
+  protected async recognizeCommonActions(request: {
+    workspaceId: string;
+    terminalId: string;
+  }): Promise<void> {
+    if (this.commonActions.reviews()[request.workspaceId]?.waiting) return;
+    let requestId: string | undefined;
+    try {
+      if (!hasBackend()) throw new Error('请在桌面应用中识别项目。');
+      const located = this.findTerminal(request.terminalId);
+      if (
+        !located ||
+        located.workspace.id !== request.workspaceId ||
+        located.terminal.agentType === 'shell' ||
+        !['IDLE', 'COMPLETED'].includes(located.terminal.status) ||
+        located.terminal.accountLogin
+      )
+        throw new Error('请选择当前项目已就绪的空闲 Agent。');
+      requestId = this.commonActions.beginRecognition(request.workspaceId, request.terminalId);
+      const live = await this.terminalGateway.liveTerminals();
+      if (!live.has(request.terminalId)) throw new Error('Agent 已断开，请先重新启动。');
+      await this.submitCommonActionRecognition(request.workspaceId, request.terminalId, requestId);
+    } catch (error) {
+      if (requestId) this.commonActions.updateRecognition(request.workspaceId, requestId, { waiting: false, error: this.errorMessage(error) });
+      this.reportFailure(this.errorMessage(error));
     }
   }
 
@@ -1233,6 +1361,10 @@ export class App {
   protected closeCodexLaunch(): void {
     this.codexLaunchOpen.set(false);
     this.selectedTerminalDirectory.set(null);
+    if (this.pendingCommonActionLaunch) {
+      this.pendingCommonActionLaunch = null;
+      this.commonActionsOpen.set(true);
+    }
   }
 
   protected async launchClaude(value: ClaudeLaunchDialogValue): Promise<void> {
@@ -1524,6 +1656,7 @@ export class App {
     if (!workspace) {
       return;
     }
+    this.workspaceView.set('terminal');
     if (!this.terminalMaximized()) {
       const preferredIds = revealTerminalInLayout(
         this.visibleTerminalIds(),
@@ -1556,12 +1689,17 @@ export class App {
     this.state.updateTerminalStatus(event.terminalId, event.status);
     this.todos.handleTerminalStatus(event.terminalId, event.status);
     if (['FAILED', 'STOPPED', 'DISCONNECTED'].includes(event.status)) {
+      for (const [workspaceId, review] of Object.entries(this.commonActions.reviews())) {
+        if (review.waiting && review.terminalId === event.terminalId) {
+          this.commonActions.updateRecognition(workspaceId, review.requestId, { waiting: false, error: '识别使用的 Agent 已停止或断开，请重新识别。' });
+        }
+      }
       this.agentStartup.cancel(event.terminalId);
       return;
     }
-    // RUNNING is emitted once the PTY has actually spawned, which is when waiting for the agent
-    // to accept a prompt starts meaning anything.
-    if (event.status === 'RUNNING') {
+    // Codex opens idle, while other processes use RUNNING after the PTY spawns.
+    // Both must start the startup-dialog/prompt-delivery clocks.
+    if (event.status === 'RUNNING' || event.status === 'IDLE') {
       this.agentStartup.markRuntimeStarted(event.terminalId);
     }
   }
@@ -2127,14 +2265,27 @@ export class App {
   }
 
   protected startSidebarResize(target: SidebarResizeTarget, event: PointerEvent): void {
-    if (event.button !== 0 || this.workspaceMaximized()) {
+    if (event.button !== 0 || (this.workspaceMaximized() && target !== 'preview')) {
       return;
     }
     event.preventDefault();
     this.resizeStartX = event.clientX;
-    this.resizeStartWidth =
-      target === 'workspace' ? this.workspaceSidebarWidth() : this.inspectorWidth();
+    this.resizeStartWidth = target === 'workspace'
+      ? this.workspaceSidebarWidth()
+      : target === 'preview'
+        ? (event.currentTarget as HTMLElement | null)?.previousElementSibling?.getBoundingClientRect().width
+          || Math.min(this.previewWidth(), this.previewMaxWidth())
+        : this.inspectorWidth();
+    const handle = event.currentTarget as HTMLElement | null;
+    handle?.setPointerCapture?.(event.pointerId);
     this.resizingSidebar.set(target);
+  }
+
+  protected previewMaxWidth(): number {
+    const sidebar = this.workspaceSidebarOpen() && !this.workspaceMaximized()
+      ? Math.min(window.innerWidth * 0.3, Math.max(152, this.workspaceSidebarWidth())) + 5
+      : 0;
+    return Math.max(PREVIEW_MIN_WIDTH, Math.min(PREVIEW_MAX_WIDTH, window.innerWidth - sidebar - 15));
   }
 
   @HostListener('window:pointermove', ['$event'])
@@ -2151,6 +2302,10 @@ export class App {
           Math.max(WORKSPACE_SIDEBAR_MIN_WIDTH, this.resizeStartWidth + delta),
         ),
       );
+    } else if (target === 'preview') {
+      this.previewWidth.set(
+        Math.min(this.previewMaxWidth(), Math.max(PREVIEW_MIN_WIDTH, this.resizeStartWidth + delta)),
+      );
     } else {
       this.inspectorWidth.set(
         Math.min(INSPECTOR_MAX_WIDTH, Math.max(INSPECTOR_MIN_WIDTH, this.resizeStartWidth - delta)),
@@ -2159,14 +2314,19 @@ export class App {
   }
 
   @HostListener('window:pointerup')
+  @HostListener('window:pointercancel')
   protected stopSidebarResize(): void {
     const target = this.resizingSidebar();
     if (!target) {
       return;
     }
     this.storePreference(
-      target === 'workspace' ? 'termexo.workspaceSidebarWidth' : 'termexo.inspectorWidth',
-      target === 'workspace' ? this.workspaceSidebarWidth() : this.inspectorWidth(),
+      target === 'workspace'
+        ? 'termexo.workspaceSidebarWidth'
+        : target === 'preview' ? 'termexo.previewWidth' : 'termexo.inspectorWidth',
+      target === 'workspace'
+        ? this.workspaceSidebarWidth()
+        : target === 'preview' ? this.previewWidth() : this.inspectorWidth(),
     );
     this.resizingSidebar.set(null);
   }
@@ -2237,7 +2397,7 @@ export class App {
   private runTabShortcut(event: KeyboardEvent): void {
     const shortcut = workbenchShortcut(event);
     const terminals = this.state.activeWorkspace()?.terminals ?? [];
-    if (!shortcut || this.workspaceView() !== 'terminal' || terminals.length === 0) {
+    if (!shortcut || !['terminal', 'preview'].includes(this.workspaceView())) {
       return;
     }
     // An open dialog owns the keyboard; the strip behind it must not react to keys typed into it.
@@ -2247,20 +2407,26 @@ export class App {
     }
 
     if (shortcut.action === 'moveTab') {
-      if (this.moveActiveTerminal(shortcut.delta)) {
+      if (this.workspaceView() === 'terminal' && this.moveActiveTerminal(shortcut.delta)) {
         event.preventDefault();
       }
       return;
     }
 
-    const activeIndex = terminals.findIndex((terminal) => terminal.id === this.activeTerminalId());
-    const terminal =
+    const tabs = terminals.map((terminal) => terminal.id);
+    tabs.push(...this.preview.workspaceTabs().map((tab) => tab.id));
+    if (tabs.length === 0) return;
+    const activeIndex = this.workspaceView() === 'preview'
+      ? tabs.indexOf(this.preview.activeTab()?.id ?? '')
+      : tabs.indexOf(this.activeTerminalId() ?? '');
+    const selectedId =
       shortcut.action === 'selectTab'
-        ? terminals[shortcut.index]
-        : terminals[(activeIndex + shortcut.delta + terminals.length) % terminals.length];
-    if (terminal) {
+        ? tabs[shortcut.index]
+        : tabs[(activeIndex + shortcut.delta + tabs.length) % tabs.length];
+    if (selectedId) {
       event.preventDefault();
-      this.selectTerminal(terminal.id);
+      if (terminals.some((terminal) => terminal.id === selectedId)) this.selectTerminal(selectedId);
+      else this.preview.activate(selectedId);
     }
   }
 
@@ -2934,6 +3100,7 @@ export class App {
    * put two dialogs on screen over one decision.
    */
   protected installAgent(agentType: ManagedAgentType): void {
+    this.pendingCommonActionLaunch = null;
     this.closeClaudeLaunch();
     this.closeCodexLaunch();
     this.closeOpenCodeLaunch();
@@ -3599,12 +3766,25 @@ export class App {
    * needs the same, only without a prompt to submit afterwards.
    */
   private armStartupDialogs(terminalId: string): void {
+    const located = this.findTerminal(terminalId);
+    const resumeRecognition = this.pendingCommonActionLaunch === located?.workspace.id;
+    const requestId = resumeRecognition
+      ? this.commonActions.beginRecognition(located!.workspace.id, terminalId, 'starting')
+      : undefined;
+    if (resumeRecognition) {
+      this.pendingCommonActionLaunch = null;
+      this.commonActionsOpen.set(true);
+    }
     this.agentStartup.arm(terminalId, {
       confirm: (writes) => this.writeTerminalSequence(terminalId, writes),
-      submit: async () => undefined,
-      onFailed: () => undefined,
+      submit: requestId
+        ? () => this.submitCommonActionRecognition(located!.workspace.id, terminalId, requestId)
+        : async () => undefined,
+      onFailed: (message) => {
+        if (requestId) this.commonActions.updateRecognition(located!.workspace.id, requestId, { waiting: false, error: message });
+      },
     });
-    if (this.findTerminal(terminalId)?.terminal.status === 'RUNNING') {
+    if (['RUNNING', 'IDLE'].includes(this.findTerminal(terminalId)?.terminal.status ?? '')) {
       this.agentStartup.markRuntimeStarted(terminalId);
     }
   }
@@ -3618,9 +3798,8 @@ export class App {
         this.showToast(this.i18n.t('taskFlow.toast.sendFailed', { error: message }), 'attention');
       },
     });
-    // The PTY is normally still spawning here, and its RUNNING event starts the clocks. A terminal
-    // that already reported RUNNING has sent that event before this armed, and would wait forever.
-    if (this.findTerminal(terminalId)?.terminal.status === 'RUNNING') {
+    // An already-started process may have emitted RUNNING or Codex's IDLE before this was armed.
+    if (['RUNNING', 'IDLE'].includes(this.findTerminal(terminalId)?.terminal.status ?? '')) {
       this.agentStartup.markRuntimeStarted(terminalId);
     }
   }
@@ -3672,14 +3851,18 @@ export class App {
   ): Promise<void> {
     for (const [index, data] of writes.entries()) {
       if (index > 0) {
-        await this.settleTerminalInput();
+        await this.settleTerminalInput(
+          writes[index - 1].startsWith('\x1b[200~')
+            ? TERMINAL_PASTE_SETTLE_MS
+            : TERMINAL_INPUT_SETTLE_MS,
+        );
       }
       await this.writeToTerminal(terminalId, data);
     }
   }
 
-  private settleTerminalInput(): Promise<void> {
-    return new Promise((resolve) => window.setTimeout(resolve, TERMINAL_INPUT_SETTLE_MS));
+  private settleTerminalInput(delay = TERMINAL_INPUT_SETTLE_MS): Promise<void> {
+    return new Promise((resolve) => window.setTimeout(resolve, delay));
   }
 
   private async writeToTerminal(terminalId: string, data: string): Promise<void> {
@@ -3871,6 +4054,37 @@ export class App {
     }
     void this.notifyWhenUpdateAvailable();
     if (runtimeMode() === 'desktop') {
+      const { ThirdPartyNotificationsService } =
+        await import('./core/services/third-party-notifications.service');
+      try {
+        await this.injector.get(ThirdPartyNotificationsService).initialize();
+      } catch (error) {
+        this.showToast('第三方通知总开关读取失败：' + String(error), 'attention');
+      }
+      const { WechatNotificationsService } =
+        await import('./core/services/wechat-notifications.service');
+      const wechat = this.injector.get(WechatNotificationsService);
+      try {
+        await wechat.initialize();
+      } catch (error) {
+        wechat.error.set(String(error));
+      }
+      effect(
+        () => {
+          wechat.observe(this.state.workspaces(), this.todos.snapshots(), this.agents.events());
+        },
+        { injector: this.injector },
+      );
+      let previousWechatError = '';
+      effect(
+        () => {
+          const error = wechat.error();
+          if (error && error !== previousWechatError)
+            this.showToast('微信通知未确认发送：' + error, 'attention');
+          previousWechatError = error;
+        },
+        { injector: this.injector },
+      );
       const { McpDesktopService, mcpPreferenceActions } =
         await import('./core/services/mcp-desktop.service');
       await this.injector.get(McpDesktopService).start({

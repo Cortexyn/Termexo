@@ -16,8 +16,10 @@ mod quota;
 mod remote;
 mod storage;
 mod system_proxy;
+mod third_party_notifications;
 mod update;
 mod webview;
+mod wechat;
 
 use std::fs;
 use std::sync::Arc;
@@ -221,6 +223,12 @@ pub fn run() {
             commands::config::delete_account_profile,
             commands::config::validate_claude_profile,
             commands::notification::show_desktop_notification,
+            wechat::read_wechat_notifications,
+            wechat::update_wechat_notifications,
+            wechat::probe_wechat_notification_target,
+            wechat::send_wechat_notification,
+            third_party_notifications::read_third_party_notifications,
+            third_party_notifications::set_third_party_notifications_enabled,
             commands::notification::set_taskbar_attention,
             commands::update::check_for_update,
             commands::update::open_release_page,
@@ -240,6 +248,8 @@ pub fn run() {
             commands::open::open_support_email,
             commands::open::open_terminal_path,
             commands::open::open_directory,
+            commands::preview::list_project_directory,
+            commands::preview::read_project_preview,
             commands::storage::read_storage_overview,
             commands::storage::relocate_application_data,
             commands::storage::reset_application_data_location,

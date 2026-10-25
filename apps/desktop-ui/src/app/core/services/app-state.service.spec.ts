@@ -174,6 +174,18 @@ describe('AppStateService', () => {
     expect(repository.save).not.toHaveBeenCalled();
   });
 
+  it('preserves an explicit common-operation stop when its killed PTY reports failure late', async () => {
+    await service.createWorkspace('Server', 'D:/test');
+    const terminal = service.createTerminal({ agentType: 'shell', commonActionId: 'dev' })!;
+    service.markTerminalExited(terminal.id, 'STOPPED');
+    service.markTerminalExited(terminal.id, 'FAILED');
+    service.updateTerminalStatus(terminal.id, 'FAILED');
+    expect(service.activeTerminal()?.status).toBe('STOPPED');
+    const failed = service.createTerminal({ agentType: 'shell', commonActionId: 'bad' })!;
+    service.markTerminalExited(failed.id, 'FAILED');
+    expect(service.activeTerminal()?.status).toBe('FAILED');
+  });
+
   it('marks persisted terminals for automatic restart', async () => {
     repository.list.mockResolvedValueOnce([
       {
@@ -936,6 +948,46 @@ describe('AppStateService', () => {
 
       service.applyAgentEvent(hookEvent('approval.required', base + 3_500));
       expect(statusOf()).toBe('WAITING_APPROVAL');
+    });
+
+    it('ignores late Codex readiness after a turn started without hiding real later events', () => {
+      const id = 'new-codex';
+      service.createTerminal({ id, agentType: 'codex' });
+      const event = (type: string, time: number) => ({
+        ...hookEvent(type, base + time, id),
+        agentType: 'codex' as const,
+      });
+      service.applyAgentEvent(event('session.ready', 100));
+      expect(statusOf(id)).toBe('IDLE');
+      for (const status of [
+        'THINKING',
+        'RUNNING',
+        'WAITING_APPROVAL',
+        'WAITING_INPUT',
+        'FAILED',
+        'RATE_LIMITED',
+        'COMPLETED',
+      ] as const) {
+        atTime(base + 200, () => service.updateTerminalStatus(id, status));
+        service.applyAgentEvent(event('session.ready', 300));
+        expect(statusOf(id)).toBe(status);
+      }
+      service.applyAgentEvent(event('agent.thinking', 400));
+      expect(statusOf(id)).toBe('THINKING');
+    });
+
+    it('persists a manual idle correction, rejects old hook replay and accepts new activity', () => {
+      atTime(base + 1000, () => service.updateTerminalStatus(terminalId, 'RUNNING'));
+      repository.save.mockClear();
+      atTime(base + 3000, () => service.updateTerminalStatus(terminalId, 'IDLE'));
+      expect(statusOf()).toBe('IDLE');
+      expect(repository.save).toHaveBeenCalled();
+      service.applyAgentEvent(hookEvent('tool.started', base + 2000));
+      expect(statusOf()).toBe('IDLE');
+      service.applyAgentEvent(hookEvent('agent.thinking', base + 4000));
+      expect(statusOf()).toBe('THINKING');
+      service.applyAgentEvent(hookEvent('task.completed', base + 5000));
+      expect(statusOf()).toBe('COMPLETED');
     });
 
     it('keeps a pending approval visible while another tool starts', () => {

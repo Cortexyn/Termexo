@@ -101,11 +101,15 @@ pub struct Workspace {
     #[serde(default = "default_grid_dimension")]
     pub grid_rows: u8,
     pub terminals: Vec<TerminalSession>,
+    #[serde(default)]
+    pub common_actions: Vec<CommonAction>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TerminalSession {
+    #[serde(default)]
+    pub common_action_id: Option<String>,
     pub id: String,
     pub name: String,
     pub working_directory: String,
@@ -121,6 +125,18 @@ pub struct TerminalSession {
     pub profile_id: Option<String>,
     pub mcp_profile_id: Option<String>,
     pub account_profile_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommonAction {
+    pub id: String,
+    pub name: String,
+    pub command: String,
+    pub working_directory: String,
+    #[serde(default)]
+    pub description: String,
+    pub terminal_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -277,6 +293,19 @@ impl WorkspaceDatabase {
             params![key, value, unix_timestamp_millis()],
         )?;
         Ok(())
+    }
+
+    /// Atomic across processes: an external notification occurrence can be claimed only once.
+    pub fn claim_app_setting(&self, key: &str, value: &str) -> Result<bool, DatabaseError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| DatabaseError::LockPoisoned)?;
+        let inserted = connection.execute(
+            "INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?1, ?2, ?3)",
+            params![key, value, unix_timestamp_millis()],
+        )?;
+        Ok(inserted == 1)
     }
 
     pub fn list_todo_snapshots(&self) -> Result<Vec<Value>, DatabaseError> {
@@ -1729,6 +1758,14 @@ mod tests {
             layout: "columns".into(),
             grid_columns: 2,
             grid_rows: 2,
+            common_actions: vec![CommonAction {
+                id: "frontend".into(),
+                name: "Frontend".into(),
+                command: "npm run dev".into(),
+                working_directory: "D:/dev/termexo".into(),
+                description: "package.json".into(),
+                terminal_id: None,
+            }],
             terminals: vec![],
         };
 
@@ -1753,6 +1790,7 @@ mod tests {
         assert_eq!(stored[0].name, first_workspace.name);
         assert_eq!(stored[1].name, workspace.name);
         assert_eq!(stored[1].layout, workspace.layout);
+        assert_eq!(stored[1].common_actions[0].command, "npm run dev");
 
         database.delete_workspace(&workspace.id).unwrap();
         assert!(database.list_todo_snapshots().unwrap().is_empty());
@@ -1788,7 +1826,9 @@ mod tests {
             layout: "single".into(),
             grid_columns: 2,
             grid_rows: 2,
+            common_actions: vec![],
             terminals: vec![TerminalSession {
+                common_action_id: None,
                 id: "terminal-1".into(),
                 name: "Claude 1".into(),
                 working_directory: "D:\\dev\\termexo".into(),
@@ -1837,6 +1877,7 @@ mod tests {
         )
         .unwrap();
 
+        assert!(workspace.common_actions.is_empty());
         assert_eq!(workspace.grid_columns, 2);
         assert_eq!(workspace.grid_rows, 2);
         assert_eq!(workspace.theme_color, "#58c7a0");

@@ -10,6 +10,7 @@ pub mod model_catalog;
 pub mod network_export;
 pub mod notification;
 pub mod open;
+pub mod preview;
 pub mod quota;
 pub mod remote;
 pub mod storage;
