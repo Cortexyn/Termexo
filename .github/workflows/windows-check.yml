@@ -1,0 +1,60 @@
+# Runs on this fork only: builds and tests two upstream states on Windows to tell what the macOS
+# port changed from what already failed before it. Not meant for the upstream repository.
+name: windows-check
+
+on:
+  push:
+    branches: [ci-windows-check]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        ref: [upstream-base, upstream-main]
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Tool versions
+        run: |
+          git log -1 --format='%H %s'
+          rustc --version
+          cargo --version
+          node --version
+          nasm -v
+
+      - name: Install frontend dependencies
+        working-directory: apps/desktop-ui
+        run: npm ci
+
+      - name: Build the frontend (the Tauri build needs its output)
+        working-directory: apps/desktop-ui
+        run: npm run build
+
+      - name: Rust unit tests
+        working-directory: src-tauri
+        run: cargo test --lib
+
+      - name: Frontend tests (up to three tries, the suite is flaky)
+        if: always()
+        working-directory: apps/desktop-ui
+        run: |
+          foreach ($i in 1..3) {
+            npm test -- --watch=false
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+          }
+          exit 1
