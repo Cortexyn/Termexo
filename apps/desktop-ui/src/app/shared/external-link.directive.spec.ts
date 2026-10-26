@@ -26,7 +26,9 @@ describe('ExternalLinkDirective', () => {
     Object.defineProperty(window, '__TAURI_INTERNALS__', {
       value: {
         invoke: (command: string, args?: Record<string, unknown>) =>
-          args === undefined ? invoke(command) : invoke(command, args),
+          args === undefined || Object.keys(args).length === 0
+            ? invoke(command)
+            : invoke(command, args),
       },
       configurable: true,
     });
