@@ -8,12 +8,18 @@
 
 - Windows x64：NSIS EXE、MSI。
 - macOS：Apple Silicon、Intel 的 DMG 与 `.app.tar.gz`。
-- npm：`termexo`，内含同一次 Windows 构建的主程序及 ConPTY 组件；仍仅支持 Windows。
+- npm：`termexo`，内含同一次 Windows 构建的主程序及 ConPTY 组件，以及两种 macOS 架构的完整应用压缩包。
 - GitHub Release：以上文件、各平台构建记录和统一的 `SHA256SUMS.txt`。
 
 前端单元测试与所有平台的 Rust 测试通过后，工作流校验安装包和 npm 包的版本、
 源码提交、目标架构及校验和，先上传草稿 Release，再发布 npm，最后公开 Release。
 npm 使用 OIDC 和来源证明，不需要保存长期 npm 令牌。
+
+Windows 和 Mac 均可使用 `npx termexo` 或 `npm install --global termexo`。
+Mac 首次启动时按 Node.js 架构选择应用，将其解压到
+`~/Library/Caches/Termexo/npm/` 后通过系统 `open` 命令启动。
+解压保留权限、符号链接、应用资源和签名，无需运行时下载。
+macOS 构建任务会验证解压后的可执行权限、架构和签名。
 
 ## npm 首次配置
 

@@ -1,24 +1,25 @@
 # Termexo npm launcher
 
-This package runs the official Windows desktop executable for
+This package runs the official Windows or macOS desktop application for
 [Termexo](https://www.termexo.com/). Let a connected AI use MCP to operate
 Claude Code, Codex, OpenCode, Pi Agent, Grok Build, and Antigravity terminals: find a
 terminal, send a prompt, submit it, and read the actual reply. All six agents
-run in a local Windows workbench you can view and take over.
+run in a local workbench you can view and take over.
 
 ## Install
 
-Termexo currently supports Windows.
+Supports Windows x64 and macOS 12 or later on Apple Silicon and Intel.
 
-```powershell
+```sh
 npm install --global termexo
 termexo
 ```
 
-The Windows desktop executable is included in the npm package, so no separate
-Termexo installation is required. You can also run it without a global install:
+The npm package includes the Windows executable and both macOS app archives, so
+no separate Termexo installation or runtime download is required. You can also
+run it without a global install:
 
-```powershell
+```sh
 npx termexo
 ```
 
@@ -32,15 +33,20 @@ termexo --version    Show the launcher version
 termexo --help       Show command help
 ```
 
-Set `TERMEXO_PATH` to the full path of another `termexo.exe` to override the
-bundled executable.
+Set `TERMEXO_PATH` to another `termexo.exe` or `Termexo.app` to override the
+bundled application. On macOS, the matching app is extracted once into
+`~/Library/Caches/Termexo/npm/` and opened through Launch Services. Its archive
+preserves executable permissions, resources and signatures. macOS packages use
+ad-hoc signing and are not notarized; macOS may ask you to allow the app in
+Privacy & Security.
 
 ## Version 0.11.0
 
 Adds multiple content preview tabs, syntax highlighting that preserves source
 whitespace, smoother saved-action discovery, and third-party notification controls.
-GitHub Actions builds this Windows npm package from the same executable as the installers.
-macOS DMGs are available separately in the GitHub release; this npm package remains Windows-only.
+GitHub Actions combines Windows x64, macOS Apple Silicon and macOS Intel builds
+into this package, selecting the matching application when you run `termexo`.
+Windows EXE/MSI and macOS DMG installers remain available in the GitHub release.
 Restart Termexo and Agent terminals after updating.
 
 ## Let one AI operate another through MCP

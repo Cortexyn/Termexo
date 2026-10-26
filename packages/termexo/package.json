@@ -1,7 +1,7 @@
 {
   "name": "termexo",
   "version": "0.11.0",
-  "description": "Run the Termexo AI development workspace directly from npm on Windows",
+  "description": "Run the Termexo AI development workspace directly from npm on Windows and macOS",
   "type": "module",
   "bin": {
     "termexo": "bin/termexo.js"
@@ -12,17 +12,20 @@
     "vendor/win32-x64/termexo.exe",
     "vendor/win32-x64/conpty.dll",
     "vendor/win32-x64/OpenConsole.exe",
+    "vendor/darwin-arm64/Termexo.app.tar.gz",
+    "vendor/darwin-x64/Termexo.app.tar.gz",
     "README.md"
   ],
   "os": [
-    "win32"
+    "win32",
+    "darwin"
   ],
   "engines": {
     "node": ">=18.18.0"
   },
   "scripts": {
     "test": "node --test",
-    "prepack": "node scripts/stage-binary.mjs",
+    "prepack": "node scripts/verify-payload.mjs",
     "prepublishOnly": "npm test"
   },
   "keywords": [

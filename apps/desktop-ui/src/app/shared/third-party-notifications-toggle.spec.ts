@@ -8,9 +8,10 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke: backend.invoke }));
 
 describe('topbar third party notification switch', () => {
   beforeEach(() => {
-    // Lazy chunks can bundle their own core import; mock the native transport too.
+    // Lazy chunks may bundle core; normalize its native invoke options at the transport boundary.
     Object.defineProperty(window, '__TAURI_INTERNALS__', {
-      value: { invoke: backend.invoke }, configurable: true,
+      value: { invoke: (command: string, args?: Record<string, unknown>) => backend.invoke(command, args) },
+      configurable: true,
     });
     backend.invoke.mockReset().mockImplementation(async (command, args) => ({
       enabled: command === 'read_third_party_notifications' ? true : args.enabled,

@@ -103,8 +103,7 @@ jobs:
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
           import { createHash } from 'node:crypto';
-          import { execFileSync } from 'node:child_process';
-          import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+          import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
           const { VERSION: version, GITHUB_SHA: commit } = process.env;
           const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
           mkdirSync('release-assets');
@@ -137,21 +136,49 @@ jobs:
             }
             copyFileSync(`${dir}/build-info.json`, `release-assets/build-info-${target}.json`);
           }
-          const npmDir = 'downloaded/Termexo-npm';
-          const archive = `termexo-${version}.tgz`;
+          const npmDir = 'downloaded/Termexo-npm-windows';
           const info = JSON.parse(readFileSync(`${npmDir}/build-info.json`, 'utf8'));
           assert.equal(info.version, version);
           assert.equal(info.commit, commit);
           assert.equal(info.target, 'x86_64-pc-windows-msvc');
-          assert.equal(sha256(readFileSync(`${npmDir}/${archive}`)), info.packageSha256);
-          const unpack = (path) => execFileSync('tar', ['-xOf', `${npmDir}/${archive}`, `package/${path}`], { maxBuffer: 128 * 1024 * 1024 });
+          mkdirSync('packages/termexo/vendor/win32-x64', { recursive: true });
+          assert.equal(info.files.length, 3);
+          for (const name of ['termexo.exe', 'conpty.dll', 'OpenConsole.exe']) {
+            assert.equal(sha256(readFileSync(`${npmDir}/${name}`)), info.files.find(f => f.name === name)?.sha256);
+            copyFileSync(`${npmDir}/${name}`, `packages/termexo/vendor/win32-x64/${name}`);
+          }
+          for (const [arch, archiveArch] of [['arm64', 'arm64'], ['x64', 'x86_64']]) {
+            mkdirSync(`packages/termexo/vendor/darwin-${arch}`, { recursive: true });
+            copyFileSync(`release-assets/Termexo_${version}_${archiveArch}.app.tar.gz`, `packages/termexo/vendor/darwin-${arch}/Termexo.app.tar.gz`);
+          }
+          NODE
+      - name: Test and pack the complete multiplatform npm distribution
+        run: |
+          npm --prefix packages/termexo test
+          npm pack ./packages/termexo --pack-destination release-assets
+      - name: Verify packaged platform payloads and write checksums
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { createHash } from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+          const { VERSION: version, GITHUB_SHA: commit } = process.env;
+          const archive = `release-assets/termexo-${version}.tgz`;
+          const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
+          const unpack = (path) => execFileSync('tar', ['-xOf', archive, `package/${path}`], { maxBuffer: 128 * 1024 * 1024 });
           const pkg = JSON.parse(unpack('package.json'));
           assert.equal(pkg.name, 'termexo');
           assert.equal(pkg.version, version);
+          assert.deepEqual(pkg.os, ['win32', 'darwin']);
+          const info = JSON.parse(readFileSync('downloaded/Termexo-npm-windows/build-info.json', 'utf8'));
           assert.equal(sha256(unpack('vendor/win32-x64/termexo.exe')), info.executableSha256, 'npm must contain the executable from this Windows build');
-          for (const name of ['conpty.dll', 'OpenConsole.exe']) assert.equal(unpack(`vendor/win32-x64/${name}`).subarray(0, 2).toString(), 'MZ');
-          copyFileSync(`${npmDir}/${archive}`, `release-assets/${archive}`);
-          copyFileSync(`${npmDir}/build-info.json`, 'release-assets/build-info-npm.json');
+          for (const name of ['conpty.dll', 'OpenConsole.exe']) assert.equal(sha256(unpack(`vendor/win32-x64/${name}`)), info.files.find(f => f.name === name).sha256);
+          for (const [arch, archiveArch] of [['arm64', 'arm64'], ['x64', 'x86_64']]) {
+            assert.equal(sha256(unpack(`vendor/darwin-${arch}/Termexo.app.tar.gz`)), sha256(readFileSync(`release-assets/Termexo_${version}_${archiveArch}.app.tar.gz`)));
+          }
+          writeFileSync('release-assets/build-info-npm.json', JSON.stringify({ version, commit, platforms: ['win32-x64', 'darwin-arm64', 'darwin-x64'], packageSha256: sha256(readFileSync(archive)) }, null, 2) + '\n');
           const files = readdirSync('release-assets').sort();
           assert.equal(files.length, 11, 'Expected seven packages and four build records');
           writeFileSync('release-assets/SHA256SUMS.txt', files.map(name => `${sha256(readFileSync(`release-assets/${name}`))}  ${name}\n`).join(''));

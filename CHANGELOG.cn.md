@@ -8,7 +8,7 @@
 - **常用操作识别与确认更连贯。** 紧凑界面集中展示识别进度与结果，支持全选、逐项编辑、自动去重，确认入口固定在底部。
 - **统一控制第三方通知。** 顶部开关管理已配置的通知渠道，消息包含本地时间和会话信息；Windows 微信通知支持恢复最小化窗口并定位指定联系人后发送。
 - **加入 macOS 构建。** 支持 Apple Silicon 和 Intel，适配终端、账号、路径、通知和文件打开行为。macOS 安装包采用 ad-hoc 临时签名，尚未公证。
-- **GitHub Actions 自动发布桌面与 npm 包。** 推送版本标签后运行测试，编译 Windows EXE/MSI 和两种 macOS 架构，以同一次 Windows 构建打包 npm，校验版本、源码提交和校验和后通过 OIDC 发布并生成来源证明。SignPath Foundation 仍在审核，当前 Windows 安装包未正式签名。
+- **GitHub Actions 自动发布桌面与 npm 包。** 推送版本标签后运行测试，编译 Windows EXE/MSI 和两种 macOS 架构，将三个平台的应用合入同一个 npm 包，校验版本、源码提交和校验和后通过 OIDC 发布并生成来源证明。Mac 运行 `npx termexo` 会选择对应架构，缓存完整应用并通过系统启动。SignPath Foundation 仍在审核，当前 Windows 安装包未正式签名。
 
 ## V0.10.15
 

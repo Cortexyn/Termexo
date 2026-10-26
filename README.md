@@ -134,7 +134,7 @@ Keep the token private. Closing Termexo or stopping the PC ends the running proc
 
 ## Latest release
 
-**[v0.11.0](https://github.com/gemron/Termexo/releases/tag/v0.11.0)** adds multiple content preview tabs with syntax highlighting, smoother saved-action discovery, third-party notifications, and macOS builds. Desktop installers and the Windows npm package are built and published by [GitHub Actions](docs/releases.md).
+**[v0.11.0](https://github.com/gemron/Termexo/releases/tag/v0.11.0)** adds multiple content preview tabs with syntax highlighting, smoother saved-action discovery, third-party notifications, and macOS builds. Desktop installers and the Windows/macOS npm package are built and published by [GitHub Actions](docs/releases.md).
 [Full changelog](CHANGELOG.md).
 
 If Termexo helps your workflow, a **Star on this repository** helps other developers discover it.

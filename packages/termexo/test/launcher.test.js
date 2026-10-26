@@ -9,12 +9,15 @@ import {
 } from '../lib/launcher.js';
 
 test('TERMEXO_PATH has priority over standard installation directories', () => {
-  const candidates = executableCandidates({
-    TERMEXO_PATH: 'D:\\Apps\\Termexo\\termexo.exe',
-    LOCALAPPDATA: 'C:\\Users\\test\\AppData\\Local',
-    ProgramFiles: 'C:\\Program Files',
-    'ProgramFiles(x86)': 'C:\\Program Files (x86)',
-  }, 'C:\\npm\\termexo.exe');
+  const candidates = executableCandidates(
+    {
+      TERMEXO_PATH: 'D:\\Apps\\Termexo\\termexo.exe',
+      LOCALAPPDATA: 'C:\\Users\\test\\AppData\\Local',
+      ProgramFiles: 'C:\\Program Files',
+      'ProgramFiles(x86)': 'C:\\Program Files (x86)',
+    },
+    'C:\\npm\\termexo.exe',
+  );
 
   assert.deepEqual(candidates, [
     'D:\\Apps\\Termexo\\termexo.exe',
@@ -32,9 +35,10 @@ test('duplicate executable candidates are removed', () => {
     ProgramFiles: 'C:\\',
   };
 
-  assert.deepEqual(executableCandidates(environment, 'C:\\Termexo\\termexo.exe'), [
-    'C:\\Termexo\\termexo.exe',
-  ]);
+  assert.deepEqual(
+    executableCandidates(environment, 'C:\\Termexo\\termexo.exe'),
+    ['C:\\Termexo\\termexo.exe'],
+  );
 });
 
 test('findExecutable returns the first existing candidate', () => {
@@ -42,17 +46,26 @@ test('findExecutable returns the first existing candidate', () => {
     TERMEXO_PATH: 'D:\\Missing\\termexo.exe',
     LOCALAPPDATA: 'C:\\Users\\test\\AppData\\Local',
   };
-  const expected = 'C:\\Users\\test\\AppData\\Local\\Programs\\Termexo\\termexo.exe';
+  const expected =
+    'C:\\Users\\test\\AppData\\Local\\Programs\\Termexo\\termexo.exe';
 
   assert.equal(
-    findExecutable(environment, (candidate) => candidate === expected, 'C:\\npm\\termexo.exe'),
+    findExecutable(
+      environment,
+      (candidate) => candidate === expected,
+      'C:\\npm\\termexo.exe',
+    ),
     expected,
   );
 });
 
 test('findExecutable returns undefined when Termexo is not installed', () => {
   assert.equal(
-    findExecutable({ LOCALAPPDATA: 'C:\\Local' }, () => false, 'C:\\npm\\termexo.exe'),
+    findExecutable(
+      { LOCALAPPDATA: 'C:\\Local' },
+      () => false,
+      'C:\\npm\\termexo.exe',
+    ),
     undefined,
   );
 });
@@ -100,7 +113,7 @@ test('openDownloadPage opens the official latest release URL', () => {
   openDownloadPage((command, args, options) => {
     invocation = { command, args, options };
     return { unref() {} };
-  });
+  }, 'win32');
 
   assert.deepEqual(invocation, {
     command: 'rundll32.exe',
@@ -110,5 +123,36 @@ test('openDownloadPage opens the official latest release URL', () => {
       stdio: 'ignore',
       windowsHide: true,
     },
+  });
+});
+
+test('macOS launches the complete app through Launch Services, including paths with spaces', () => {
+  let invocation;
+  launchExecutable(
+    '/Users/test/Library/Caches/Termexo/npm/app with spaces/Termexo.app',
+    (command, args) => {
+      invocation = { command, args };
+      return { unref() {} };
+    },
+    'darwin',
+  );
+  assert.deepEqual(invocation, {
+    command: '/usr/bin/open',
+    args: [
+      '-a',
+      '/Users/test/Library/Caches/Termexo/npm/app with spaces/Termexo.app',
+    ],
+  });
+});
+
+test('macOS opens downloads with its system URL handler', () => {
+  let invocation;
+  openDownloadPage((command, args) => {
+    invocation = { command, args };
+    return { unref() {} };
+  }, 'darwin');
+  assert.deepEqual(invocation, {
+    command: '/usr/bin/open',
+    args: [RELEASES_URL],
   });
 });

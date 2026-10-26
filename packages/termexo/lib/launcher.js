@@ -24,7 +24,14 @@ export function executableCandidates(
 
   if (environment.LOCALAPPDATA) {
     add(win32.join(environment.LOCALAPPDATA, 'Termexo', 'termexo.exe'));
-    add(win32.join(environment.LOCALAPPDATA, 'Programs', 'Termexo', 'termexo.exe'));
+    add(
+      win32.join(
+        environment.LOCALAPPDATA,
+        'Programs',
+        'Termexo',
+        'termexo.exe',
+      ),
+    );
   }
 
   if (environment.ProgramFiles) {
@@ -43,24 +50,38 @@ export function findExecutable(
   fileExists = existsSync,
   bundledExecutable = BUNDLED_EXECUTABLE,
 ) {
-  return executableCandidates(environment, bundledExecutable).find((candidate) =>
-    fileExists(candidate),
+  return executableCandidates(environment, bundledExecutable).find(
+    (candidate) => fileExists(candidate),
   );
 }
 
-export function launchExecutable(executable, spawnProcess = spawn) {
-  const child = spawnProcess(executable, [], {
-    detached: true,
-    stdio: 'ignore',
-    windowsHide: false,
-  });
+export function launchExecutable(
+  executable,
+  spawnProcess = spawn,
+  platform = process.platform,
+) {
+  const macApplication = platform === 'darwin' && executable.endsWith('.app');
+  const child = spawnProcess(
+    macApplication ? '/usr/bin/open' : executable,
+    macApplication ? ['-a', executable] : [],
+    {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false,
+    },
+  );
   child.unref();
 }
 
-export function openDownloadPage(spawnProcess = spawn) {
+export function openDownloadPage(
+  spawnProcess = spawn,
+  platform = process.platform,
+) {
   const child = spawnProcess(
-    'rundll32.exe',
-    ['url.dll,FileProtocolHandler', RELEASES_URL],
+    platform === 'darwin' ? '/usr/bin/open' : 'rundll32.exe',
+    platform === 'darwin'
+      ? [RELEASES_URL]
+      : ['url.dll,FileProtocolHandler', RELEASES_URL],
     {
       detached: true,
       stdio: 'ignore',

@@ -133,7 +133,7 @@ MCP 是 AI 与 Termexo 之间的连接。**你用日常语言提出要求，不�
 
 ## 最新版本
 
-**[v0.11.0](https://github.com/gemron/Termexo/releases/tag/v0.11.0)** 加入多个内容预览标签与代码高亮，优化常用操作识别，支持第三方通知和 macOS 构建。桌面安装包与 Windows npm 包统一由 [GitHub Actions 自动编译发布](docs/releases.md)。
+**[v0.11.0](https://github.com/gemron/Termexo/releases/tag/v0.11.0)** 加入多个内容预览标签与代码高亮，优化常用操作识别，支持第三方通知和 macOS 构建。桌面安装包与 Windows/macOS 通用 npm 包统一由 [GitHub Actions 自动编译发布](docs/releases.md)。
 [完整更新记录](CHANGELOG.cn.md)。
 
 如果 Termexo 帮到了你，欢迎 **给仓库点一个 Star**，帮助更多开发者发现它。

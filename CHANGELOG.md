@@ -8,7 +8,7 @@ Release notes for every Termexo version, newest first. The current release is su
 - **Discover and review saved actions in one flow.** A compact view keeps discovery progress and results together, with select-all, individual edits, duplicate removal, and a fixed confirmation footer.
 - **Control third-party notifications.** A global toolbar switch covers configured notification channels. Notifications include local time and session context; Windows WeChat delivery restores minimized windows and locates the configured contact before sending.
 - **Build for macOS.** Apple Silicon and Intel builds include platform-specific terminal, account, path, notification, and file-opening support. macOS packages use ad-hoc signing and are not notarized.
-- **Publish desktop and npm releases from GitHub Actions.** Version tags run tests, build Windows EXE/MSI and both macOS architectures, pack the Windows npm distribution from the same build, verify checksums and source commits, and publish using npm OIDC provenance. SignPath Foundation approval remains pending; Windows packages are currently unsigned.
+- **Publish desktop and npm releases from GitHub Actions.** Version tags run tests, build Windows EXE/MSI and both macOS architectures, combine all three builds into one npm package, verify checksums and source commits, and publish using npm OIDC provenance. On Mac, `npx termexo` selects the matching complete app, caches it and opens it with Launch Services. SignPath Foundation approval remains pending; Windows packages are currently unsigned.
 
 ## V0.10.15
 

@@ -100,6 +100,28 @@ jobs:
             echo "Source commit: $GITHUB_SHA"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Test npm launcher and app extraction
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --prefix packages/termexo test
+          app=$(node --input-type=module <<'NODE'
+          import { prepareMacApplication } from './packages/termexo/lib/macos.js';
+          import { readFileSync } from 'node:fs';
+          import { join } from 'node:path';
+          const version = JSON.parse(readFileSync('package.json', 'utf8')).version;
+          console.log(prepareMacApplication({
+            version,
+            archivePath: `artifacts/${process.env.TARGET}/Termexo_${version}_${process.env.ARCH}.app.tar.gz`,
+            cacheRoot: join(process.env.RUNNER_TEMP, 'termexo-npm-smoke'),
+          }));
+          NODE
+          )
+          test -x "$app/Contents/MacOS/termexo"
+          lipo "$app/Contents/MacOS/termexo" -verify_arch "$ARCH"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          node packages/termexo/bin/termexo.js --version
+
       - name: Upload installers
         uses: actions/upload-artifact@v7
         with:

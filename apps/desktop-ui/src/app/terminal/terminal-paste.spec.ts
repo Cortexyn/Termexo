@@ -41,7 +41,14 @@ describe('terminal clipboard interactions', () => {
 
   beforeEach(async () => {
     vi.resetAllMocks();
-    (window as unknown as Record<string, unknown>)['__TAURI_INTERNALS__'] = {};
+    // The terminal's lazy chunk can bundle a separate SDK import. Mock native IPC as well.
+    (window as unknown as Record<string, unknown>)['__TAURI_INTERNALS__'] = {
+      invoke: (command: string, args?: { text: string }) => {
+        if (command === 'plugin:clipboard-manager|read_text') return readText();
+        if (command === 'plugin:clipboard-manager|write_text') return writeText(args!.text);
+        throw new Error(`Unexpected native command: ${command}`);
+      },
+    };
     write.mockResolvedValue(undefined);
     vi.mocked(readText).mockResolvedValue('  中文\r\nsecond line\t ');
     TestBed.configureTestingModule({
