@@ -216,7 +216,7 @@ jobs:
           NODE
       - name: Publish npm with OIDC provenance
         if: steps.npm-state.outputs.published != 'true'
-        run: npm publish "release-assets/termexo-$VERSION.tgz" --access public --provenance --tag latest
+        run: npm publish "./release-assets/termexo-$VERSION.tgz" --access public --provenance --tag latest
       - name: Verify npm version
         shell: bash
         run: |
