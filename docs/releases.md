@@ -14,6 +14,7 @@
 前端单元测试与所有平台的 Rust 测试通过后，工作流校验安装包和 npm 包的版本、
 源码提交、目标架构及校验和，先上传草稿 Release，再发布 npm，最后公开 Release。
 npm 使用 OIDC 和来源证明，不需要保存长期 npm 令牌。
+发布后会等待 npm 完成处理，并校验公开版本的包完整性，再公开 GitHub Release。
 
 Windows 和 Mac 均可使用 `npx termexo` 或 `npm install --global termexo`。
 Mac 首次启动时按 Node.js 架构选择应用，将其解压到
