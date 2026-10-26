@@ -28,3 +28,40 @@ gh run download RUN_ID --dir windows-installers
 ```
 
 macOS 的 Apple Silicon 和 Intel 构建见 [macOS 打包说明](macos-build.md)。
+
+## 免费开源签名（SignPath）
+
+当前处于申请准备阶段，还未获批，也没有可用的正式签名凭据。
+普通构建保持可用；不要把准备好的工作流当作已经获得证书。
+
+审核通过后，在仓库中配置一个 Actions Secret：
+
+- `SIGNPATH_API_TOKEN`：只具备提交签名请求权限的 CI 用户令牌。
+
+同时配置以下 Actions Variables，值以 SignPath 批准的项目配置为准：
+
+- `SIGNPATH_ORGANIZATION_ID`
+- `SIGNPATH_PROJECT_SLUG`
+- `SIGNPATH_SIGNING_POLICY_SLUG`
+- `SIGNPATH_APP_ARTIFACT_CONFIGURATION_SLUG`
+- `SIGNPATH_INSTALLERS_ARTIFACT_CONFIGURATION_SLUG`
+- `SIGNPATH_CERTIFICATE_THUMBPRINT`：正式签名证书的 40 位指纹。
+
+由 SignPath 配置 GitHub 来源验证，并按其要求连接本仓库。
+主程序和安装包分别使用两个 ZIP 类型的制品配置：主程序 ZIP 根目录包含
+`termexo.exe`，安装包 ZIP 根目录包含本项目的 EXE 和 MSI。
+不得使用本项目证书重新签署第三方组件。
+
+然后在 **Run workflow** 勾选 **Sign with SignPath**，或执行：
+
+```bash
+gh workflow run windows-build.yml --ref main -f sign=true
+```
+
+签名流程先构建并签署主程序，再打包，最后签署两个安装包。
+这需要在 SignPath 人工批准相应请求，工作流每个阶段最多等待 30 分钟。
+签名成功后上传的产物名称带 `-signed` 后缀，并在签名完成后重新生成校验和。
+缺少配置、证书不符、签名不受信任或缺少时间戳时，工作流会停止。
+
+签名政策见 [Code signing policy](code-signing-policy.md)，网络与数据说明见
+[Privacy and network connections](privacy.md)。

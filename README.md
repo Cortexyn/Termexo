@@ -482,6 +482,13 @@ Use [Issues](https://github.com/gemron/Termexo/issues) to report bugs, discuss d
 decisions, or propose features. Before submitting code, make sure the change fits the
 current release scope and add tests for behavior changes.
 
+## Code signing policy
+
+Windows signing is being prepared through the free open-source SignPath Foundation
+program; its application is not yet submitted. Read the [Code signing policy](docs/code-signing-policy.md)
+and [Privacy and network connections](docs/privacy.md). Current build metadata records
+whether signatures were requested and verified.
+
 ## License
 
 Released under the [MIT License](LICENSE).

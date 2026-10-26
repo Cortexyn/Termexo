@@ -2,9 +2,15 @@ name: Build Windows installers
 
 on:
   workflow_dispatch:
+    inputs:
+      sign:
+        description: Sign with SignPath (requires approved project and configured credentials)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: windows-build-${{ github.ref }}
@@ -14,7 +20,7 @@ jobs:
   build:
     name: Windows (x64)
     runs-on: windows-2022
-    timeout-minutes: 60
+    timeout-minutes: 90
     defaults:
       run:
         shell: pwsh
@@ -22,11 +28,32 @@ jobs:
       CI: "true"
       CARGO_TERM_COLOR: always
       TARGET: x86_64-pc-windows-msvc
+      SIGNING_REQUESTED: ${{ inputs.sign }}
+      SIGNPATH_CERTIFICATE_THUMBPRINT: ${{ vars.SIGNPATH_CERTIFICATE_THUMBPRINT }}
     steps:
       - name: Check out source
         uses: actions/checkout@v7
         with:
           persist-credentials: false
+
+      - name: Check SignPath configuration
+        if: inputs.sign
+        env:
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+          SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          SIGNPATH_PROJECT_SLUG: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          SIGNPATH_SIGNING_POLICY_SLUG: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          SIGNPATH_APP_CONFIG: ${{ vars.SIGNPATH_APP_ARTIFACT_CONFIGURATION_SLUG }}
+          SIGNPATH_INSTALLERS_CONFIG: ${{ vars.SIGNPATH_INSTALLERS_ARTIFACT_CONFIGURATION_SLUG }}
+        run: |
+          $required = @(
+            'SIGNPATH_API_TOKEN', 'SIGNPATH_ORGANIZATION_ID', 'SIGNPATH_PROJECT_SLUG',
+            'SIGNPATH_SIGNING_POLICY_SLUG', 'SIGNPATH_APP_CONFIG',
+            'SIGNPATH_INSTALLERS_CONFIG', 'SIGNPATH_CERTIFICATE_THUMBPRINT'
+          )
+          $missing = @($required | Where-Object { [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) })
+          if ($missing.Count -gt 0) { throw "SignPath is not ready. Missing configuration: $($missing -join ', '). Complete project approval and setup first." }
+          if ($env:SIGNPATH_CERTIFICATE_THUMBPRINT -notmatch '^[0-9a-fA-F]{40}$') { throw 'SignPath certificate thumbprint must contain 40 hexadecimal characters.' }
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -59,8 +86,90 @@ jobs:
         run: cargo test --manifest-path src-tauri/Cargo.toml --lib --locked --target "$env:TARGET" -- --quiet
 
       - name: Build EXE and MSI
+        if: ${{ !inputs.sign }}
         # Call the portable CLI wrapper directly; the local .cmd uses a machine-specific VS path.
         run: npm --prefix apps/desktop-ui run tauri:build -- --target "$env:TARGET" --bundles "nsis,msi" -- --locked
+
+      - name: Build application for signing
+        if: inputs.sign
+        run: npm --prefix apps/desktop-ui run tauri:build -- --target "$env:TARGET" --no-bundle -- --locked
+
+      - name: Upload unsigned application for origin verification
+        if: inputs.sign
+        id: unsigned-app
+        uses: actions/upload-artifact@v7
+        with:
+          name: Termexo-signing-input-app
+          path: src-tauri/target/x86_64-pc-windows-msvc/release/termexo.exe
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      - name: Request application signature
+        if: inputs.sign
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_APP_ARTIFACT_CONFIGURATION_SLUG }}
+          github-artifact-id: ${{ steps.unsigned-app.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 1800
+          output-artifact-directory: signing/app
+
+      - name: Verify signed application before packaging
+        if: inputs.sign
+        run: |
+          $signedApp = Get-Item -LiteralPath signing/app/termexo.exe
+          $signature = Get-AuthenticodeSignature -LiteralPath $signedApp.FullName
+          if ($signature.Status.ToString() -ne 'Valid') { throw 'The signed application does not have a valid trusted signature.' }
+          if ($signature.SignerCertificate.Thumbprint -ne $env:SIGNPATH_CERTIFICATE_THUMBPRINT) { throw 'Unexpected application signing certificate.' }
+          if ($null -eq $signature.TimeStamperCertificate) { throw 'The application signature has no timestamp.' }
+          $version = (Get-Content -LiteralPath package.json -Raw | ConvertFrom-Json).version
+          if ($signedApp.VersionInfo.ProductVersion -ne $version) { throw 'Signed application version mismatch.' }
+          Copy-Item -LiteralPath $signedApp.FullName -Destination "src-tauri/target/$env:TARGET/release/termexo.exe" -Force
+
+      - name: Bundle the signed application
+        if: inputs.sign
+        working-directory: apps/desktop-ui
+        run: node scripts/run-tauri.mjs bundle --target "$env:TARGET" --bundles "nsis,msi"
+
+      - name: Prepare installers for signing
+        if: inputs.sign
+        run: |
+          $version = (Get-Content -LiteralPath package.json -Raw | ConvertFrom-Json).version
+          $bundle = "src-tauri/target/$env:TARGET/release/bundle"
+          $inputDirectory = Join-Path $bundle signing-input
+          New-Item -ItemType Directory -Path $inputDirectory -Force | Out-Null
+          Copy-Item -LiteralPath (Join-Path $bundle "nsis/Termexo_${version}_x64-setup.exe"), (Join-Path $bundle "msi/Termexo_${version}_x64_en-US.msi") -Destination $inputDirectory
+
+      - name: Upload installers for origin verification
+        if: inputs.sign
+        id: unsigned-installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: Termexo-signing-input-installers
+          # Keep both installers at the ZIP root for the approved artifact configuration.
+          path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/signing-input/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      - name: Request installer signatures
+        if: inputs.sign
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_INSTALLERS_ARTIFACT_CONFIGURATION_SLUG }}
+          github-artifact-id: ${{ steps.unsigned-installers.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 1800
+          output-artifact-directory: signing/installers
 
       - name: Verify and collect installers
         run: |
@@ -79,8 +188,14 @@ jobs:
           if ([BitConverter]::ToUInt16($binaryBytes, $peOffset + 4) -ne 0x8664) { throw 'Application is not x64' }
           if ($binary.VersionInfo.ProductVersion -ne $version) { throw 'Executable version mismatch' }
 
-          $setup = Get-Item -LiteralPath (Join-Path $bundle "nsis/Termexo_${version}_x64-setup.exe")
-          $msi = Get-Item -LiteralPath (Join-Path $bundle "msi/Termexo_${version}_x64_en-US.msi")
+          $signingRequested = $env:SIGNING_REQUESTED -eq 'true'
+          if ($signingRequested) {
+            $setup = Get-Item -LiteralPath "signing/installers/Termexo_${version}_x64-setup.exe"
+            $msi = Get-Item -LiteralPath "signing/installers/Termexo_${version}_x64_en-US.msi"
+          } else {
+            $setup = Get-Item -LiteralPath (Join-Path $bundle "nsis/Termexo_${version}_x64-setup.exe")
+            $msi = Get-Item -LiteralPath (Join-Path $bundle "msi/Termexo_${version}_x64_en-US.msi")
+          }
           $installer = $database = $view = $record = $summary = $null
           try {
             $installer = New-Object -ComObject WindowsInstaller.Installer
@@ -97,10 +212,25 @@ jobs:
             }
           }
 
-          $signature = Get-AuthenticodeSignature -LiteralPath $setup.FullName
-          if ($signature.Status.ToString() -notin @('Valid', 'NotSigned')) { throw "Invalid installer signature: $($signature.Status)" }
+          $signatureDetails = @($binary, $setup, $msi) | ForEach-Object {
+            $signature = Get-AuthenticodeSignature -LiteralPath $_.FullName
+            $status = $signature.Status.ToString()
+            if ($signingRequested) {
+              if ($status -ne 'Valid') { throw "A trusted signature is required for $($_.Name): $status" }
+              if ($signature.SignerCertificate.Thumbprint -ne $env:SIGNPATH_CERTIFICATE_THUMBPRINT) { throw "Unexpected signing certificate for $($_.Name)." }
+              if ($null -eq $signature.TimeStamperCertificate) { throw "Missing signature timestamp for $($_.Name)." }
+            } elseif ($status -notin @('Valid', 'NotSigned')) {
+              throw "Invalid signature for $($_.Name): $status"
+            }
+            [ordered]@{
+              file = $_.Name
+              status = $status
+              certificateThumbprint = $signature.SignerCertificate.Thumbprint
+              timestamped = $null -ne $signature.TimeStamperCertificate
+            }
+          }
           Copy-Item -LiteralPath $setup.FullName, $msi.FullName -Destination $output
-          $checksums = Get-ChildItem -LiteralPath $output -File | Sort-Object Name | ForEach-Object {
+          $checksums = @($setup, $msi) | Sort-Object Name | ForEach-Object {
             $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
             "$hash  $($_.Name)"
           }
@@ -110,26 +240,29 @@ jobs:
             version = $version
             commit = $env:GITHUB_SHA
             target = $env:TARGET
-            signing = $signature.Status.ToString()
+            signing = if ($signingRequested) { 'SignPath' } else { 'Not requested' }
+            signingRequested = $signingRequested
+            signatures = @($signatureDetails)
             executableArchitectureVerified = $true
             executableVersionVerified = $true
             msiVersionVerified = $true
             msiArchitectureVerified = $true
-          } | ConvertTo-Json
+          } | ConvertTo-Json -Depth 4
           [System.IO.File]::WriteAllText((Join-Path $output build-info.json), $metadata, $utf8)
 
           @"
           ### Termexo $version — Windows x64
           Download the EXE or MSI from this run's **Artifacts** section.
           Includes SHA-256 checksums and build metadata.
-          Installer signing: $($signature.Status).
+          SignPath signing requested: $signingRequested.
           Source commit: $env:GITHUB_SHA
+          Code signing policy: https://github.com/gemron/Termexo/blob/main/docs/code-signing-policy.md
           "@ >> $env:GITHUB_STEP_SUMMARY
 
       - name: Upload installers
         uses: actions/upload-artifact@v7
         with:
-          name: Termexo-Windows-x86_64-pc-windows-msvc
+          name: Termexo-Windows-x86_64-pc-windows-msvc${{ inputs.sign && '-signed' || '' }}
           path: artifacts/x86_64-pc-windows-msvc/
           if-no-files-found: error
           retention-days: 14
