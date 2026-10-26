@@ -31,7 +31,8 @@ macOS 的 Apple Silicon 和 Intel 构建见 [macOS 打包说明](macos-build.md)
 
 ## 免费开源签名（SignPath）
 
-当前处于申请准备阶段，还未获批，也没有可用的正式签名凭据。
+SignPath Foundation 申请已于 2026 年 10 月 27 日提交，正在等待审核；
+还未获批，也没有可用的正式签名凭据。
 普通构建保持可用；不要把准备好的工作流当作已经获得证书。
 
 审核通过后，在仓库中配置一个 Actions Secret：

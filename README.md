@@ -484,8 +484,8 @@ current release scope and add tests for behavior changes.
 
 ## Code signing policy
 
-Windows signing is being prepared through the free open-source SignPath Foundation
-program; its application is not yet submitted. Read the [Code signing policy](docs/code-signing-policy.md)
+An application to the free open-source SignPath Foundation program was submitted
+on 27 October 2026 and is awaiting review. Read the [Code signing policy](docs/code-signing-policy.md)
 and [Privacy and network connections](docs/privacy.md). Current build metadata records
 whether signatures were requested and verified.
 

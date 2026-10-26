@@ -1,7 +1,8 @@
 # Code signing policy
 
-Status: preparing a SignPath Foundation application. Project approval has not
-been granted and no SignPath release certificate is configured yet.
+Status: the SignPath Foundation application was submitted on 27 October 2026
+and is awaiting review. Project approval has not been granted and no SignPath
+release certificate is configured yet.
 
 ## Scope
 

@@ -50,7 +50,8 @@ counter is not included in the desktop application or remote workbench. See the
 Code-signing services receive the release artifacts and build-origin information
 needed to sign a release. Project source and release artifacts are public. Signing
 credentials remain in the chosen service and GitHub's secret storage.
-The SignPath application is still being prepared; no approval or signing is claimed.
+The SignPath application was submitted on 27 October 2026 and is awaiting review;
+no approval or signing is claimed.
 
 Information voluntarily included in a GitHub issue or support request is sent to
 that destination and may become public. Use [GitHub issues](https://github.com/gemron/Termexo/issues)
