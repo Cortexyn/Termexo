@@ -1,6 +1,6 @@
 {
   "name": "termexo",
-  "version": "0.10.15",
+  "version": "0.11.0",
   "description": "Run the Termexo AI development workspace directly from npm on Windows",
   "type": "module",
   "bin": {

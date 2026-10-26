@@ -2,6 +2,14 @@
 
 Release notes for every Termexo version, newest first. The current release is summarised in [README.md](README.md).
 
+## V0.11.0
+
+- **Preview content in its own tabs.** Open multiple file or website previews alongside terminals, switch files without losing the browser, resize the panel, and highlight code without changing whitespace. MCP can open project and web previews without unrelated terminal activity stealing focus.
+- **Discover and review saved actions in one flow.** A compact view keeps discovery progress and results together, with select-all, individual edits, duplicate removal, and a fixed confirmation footer.
+- **Control third-party notifications.** A global toolbar switch covers configured notification channels. Notifications include local time and session context; Windows WeChat delivery restores minimized windows and locates the configured contact before sending.
+- **Build for macOS.** Apple Silicon and Intel builds include platform-specific terminal, account, path, notification, and file-opening support. macOS packages use ad-hoc signing and are not notarized.
+- **Publish desktop and npm releases from GitHub Actions.** Version tags run tests, build Windows EXE/MSI and both macOS architectures, pack the Windows npm distribution from the same build, verify checksums and source commits, and publish using npm OIDC provenance. SignPath Foundation approval remains pending; Windows packages are currently unsigned.
+
 ## V0.10.15
 
 - **Organize workspaces in a tree.** Create nested folders, reorder projects and folders by dragging, add tags and icons, search the sidebar, and open a project directory from its menu.

@@ -35,10 +35,12 @@ termexo --help       Show command help
 Set `TERMEXO_PATH` to the full path of another `termexo.exe` to override the
 bundled executable.
 
-## Version 0.10.15
+## Version 0.11.0
 
-Adds workspace folders, tags and icons, account login choices, model discovery and
-upgrade suggestions, and confirmation before closing active Agent terminals.
+Adds multiple content preview tabs, syntax highlighting that preserves source
+whitespace, smoother saved-action discovery, and third-party notification controls.
+GitHub Actions builds this Windows npm package from the same executable as the installers.
+macOS DMGs are available separately in the GitHub release; this npm package remains Windows-only.
 Restart Termexo and Agent terminals after updating.
 
 ## Let one AI operate another through MCP

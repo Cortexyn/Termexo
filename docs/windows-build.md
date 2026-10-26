@@ -14,7 +14,8 @@
 
 工作流检查应用的 x64 PE 架构、可执行文件版本、MSI 版本和架构，并生成 SHA-256 校验和。
 下载保留 14 天；需要时可以重新手动构建。当前没有配置 Windows 代码签名证书。
-工作流只上传 Actions 产物，不安装应用，也不创建或修改 GitHub Release。
+单独运行此构建工作流只上传 Actions 产物，不安装应用。
+推送版本标签时，由[自动发布流程](releases.md)调用并发布 GitHub Release 和 npm 包。
 
 工作流直接调用跨平台 Tauri CLI 包装脚本，通过 MSVC Action 获取构建环境，
 不依赖本机 `scripts/tauri-msvc.cmd` 中固定的 Visual Studio 路径。

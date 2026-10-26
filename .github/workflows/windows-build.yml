@@ -7,6 +7,12 @@ on:
         description: Sign with SignPath (requires approved project and configured credentials)
         type: boolean
         default: false
+  workflow_call:
+    inputs:
+      sign:
+        description: Sign with an approved and configured SignPath project
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -258,6 +264,36 @@ jobs:
           Source commit: $env:GITHUB_SHA
           Code signing policy: https://github.com/gemron/Termexo/blob/main/docs/code-signing-policy.md
           "@ >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Test and pack npm distribution
+        env:
+          CARGO_TARGET_DIR: src-tauri/target/x86_64-pc-windows-msvc
+        run: |
+          $ErrorActionPreference = 'Stop'
+          npm --prefix packages/termexo test
+          if ($LASTEXITCODE -ne 0) { throw 'npm launcher tests failed' }
+          New-Item -ItemType Directory -Path artifacts/npm -Force | Out-Null
+          npm pack ./packages/termexo --pack-destination artifacts/npm
+          if ($LASTEXITCODE -ne 0) { throw 'npm packaging failed' }
+          $version = (Get-Content -LiteralPath package.json -Raw | ConvertFrom-Json).version
+          $binary = "src-tauri/target/$env:TARGET/release/termexo.exe"
+          $metadata = [ordered]@{
+            version = $version
+            commit = $env:GITHUB_SHA
+            target = $env:TARGET
+            executableSha256 = (Get-FileHash -LiteralPath $binary -Algorithm SHA256).Hash.ToLowerInvariant()
+            packageSha256 = (Get-FileHash -LiteralPath "artifacts/npm/termexo-$version.tgz" -Algorithm SHA256).Hash.ToLowerInvariant()
+          } | ConvertTo-Json
+          [System.IO.File]::WriteAllText((Join-Path (Get-Location) 'artifacts/npm/build-info.json'), $metadata, [System.Text.UTF8Encoding]::new($false))
+
+      - name: Upload npm distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: Termexo-npm
+          path: artifacts/npm/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
 
       - name: Upload installers
         uses: actions/upload-artifact@v7

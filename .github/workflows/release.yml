@@ -1,0 +1,209 @@
+name: Release desktop and npm
+
+on:
+  push:
+    tags:
+      - "v[0-9]*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate release and test frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Validate tag, versions and release notes
+        id: version
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { appendFileSync, readFileSync } from 'node:fs';
+          const tag = process.env.GITHUB_REF;
+          assert.match(tag, /^refs\/tags\/v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/, 'Run this workflow on a stable vX.Y.Z tag.');
+          const version = tag.slice('refs/tags/v'.length);
+          for (const path of ['package.json', 'apps/desktop-ui/package.json', 'packages/termexo/package.json', 'src-tauri/tauri.conf.json']) {
+            assert.equal(JSON.parse(readFileSync(path, 'utf8')).version, version, `${path}: version mismatch`);
+          }
+          for (const path of ['apps/desktop-ui/package-lock.json', 'packages/termexo/package-lock.json']) {
+            const lock = JSON.parse(readFileSync(path, 'utf8'));
+            assert.equal(lock.version, version, `${path}: lock version mismatch`);
+            assert.equal(lock.packages[''].version, version, `${path}: root version mismatch`);
+          }
+          const manifest = readFileSync('src-tauri/Cargo.toml', 'utf8');
+          assert.equal(manifest.match(/\[package\][\s\S]*?^version = "([^"]+)"/m)?.[1], version, 'Cargo.toml version mismatch');
+          const lock = readFileSync('src-tauri/Cargo.lock', 'utf8');
+          assert.equal(lock.match(/\[\[package\]\]\r?\nname = "termexo"\r?\nversion = "([^"]+)"/)?.[1], version, 'Cargo.lock version mismatch');
+          assert.ok(readFileSync(`docs/releases/v${version}.md`, 'utf8').trim(), 'Release notes are required.');
+          appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);
+          console.log(`Validated Termexo ${version}`);
+          NODE
+      - run: npm --prefix apps/desktop-ui ci
+      - run: npm test
+
+  windows:
+    name: Build Windows and npm
+    needs: validate
+    uses: ./.github/workflows/windows-build.yml
+    with:
+      sign: ${{ vars.RELEASE_SIGN_WINDOWS == 'true' }}
+    secrets: inherit
+
+  macos:
+    name: Build macOS
+    needs: validate
+    uses: ./.github/workflows/macos-build.yml
+
+  publish:
+    name: Publish GitHub Release and npm
+    needs: [validate, windows, macos]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: npm
+    permissions:
+      contents: write
+      actions: read
+      id-token: write
+    env:
+      VERSION: ${{ needs.validate.outputs.version }}
+      SIGN_WINDOWS: ${{ vars.RELEASE_SIGN_WINDOWS == 'true' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: Termexo-*
+          path: downloaded
+      - name: Verify build origins and collect release assets
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { createHash } from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+          const { VERSION: version, GITHUB_SHA: commit } = process.env;
+          const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
+          mkdirSync('release-assets');
+          const targets = [
+            ['Windows', 'x86_64-pc-windows-msvc'],
+            ['macOS', 'aarch64-apple-darwin'],
+            ['macOS', 'x86_64-apple-darwin'],
+          ];
+          for (const [platform, target] of targets) {
+            const suffix = platform === 'Windows' && process.env.SIGN_WINDOWS === 'true' ? '-signed' : '';
+            const dir = `downloaded/Termexo-${platform}-${target}${suffix}`;
+            const info = JSON.parse(readFileSync(`${dir}/build-info.json`, 'utf8'));
+            assert.equal(info.version, version, `${target}: wrong version`);
+            assert.equal(info.commit, commit, `${target}: wrong source commit`);
+            assert.equal(info.target, target, `${target}: wrong architecture`);
+            if (platform === 'Windows') {
+              assert.equal(info.signingRequested, process.env.SIGN_WINDOWS === 'true');
+              if (info.signingRequested) assert.ok(info.signatures.length === 3 && info.signatures.every(s => s.status === 'Valid' && s.timestamped));
+            }
+            const entries = readFileSync(`${dir}/SHA256SUMS.txt`, 'utf8').trim().split(/\r?\n/);
+            assert.equal(entries.length, 2, `${target}: expected two installers/archives`);
+            for (const entry of entries) {
+              const match = entry.match(/^([a-f0-9]{64})  ([^/\\]+)$/);
+              assert.ok(match, 'Invalid checksum entry');
+              const [, hash, name] = match;
+              assert.ok(name.includes(`_${version}_`), `${name}: wrong version`);
+              assert.match(name, platform === 'Windows' ? /\.(exe|msi)$/ : /\.(dmg|app\.tar\.gz)$/);
+              assert.equal(sha256(readFileSync(`${dir}/${name}`)), hash, `${name}: checksum mismatch`);
+              copyFileSync(`${dir}/${name}`, `release-assets/${name}`);
+            }
+            copyFileSync(`${dir}/build-info.json`, `release-assets/build-info-${target}.json`);
+          }
+          const npmDir = 'downloaded/Termexo-npm';
+          const archive = `termexo-${version}.tgz`;
+          const info = JSON.parse(readFileSync(`${npmDir}/build-info.json`, 'utf8'));
+          assert.equal(info.version, version);
+          assert.equal(info.commit, commit);
+          assert.equal(info.target, 'x86_64-pc-windows-msvc');
+          assert.equal(sha256(readFileSync(`${npmDir}/${archive}`)), info.packageSha256);
+          const unpack = (path) => execFileSync('tar', ['-xOf', `${npmDir}/${archive}`, `package/${path}`], { maxBuffer: 128 * 1024 * 1024 });
+          const pkg = JSON.parse(unpack('package.json'));
+          assert.equal(pkg.name, 'termexo');
+          assert.equal(pkg.version, version);
+          assert.equal(sha256(unpack('vendor/win32-x64/termexo.exe')), info.executableSha256, 'npm must contain the executable from this Windows build');
+          for (const name of ['conpty.dll', 'OpenConsole.exe']) assert.equal(unpack(`vendor/win32-x64/${name}`).subarray(0, 2).toString(), 'MZ');
+          copyFileSync(`${npmDir}/${archive}`, `release-assets/${archive}`);
+          copyFileSync(`${npmDir}/build-info.json`, 'release-assets/build-info-npm.json');
+          const files = readdirSync('release-assets').sort();
+          assert.equal(files.length, 11, 'Expected seven packages and four build records');
+          writeFileSync('release-assets/SHA256SUMS.txt', files.map(name => `${sha256(readFileSync(`release-assets/${name}`))}  ${name}\n`).join(''));
+          NODE
+      - name: Prepare draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" --json isDraft > release-state.json; then
+            node --input-type=module -e "import fs from 'node:fs'; if (!JSON.parse(fs.readFileSync('release-state.json')).isDraft) throw new Error('This release is already published; refusing to replace its assets.');"
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --draft --title "Termexo v$VERSION" --notes-file "docs/releases/v$VERSION.md"
+          fi
+          gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
+      - name: Check whether this exact npm package is already published
+        id: npm-state
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { createHash } from 'node:crypto';
+          import { appendFileSync, readFileSync } from 'node:fs';
+          const response = await fetch(`https://registry.npmjs.org/termexo/${process.env.VERSION}`);
+          if (response.status === 404) {
+            appendFileSync(process.env.GITHUB_OUTPUT, 'published=false\n');
+          } else {
+            assert.ok(response.ok, `npm registry returned ${response.status}`);
+            const pkg = await response.json();
+            const integrity = 'sha512-' + createHash('sha512').update(readFileSync(`release-assets/termexo-${process.env.VERSION}.tgz`)).digest('base64');
+            assert.equal(pkg.dist.integrity, integrity, 'This npm version already exists with different contents.');
+            appendFileSync(process.env.GITHUB_OUTPUT, 'published=true\n');
+          }
+          NODE
+      - name: Publish npm with OIDC provenance
+        if: steps.npm-state.outputs.published != 'true'
+        run: npm publish "release-assets/termexo-$VERSION.tgz" --access public --provenance --tag latest
+      - name: Verify npm version
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm view "termexo@$VERSION" version dist.integrity --json
+      - name: Publish completed GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+          {
+            echo "### Termexo v$VERSION published"
+            echo "Release: https://github.com/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME"
+            echo "npm: https://www.npmjs.com/package/termexo/v/$VERSION"
+          } >> "$GITHUB_STEP_SUMMARY"

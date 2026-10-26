@@ -23,7 +23,8 @@ Windows 的 EXE、MSI 构建见 [Windows 打包说明](windows-build.md)。
 目前产物采用 ad-hoc 临时签名，没有 Apple Developer ID 签名和公证。
 这适合测试构建；首次运行可能需要在 macOS 的“隐私与安全性”中允许打开。
 正式分发前仍需接入 Apple 签名、公证并完成 Mac 真机测试。
-工作流只上传 Actions 产物，不创建或修改 GitHub Release。
+单独运行此构建工作流只上传 Actions 产物。
+推送版本标签时，由[自动发布流程](releases.md)调用并发布到 GitHub Release。
 
 也可以通过已登录的 GitHub CLI 启动：
 
