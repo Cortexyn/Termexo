@@ -13,6 +13,7 @@
 <p align="center">
   <img alt="Version 0.11.0" src="https://img.shields.io/badge/version-0.11.0-58c7a0">
   <img alt="Windows" src="https://img.shields.io/badge/platform-Windows-0078D4?logo=windows">
+  <img alt="macOS" src="https://img.shields.io/badge/platform-macOS-222222?logo=apple">
   <img alt="Tauri 2" src="https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white">
   <img alt="Angular 22" src="https://img.shields.io/badge/Angular-22-DD0031?logo=angular">
 </p>
@@ -34,7 +35,7 @@
 
 **Use MCP to let AI operate Claude Code, Codex, OpenCode, Pi Agent, Grok Build, and Antigravity terminals.**
 
-Give a connected AI an instruction. Through Termexo, it can find another agent's terminal, send a prompt, submit it, and read the actual reply. Watch the process or take over in the same Windows workbench, with working, approval, and completion states in view.
+Give a connected AI an instruction. Through Termexo, it can find another agent's terminal, send a prompt, submit it, and read the actual reply. Watch the process or take over in the same Windows or macOS workbench, with working, approval, and completion states in view.
 
 All six agents run in real terminals on your PC. Termexo also organizes projects into workspaces, resumes native sessions, and lets you reconnect from your phone through your own relay, a trusted LAN, or a VPN.
 
@@ -42,7 +43,7 @@ All six agents run in real terminals on your PC. Termexo also organizes projects
 
 *Watch 30 seconds of real v0.10.6 desktop use: completion notifications, return to a session, reply, and review two Antigravity sessions side by side. Includes Chinese and English captions; waiting intervals are cut.*
 
-**[Download for Windows](https://github.com/gemron/Termexo/releases/latest)** · [Watch the demo](https://www.termexo.com/#workbench-demo) · [Share first-use feedback](https://github.com/gemron/Termexo/issues/new?template=first-use.yml)
+**[Download for Windows and macOS](https://github.com/gemron/Termexo/releases/latest)** · [Watch the demo](https://www.termexo.com/#workbench-demo) · [Share first-use feedback](https://github.com/gemron/Termexo/issues/new?template=first-use.yml)
 
 | Let AI operate other agents | Know who needs you | Continue from your phone |
 | --- | --- | --- |
@@ -70,20 +71,22 @@ With several AI coding tools running, you spend time sending requests, checking 
 
 **Available today and planned:** These scenarios center on individuals and team members operating their own workbenches, with people assigning tasks and handling approvals. Shared workspaces, granular permissions, centralized audit, and broader automatic orchestration are part of the [long-term product direction](Termexo.md), not a ready-made enterprise administration platform.
 
-## Try it on Windows
+## Get started on Windows or macOS
 
-1. **[Download the Windows installer](https://github.com/gemron/Termexo/releases/latest)** — choose the EXE or MSI asset. No Rust or build tools needed.
+1. **[Download v0.11.0](https://github.com/gemron/Termexo/releases/tag/v0.11.0)** — choose Windows EXE/MSI or the Mac DMG for Apple Silicon (`aarch64`) or Intel (`x64`). No Rust or build tools needed.
 2. Open Termexo and create a workspace for a project folder on your PC.
 3. Start a terminal with an installed agent. If none is installed, check detection and install a CLI from Settings.
 4. Run a task and watch its status in the terminal tab and right panel. Enable phone access later if you need it.
 
 Already have Node.js 18.18+? Run:
 
-```powershell
+```sh
 npx termexo@latest
 ```
 
-Requires Windows 10 build 17763+ and WebView2 Chromium 111+.
+Windows requires Windows 10 build 17763+ and WebView2 Chromium 111+. Mac builds require macOS 12+ on Apple Silicon or Intel. The same npm package includes all three applications; on Mac, the matching complete app is cached and opened through Launch Services.
+
+Windows code signing is awaiting SignPath approval. Mac builds use ad-hoc signing and are not notarized; macOS may require allowing the app in Privacy & Security. Broader Mac GUI testing is still needed.
 Install and configure your chosen agent CLI and model access; Termexo does not include a model subscription.
 **MIT licensed. No Termexo account required.**
 
@@ -124,7 +127,7 @@ After that, try a project task:
 
 The desktop opens an outbound tunnel, with no public IP or router port forwarding required. **Keep the PC on with Termexo running and connected to the relay.** Direct access over a trusted LAN or controlled VPN is also available.
 
-Relay login and the desktop access token are independent checks. After the v2 handshake, session frames use AES-256-GCM; the relay forwards encrypted terminal sessions. The relay has Linux, macOS and Windows x64 / arm64 binaries and container deployment; the Termexo desktop application is for Windows.
+Relay login and the desktop access token are independent checks. After the v2 handshake, session frames use AES-256-GCM; the relay forwards encrypted terminal sessions. The relay has Linux, macOS and Windows x64 / arm64 binaries and container deployment; Termexo desktop packages are available for Windows x64 and macOS Apple Silicon / Intel.
 
 [![Termexo mobile workbench](website/assets/termexo-phone.png)](https://www.termexo.com/guide.en.html#remote)
 
@@ -138,7 +141,7 @@ Keep the token private. Closing Termexo or stopping the PC ends the running proc
 [Full changelog](CHANGELOG.md).
 
 If Termexo helps your workflow, a **Star on this repository** helps other developers discover it.
-Found a problem? [Open an issue](https://github.com/gemron/Termexo/issues) with your Windows version and reproduction steps.
+Found a problem? [Open an issue](https://github.com/gemron/Termexo/issues) with your operating system, CPU architecture and reproduction steps.
 
 Trying it for the first time? [Tell us what worked or where you got stuck](https://github.com/gemron/Termexo/issues/new?template=first-use.yml). A short report is enough.
 
@@ -181,7 +184,7 @@ Trying it for the first time? [Tell us what worked or where you got stuck](https
     <td width="50%" valign="top">
       <strong>Same CLI. Different model.</strong><br><br>
       Point Claude Code at Anthropic, DeepSeek, MiniMax, GLM, or a custom Anthropic-compatible
-      endpoint. Save providers as profiles, keep API keys in Windows Credential Manager, and
+      endpoint. Save providers as profiles, keep API keys in Windows Credential Manager / macOS Keychain, and
       switch every Claude terminal in a workspace together.
       <br><br>
       <a href="website/assets/termexo-models.png"><img src="website/assets/termexo-models.png" alt="Termexo model provider profiles"></a>
@@ -226,12 +229,12 @@ Trying it for the first time? [Tell us what worked or where you got stuck](https
 </table>
 
 Termexo is local by default: it has no account, cloud service, or required sync. Workspace
-state stays in local SQLite storage, credentials stay in Windows Credential Manager, and
+state stays in local SQLite storage, credentials stay in Windows Credential Manager / macOS Keychain, and
 Claude/Codex session histories are read-only. The agent CLIs still connect to the providers
 you configure under their own terms and privacy policies.
 
 The interface is available in Simplified Chinese, English, Spanish, French, German, Japanese,
-and Korean. It follows the Windows language automatically, or you can choose a language from
+and Korean. It follows the system language automatically, or you can choose a language from
 the main toolbar and keep that choice across restarts.
 
 </details>
@@ -271,7 +274,10 @@ Set `TERMEXO_PI_PATH` to override the executable. Session discovery respects `PI
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
 | Workspace management     | Create, rename, theme, drag to reorder, and switch workspaces; persist paths, layouts, and terminal configuration |
 | Multi-terminal workbench | Unlimited tabs, explicit pane selection, configurable 1–6 row/column grids, pane/workspace maximize, and real PTYs |
-| Agent detection          | Detect the Claude Code, Codex, OpenCode, Pi Agent, Antigravity, and Grok Build executables, their versions, and health on Windows |
+| Content previews | Multiple file, image or website tabs, adjustable width, whitespace-preserving code highlighting and MCP opening |
+| Saved project actions | Discover, select all, edit and deduplicate in one window, with a fixed confirmation footer |
+| Third-party notifications | Toolbar master switch and messages with time/session context; desktop WeChat delivery on Windows |
+| Agent detection          | Detect the Claude Code, Codex, OpenCode, Pi Agent, Antigravity, and Grok Build executables, their versions, and health on Windows and macOS |
 | Start agent sessions     | Launch Claude, Codex, OpenCode, Pi Agent, Antigravity, or Grok Build with a working directory and the available account, model, and confirmation options for that CLI |
 | Session center           | Read-only discovery of Claude/Codex/OpenCode/Pi/Antigravity/Grok Build sessions, search, workspace filtering, native resume, and reclaim of a Claude session the CLI still holds open |
 | Agent status tracking    | Isolated hooks per terminal for thinking, tool use, approval, user input, completion, and failure states           |
@@ -286,7 +292,7 @@ Set `TERMEXO_PI_PATH` to override the executable. Session discovery respects `PI
 | Session handoff          | Build redacted, token-budgeted Git/task packages; import/export documents and continue in another Agent            |
 | Git graph and diff       | Show the active terminal's branch, commit topology, and changes since terminal start with unified or split diff    |
 | Remote access            | Serve the whole workbench over HTTPS to phones and other computers on the network, gated by an access token with QR entry and rotation, with every remote call passing an explicit command allowlist |
-| Local data and secrets   | Store workspace/session/event data in SQLite and API keys in Windows Credential Manager                            |
+| Local data and secrets   | Store workspace/session/event data in SQLite and API keys in Windows Credential Manager / macOS Keychain                            |
 | Browser preview          | Preview the complete UI without Rust and exercise layout flows through an interactive simulated terminal           |
 
 ![Termexo model profiles](website/assets/termexo-models.png)
@@ -314,7 +320,8 @@ Set `TERMEXO_PI_PATH` to override the executable. Session discovery respects `PI
 
 ## Current Boundaries
 
-- All six supported agents can be detected and launched on Windows, with native sessions discoverable and resumable from the session center. Status events and launch options vary by CLI; compatible-provider model switching currently applies to Claude terminals.
+- macOS updates use a new DMG or `npm install --global termexo@latest`; in-app automatic updates and Windows system-proxy discovery are not provided on Mac.
+- Windows and macOS builds support detection and launch for all six Agent types, with native sessions discoverable and resumable from the session center. macOS runtime coverage varies by Agent; see the release notes for known limits. Status events and launch options vary by CLI; compatible-provider model switching currently applies to Claude terminals.
 - Termexo restores terminal configuration after an app restart. An exited operating-system process is not treated as still running; resume a historical agent session explicitly from the session center.
 - Native session files remain read-only. Cross-agent handoff uses a redacted context package rather than rewriting a provider's private transcript.
 - Git session changes are repository deltas observed since terminal start; concurrent editors or other terminals may contribute.
@@ -329,13 +336,15 @@ These requirements are for contributors building Termexo, not for installing the
 
 ### Requirements
 
+macOS source builds require macOS 12+ and Xcode command-line tools. The Windows-specific runtime requirements below do not apply to Mac builds.
+
 - Windows 10 build 17763 (October 2018) or newer, the first to carry the pseudo console the
   terminals run on;
 - the WebView2 runtime at Chromium 111 or newer — the interface states its colours through
   `color-mix()` and `oklch()`, which older runtimes drop. Termexo says so and offers the download
   when it finds an older one, and Windows 11 and the installers both provide a current runtime;
 - Node.js `^22.22.3`, `^24.15.0`, or `>=26.0.0`;
-- Rust stable and Visual Studio C++ Build Tools for the desktop runtime;
+- Rust stable, with Visual Studio C++ Build Tools on Windows or Xcode command-line tools on macOS;
 - a local installation of at least one agent CLI (Termexo can also install and upgrade them).
 
 ### 1. Clone and install frontend dependencies
@@ -361,6 +370,8 @@ Open <http://127.0.0.1:4200>. Browser mode uses a simulated terminal with `help`
 npm run tauri:dev
 ```
 
+On macOS, use `npm run tauri:dev:mac` for development and `npm run tauri:build:mac` for packaging. [GitHub Actions](docs/releases.md) also builds both Mac architectures and publishes the npm package.
+
 Desktop mode uses real PTYs. If Claude Code is not available on PATH, specify it:
 
 ```powershell
@@ -378,7 +389,7 @@ flowchart LR
     Adapters["Agent Adapters"]
     Hooks["Hooks / Event Pipeline"]
     DB[("SQLite")]
-    Vault["Windows Credential Manager"]
+    Vault["Windows Credential Manager / macOS Keychain"]
     Agents["Claude Code / Codex"]
 
     UI <--> IPC
@@ -408,7 +419,7 @@ flowchart LR
 | Agent events                          | JSONL spool + SQLite          | Deduplicated by `event_key`                  |
 | Model and MCP profiles                | SQLite                        | Plaintext API keys never enter the database  |
 | Prompt assets and handoff packages    | SQLite                        | Common credentials are redacted before save  |
-| API keys                              | Windows Credential Manager    | The frontend can read only `hasCredential`   |
+| API keys                              | Windows Credential Manager / macOS Keychain    | The frontend can read only `hasCredential`   |
 | Native agent sessions                 | Claude/Codex data directories | Read-only; never modified or deleted         |
 
 For compatibility with early installations, the database filename and some internal Tauri

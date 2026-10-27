@@ -98,15 +98,15 @@ def build(output, regular_font, bold_font, language="zh"):
     assert len(parser.stack) == 1, "HTML contains unclosed tags"
     article = next(node for node in walk(parser.root) if node.attrs.get("id") == "guide-content")
     base = ParagraphStyle("body", fontName="Guide", fontSize=9.6, leading=14 if english else 16,
-                          textColor=colors.HexColor("#273b32"), spaceAfter=8,
+                          textColor=colors.HexColor("#273b32"), spaceAfter=6,
                           wordWrap=None if english else "CJK", alignment=TA_LEFT)
     styles = {
         "body": base,
         "h1": ParagraphStyle("title", parent=base, fontName="GuideBold", fontSize=28, leading=36, spaceAfter=12),
         "h2": ParagraphStyle("section", parent=base, fontName="GuideBold", fontSize=16, leading=24, spaceBefore=12, spaceAfter=12, keepWithNext=True),
-        "h3": ParagraphStyle("heading", parent=base, fontName="GuideBold", fontSize=11, leading=18, spaceBefore=10, spaceAfter=6, keepWithNext=True),
+        "h3": ParagraphStyle("heading", parent=base, fontName="GuideBold", fontSize=11, leading=18, spaceBefore=10, spaceAfter=4, keepWithNext=True),
         "meta": ParagraphStyle("meta", parent=base, fontSize=8, leading=13, textColor=colors.HexColor("#52685d")),
-        "list": ParagraphStyle("list", parent=base, leftIndent=14, firstLineIndent=-14),
+        "list": ParagraphStyle("list", parent=base, leftIndent=14, firstLineIndent=-14, spaceAfter=4),
         "code": ParagraphStyle("code", parent=base, backColor=colors.HexColor("#f0f5f2"), borderPadding=10, spaceBefore=10, spaceAfter=16),
         "callout": ParagraphStyle("callout", parent=base, backColor=colors.HexColor("#f0f5f2"), borderColor=colors.HexColor("#bfd9cb"), borderWidth=.5, borderPadding=10, spaceBefore=12, spaceAfter=14),
     }

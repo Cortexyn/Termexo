@@ -13,6 +13,7 @@
 <p align="center">
   <img alt="Version 0.11.0" src="https://img.shields.io/badge/version-0.11.0-58c7a0">
   <img alt="Windows" src="https://img.shields.io/badge/platform-Windows-0078D4?logo=windows">
+  <img alt="macOS" src="https://img.shields.io/badge/platform-macOS-222222?logo=apple">
   <img alt="Tauri 2" src="https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white">
   <img alt="Angular 22" src="https://img.shields.io/badge/Angular-22-DD0031?logo=angular">
 </p>
@@ -34,7 +35,7 @@
 
 **让 AI 通过 MCP 操控 Claude Code、Codex、OpenCode、Pi Agent、Grok Build 和 Antigravity 的终端。**
 
-对一个已连接的 AI 说一句话，它就能通过 Termexo 找到另一个 Agent 的终端，发送提示词、提交回车，再读回实际回复。你可以随时在同一个 Windows 工作台查看过程、接手操作，集中查看执行、等待确认和完成状态。
+对一个已连接的 AI 说一句话，它就能通过 Termexo 找到另一个 Agent 的终端，发送提示词、提交回车，再读回实际回复。你可以随时在同一个 Windows 或 macOS 工作台查看过程、接手操作，集中查看执行、等待确认和完成状态。
 
 六种 Agent 都在本机真实终端运行。Termexo 还按项目组织工作区、恢复原生会话；需要离开电脑时，可通过自建中继、可信局域网或 VPN 从手机接回同一个工作台。
 
@@ -42,7 +43,7 @@
 
 *点击观看 30 秒 v0.10.6 真实桌面录屏：查看完成提醒、返回对应会话、回复后继续执行，再并排查看两个 Antigravity 会话的结果。附中英字幕，已剪去等待片段。*
 
-**[下载 Windows 安装包](https://github.com/gemron/Termexo/releases/latest)** · [观看演示](https://www.termexo.com/#workbench-demo) · [首次试用反馈](https://github.com/gemron/Termexo/issues/new?template=first-use.yml)
+**[下载 Windows / macOS 安装包](https://github.com/gemron/Termexo/releases/latest)** · [观看演示](https://www.termexo.com/#workbench-demo) · [首次试用反馈](https://github.com/gemron/Termexo/issues/new?template=first-use.yml)
 
 | 让 AI 操作其他 Agent | 知道谁在等你 | 手机上接着操作 |
 | --- | --- | --- |
@@ -70,20 +71,22 @@
 
 **当前能力与规划：** 上述场景以个人和团队成员使用各自的工作台为基础，由人分配任务和处理确认；多人共享、细粒度权限、统一审计及更完整的自动编排属于[长期产品规划](Termexo.md)，尚不是现成的企业管理平台能力。
 
-## 在 Windows 上开始使用
+## 在 Windows 或 macOS 上开始使用
 
-1. **[下载 Windows 安装包](https://github.com/gemron/Termexo/releases/latest)**：选择 EXE 或 MSI 安装，无需 Rust 或编译工具。
+1. **[下载 v0.11.0](https://github.com/gemron/Termexo/releases/tag/v0.11.0)**：Windows 选择 EXE/MSI；Mac 按芯片选择 Apple Silicon（`aarch64`）或 Intel（`x64`）的 DMG，无需 Rust 或编译工具。
 2. 打开 Termexo，为本机项目目录创建工作区。
 3. 在工作区中新建终端，选择已安装的 Agent；若尚未安装，可在设置中查看检测结果并安装 CLI。
 4. 运行一个任务，查看终端标签和右侧面板的状态；手机访问可在本地流程跑通后按需启用。
 
 已安装 Node.js 18.18+？也可以直接运行：
 
-```powershell
+```sh
 npx termexo@latest
 ```
 
-需要 Windows 10 build 17763+ 和 WebView2 Chromium 111+。
+Windows 需要 Windows 10 build 17763+ 与 WebView2 Chromium 111+；Mac 需要 macOS 12+，支持 Apple Silicon 与 Intel。同一个 npm 包包含三个平台的应用，Mac 会缓存并通过系统启动对应架构的完整应用。
+
+Windows 正式签名仍在等待 SignPath 审核；Mac 使用 ad-hoc 临时签名，尚未公证，首次打开可能需要在“隐私与安全性”中允许运行。Mac 的更多界面流程仍需实机验证。
 使用 Agent 需安装相应 CLI 并配置模型服务；Termexo 不包含模型订阅。
 **MIT 开源，无需注册 Termexo 账号。**
 
@@ -124,7 +127,7 @@ MCP 是 AI 与 Termexo 之间的连接。**你用日常语言提出要求，不�
 
 桌面主动建立出站隧道，无需公网 IP 或路由器端口映射。**电脑需保持开机、Termexo 运行并连接中继。** 同一可信局域网或受控 VPN 内，也可直接连接桌面地址。
 
-中继登录与桌面访问令牌独立校验；v2 会话握手后使用 AES-256-GCM 加密会话帧，中继转发加密的终端会话。中继服务支持 Linux、macOS、Windows 的 x64 / arm64 和容器部署；Termexo 桌面版面向 Windows。
+中继登录与桌面访问令牌独立校验；v2 会话握手后使用 AES-256-GCM 加密会话帧，中继转发加密的终端会话。中继服务支持 Linux、macOS、Windows 的 x64 / arm64 和容器部署；Termexo 桌面版提供 Windows x64 和 macOS Apple Silicon / Intel 安装包。
 
 [![Termexo 手机工作台](website/assets/termexo-phone.png)](https://www.termexo.com/guide.html#remote)
 
@@ -137,7 +140,7 @@ MCP 是 AI 与 Termexo 之间的连接。**你用日常语言提出要求，不�
 [完整更新记录](CHANGELOG.cn.md)。
 
 如果 Termexo 帮到了你，欢迎 **给仓库点一个 Star**，帮助更多开发者发现它。
-遇到问题请 [提交 Issue](https://github.com/gemron/Termexo/issues)，附上 Windows 版本和复现步骤。
+遇到问题请 [提交 Issue](https://github.com/gemron/Termexo/issues)，附上操作系统、芯片架构和复现步骤。
 
 第一次试用？欢迎 [告诉我们是否顺利、卡在了哪一步](https://github.com/gemron/Termexo/issues/new?template=first-use.yml)，简单描述即可。
 
@@ -177,7 +180,7 @@ MCP 是 AI 与 Termexo 之间的连接。**你用日常语言提出要求，不�
     <td width="50%" valign="top">
       <strong>同一个 CLI，换个模型运行。</strong><br><br>
       让 Claude Code 使用 Anthropic、DeepSeek、MiniMax、GLM 或自定义 Anthropic 兼容 Endpoint。
-      供应商保存为 Profile，API Key 交给 Windows 凭据管理器保管，还能一次切换工作空间里的全部 Claude 终端。
+      供应商保存为 Profile，API Key 交给 Windows 凭据管理器或 macOS 钥匙串保管，还能一次切换工作空间里的全部 Claude 终端。
       <br><br>
       <a href="website/assets/termexo-models.png"><img src="website/assets/termexo-models.png" alt="Termexo 模型供应商 Profile"></a>
     </td>
@@ -218,10 +221,10 @@ MCP 是 AI 与 Termexo 之间的连接。**你用日常语言提出要求，不�
 </table>
 
 Termexo 默认只在本地工作：没有 Termexo 账号、云服务或强制同步。工作空间状态保存在本机
-SQLite，密钥保存在 Windows Credential Manager，Claude/Codex 历史会话只读。Agent CLI
+SQLite，密钥保存在 Windows Credential Manager / macOS Keychain，Claude/Codex 历史会话只读。Agent CLI
 仍会按照你选择的供应商及其隐私政策连接对应模型服务。
 
-界面支持简体中文、英语、西班牙语、法语、德语、日语和韩语。默认自动跟随 Windows
+界面支持简体中文、英语、西班牙语、法语、德语、日语和韩语。默认自动跟随
 系统语言，也可通过主工具栏手动切换并跨重启保留选择。
 
 </details>
@@ -260,7 +263,10 @@ Termexo 将扩展写入自己的运行时目录，以 `--extension` 注入每个
 | ------------------ | --------------------------------------------------------------------------------- |
 | Workspace 管理     | 创建、改名、换色、拖拽排序和切换 Workspace，并持久化项目路径、布局与终端配置      |
 | 多终端工作台       | 不限终端数量、指定窗口显示、1–6 行列网格、终端/工作区最大化；桌面端启动真实 PTY   |
-| Agent 检测         | 在 Windows 上检测 Claude Code、Codex、OpenCode、Pi Agent、Antigravity 与 Grok Build 的可执行文件、版本与健康状态 |
+| 内容预览 | 多个文件、图片或网站标签，宽度可调；代码高亮保留原始行与空格，支持 MCP 打开 |
+| 常用操作 | 同一窗口识别、全选、逐项编辑、自动去重，并从固定底部入口确认 |
+| 第三方通知 | 顶部总开关与带时间、会话信息的消息；桌面微信通知仅限 Windows |
+| Agent 检测         | 在 Windows / macOS 上检测 Claude Code、Codex、OpenCode、Pi Agent、Antigravity 与 Grok Build 的可执行文件、版本与健康状态 |
 | 新建 Agent 会话    | 按目录启动 Claude/Codex/OpenCode/Pi/Antigravity/Grok Build，并选择对应 CLI 可用的账号、模型和确认选项 |
 | Agent 会话中心     | 只读发现 Claude/Codex/OpenCode/Pi/Antigravity/Grok Build 会话，支持搜索、Workspace 过滤、原生恢复，以及接管 CLI 仍持有的 Claude 后台会话 |
 | Agent 状态识别     | 为每个终端生成隔离 Hooks 设置，识别思考、工具调用、权限确认、用户输入和完成状态   |
@@ -275,7 +281,7 @@ Termexo 将扩展写入自己的运行时目录，以 `--extension` 注入每个
 | 会话交接           | 生成带脱敏和 Token 预算的 Git/任务包；导入导出文档并交给另一个 Agent 继续         |
 | Git Graph 与 Diff  | 展示当前终端的分支、提交拓扑和启动后的代码变更，支持单栏或双栏 Diff              |
 | 远程访问           | 以 HTTPS 把完整工作台提供给同网络的手机和其他电脑，凭访问令牌进入，支持二维码与令牌更换；远程调用需通过显式命令白名单 |
-| 本地数据与密钥     | Workspace、会话索引和事件保存到 SQLite；API Key 保存到 Windows Credential Manager |
+| 本地数据与密钥     | Workspace、会话索引和事件保存到 SQLite；API Key 保存到 Windows Credential Manager / macOS Keychain |
 | 浏览器预览         | 无需 Rust 即可预览完整 UI，并使用可交互的模拟终端验证布局与基础流程               |
 
 ![Termexo 模型 Profile](website/assets/termexo-models.png)
@@ -297,7 +303,8 @@ Termexo 将扩展写入自己的运行时目录，以 `--extension` 注入每个
 
 ## 当前边界
 
-- 六个支持的 Agent 均可在 Windows 上检测、启动，并从会话中心寻找和恢复原生会话。各 CLI 提供的状态事件与启动选项不同；兼容供应商模型切换目前适用于 Claude 终端。
+- macOS 通过新版 DMG 或 `npm install --global termexo@latest` 手动更新；Mac 当前不提供应用内自动更新及 Windows 系统代理导入。
+- Windows 和 macOS 构建均支持六类 Agent 的检测与启动，并从会话中心寻找和恢复原生会话。macOS 各 Agent 的运行验证范围不同，已知限制见发布说明。各 CLI 提供的状态事件与启动选项不同；兼容供应商模型切换目前适用于 Claude 终端。
 - 应用退出后，已退出的操作系统进程不会被“伪恢复”。Termexo 恢复终端配置；历史 Agent 会话需从会话中心显式恢复。
 - 原生会话文件只读，Termexo 不修改、重命名或删除。跨 Agent 交接使用脱敏上下文包，不改写供应商私有记录。
 - Git 会话变更表示终端启动后观察到的仓库差异；同期运行的编辑器或其他终端也可能参与这些改动。
@@ -312,12 +319,14 @@ Termexo 将扩展写入自己的运行时目录，以 `--extension` 注入每个
 
 ### 环境要求
 
+macOS 源码构建需要 macOS 12+ 与 Xcode 命令行工具。下方 Windows 专属运行时要求不适用于 Mac 构建。
+
 - Windows 10 build 17763（2018 年 10 月）或更高——终端所依赖的伪控制台从这个版本开始才有；
 - WebView2 运行时需 Chromium 111 或更高——界面的配色用 `color-mix()` 和 `oklch()` 表达，更旧的
   运行时会直接丢弃这些声明。遇到旧版本时 Termexo 会提示并提供下载入口；Windows 11 自带，安装包
   也会补装；
 - Node.js `^22.22.3`、`^24.15.0` 或 `>=26.0.0`；
-- 桌面模式需要 Rust stable 和 Visual Studio C++ Build Tools；
+- 桌面模式需要 Rust stable；Windows 使用 Visual Studio C++ Build Tools，macOS 使用 Xcode 命令行工具；
 - 本机已安装至少一个 Agent CLI（也可由 Termexo 安装与升级）。
 
 ### 1. 获取代码与安装前端依赖
@@ -343,6 +352,8 @@ npm run dev
 npm run tauri:dev
 ```
 
+macOS 开发使用 `npm run tauri:dev:mac`，打包使用 `npm run tauri:build:mac`。[GitHub Actions](docs/releases.md) 也会自动构建两种 Mac 架构并发布 npm 包。
+
 桌面模式使用真实 PTY。若 Claude Code 不在 PATH 中，可以显式指定：
 
 ```powershell
@@ -360,7 +371,7 @@ flowchart LR
     Adapters["Agent Adapters"]
     Hooks["Hooks / Event Pipeline"]
     DB[("SQLite")]
-    Vault["Windows Credential Manager"]
+    Vault["Windows Credential Manager / macOS Keychain"]
     Agents["Claude Code / Codex"]
 
     UI <--> IPC
@@ -390,7 +401,7 @@ flowchart LR
 | Agent 事件            | JSONL spool + SQLite       | 按 `event_key` 去重                    |
 | 模型与 MCP Profile    | SQLite                     | API Key 明文不进入数据库               |
 | 提示词资产与交接包    | SQLite                     | 保存前自动清除常见凭据                 |
-| API Key               | Windows Credential Manager | 前端只能读取 `hasCredential`           |
+| API Key               | Windows Credential Manager / macOS Keychain | 前端只能读取 `hasCredential`           |
 | Agent 原始会话        | Claude/Codex 数据目录      | 只读，不修改、重命名或删除             |
 
 为兼容早期安装，数据库文件和部分 Tauri 内部标识仍沿用旧标识；这不影响产品名称
