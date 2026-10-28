@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ref: [upstream-base, upstream-main, deps-security-updates, rustfmt-cleanup]
+        ref: [upstream-main, deps-security-updates]
     defaults:
       run:
         shell: pwsh
